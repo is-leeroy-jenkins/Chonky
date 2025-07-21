@@ -2478,7 +2478,7 @@ class VectorStore( ):
 			else:
 				self.array = vector
 				_query = self.array / np.linalg.norm( self.array )
-				_matrix = matrix / np.linalg.norm( matrix, axis = 1, dims = True )
+				_matrix = matrix / np.linalg.norm( matrix, axis=1, keepdims=True )
 				return np.dot( _matrix, _query )
 		except Exception as e:
 			exception = Error( e )
