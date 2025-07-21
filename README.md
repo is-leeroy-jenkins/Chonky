@@ -1,7 +1,7 @@
 ###### Chonky-Py
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/github/chonky_project.png)
 
-A powerful, modular text-processing framework baseed in python tailored for analysts, data scientists,
+A modular text-processing framework baseed in python tailored for analysts, data scientists,
 and machine learning practitioners working with unstructured text. It unifies high-performance NLP
 utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
 feature extraction, and document analysis.
