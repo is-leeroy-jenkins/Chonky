@@ -1524,6 +1524,7 @@ class PDF( ):
 		self.extracted_lines = [ ]
 		self.extracted_tables = [ ]
 		self.extracted_pages = [ ]
+		self.tables = None
 		self.file_path = ''
 		self.page = ''
 
@@ -1693,7 +1694,7 @@ class PDF( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def extract_text( self, path: str, max: Optional[ int ] = None ) -> str | None:
+	def extract_text( self, path: str, max: Optional[ int ]=None ) -> str | None:
 		"""
 
 			Purpose:
@@ -1716,7 +1717,7 @@ class PDF( ):
 			else:
 				if max is not None and max > 0:
 					self.file_path = path
-					self.lines = self.extract_lines( self.file_path, max = max )
+					self.lines = self.extract_lines( self.file_path, max=max )
 					return '\n'.join( self.lines )
 				elif max is None or max <= 0:
 					self.file_path = path
@@ -1730,9 +1731,7 @@ class PDF( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def extract_tables( self, path: str, max: Optional[ int ] = None ) -> (List[
-		                                                                      pd.DataFrame ] |
-	                                                                       None):
+	def extract_tables( self, path: str, max: Optional[ int ] = None ) -> (List[ pd.DataFrame ] | None):
 		"""
 
 			Purpose:
