@@ -1854,10 +1854,10 @@ class PDF( ):
 			else:
 				self.tables = tables
 				self.file_path = path
-				with pd.ExcelWriter( self.file_path, engine = 'xlsxwriter' ) as _writer:
+				with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
 					for i, df in enumerate( self.tables ):
 						_sheet = f'Table_{i + 1}'
-						df.to_excel( writer, sheet_name = _sheet, index = False )
+						df.to_excel( writer, sheet_name=_sheet, index=False )
 					_writer.save( )
 		except Exception as e:
 			exception = Error( e )
@@ -1905,7 +1905,7 @@ class Token( ):
         '''
 		super( ).__init__( )
 		self.model_name = 'unsloth/Llama-3.2-1B-Instruct-GGUF'
-		self.tokenizer = AutoTokenizer.from_pretrained( self.model_name, trust_remote_code = True )
+		self.tokenizer = AutoTokenizer.from_pretrained( self.model_name, trust_remote_code=True )
 		self.model_name = AutoModelForCausalLM.from_pretrained( self.model_name )
 		self.raw_input = ''
 		self.encoding = ''
@@ -2018,8 +2018,8 @@ class Token( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def encode( self, text: str, max: int = 512, trunc: bool = True,
-	            padd: Union[ bool, str ] = False, tensors: str = None ) -> Dict[
+	def encode( self, text: str, max: int=512, trunc: bool=True,
+	            padd: Union[ bool, str ]=False, tensors: str=None ) -> Dict[
 		                                                                       str, Union[ List[
 			                                                                       int ],
 		                                                                       any ] ] | None:
