@@ -2442,7 +2442,7 @@ class VectorStore( ):
 				raise Exception( 'The argument "vector" cannot be None' )
 			else:
 				self.array = vector
-				_norms = np.linalg.norm( self.array, axis = 1, dims = True )
+				_norms = np.linalg.norm( self.array, axis=1, keepdims=True )
 				return self.array / np.clip( _norms, 1e-10, None )
 		except Exception as e:
 			exception = Error( e )
