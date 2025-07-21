@@ -46,6 +46,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
+
+import fitz
 from docx import Document as Docx
 import re
 import json
@@ -352,81 +354,6 @@ class Text( ):
 			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_html( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-
-	def remove_errors( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			_______
-			Remove non-English/misspelled words, but preserve numbers and selected symbols.
-			Preserved symbols: ( ) $
-
-			Parameters:
-			-----------
-			- text (str): Input text string.
-
-			Returns:
-			--------
-			- str: Cleaned text.
-
-		"""
-		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.lowercase = text.lower( )
-				self.vocabulary = set( w.lower( ) for w in words( ) )
-				allowed_symbols = { '(', ')', '$', '. ', }
-				self.tokens = re.findall( r'\b[\w.]+\b|[()$]', text.lower( ) )
-
-				def is_valid_token( token: str ) -> bool:
-					return (token in self.vocabulary or token.replace( '. ', ' ',
-						1 ).isdigit( ) or token in allowed_symbols)
-			self.cleaned_lines = [ tok for tok in self.tokens if is_valid_token( tok ) ]
-			return ''.join( self.cleaned_lines )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'BOI'
-			exception.cause = 'Text'
-			exception.method = 'remove_errors( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-
-	def remove_html( self, text: str ) -> str | None:
-		"""
-
-
-			Purpose:
-			-----------
-			 Removes HTML from pages.
-
-			Parameters:
-			-----------
-			- pages : str
-				The formatted path pages.
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines version of the pages with formatting removed.
-
-		"""
-		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				_retval = (BeautifulSoup( self.raw_input, 'raw_html.parser' ).get_text(
-					strip=True ))
-				return _retval
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'BOI'
-			exception.cause = 'Text'
-			exception.method = 'remove_html( self, path: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -1622,7 +1549,7 @@ class PDF( ):
 		         'extracted_tables', 'extracted_pages', 'extract_lines',
 		         'extract_text', 'extract_tables', 'export_csv', 'export_text', 'export_excel' ]
 
-	def extract_lines( self, path: str, max: Optional[ int ] = None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, max: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1717,8 +1644,8 @@ class PDF( ):
 
 		"""
 		try:
-			if line is None:
-				raise Exception( 'The argument "line" is None' )
+			if lines is None:
+				raise Exception( 'The argument "lines" is None' )
 			else:
 				self.lines = lines
 				for line in self.lines:
