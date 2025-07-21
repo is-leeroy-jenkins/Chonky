@@ -2047,8 +2047,8 @@ class Token( ):
 			if text is None:
 				raise Exception( 'The argument "text" must be provided.' )
 			else:
-				return self.tokenizer( text, truncation = trunc, padding = padd,
-					max_length = max, return_tensors = tensors )
+				return self.tokenizer( text, truncation=trunc, padding=padd,
+					max_length=max, return_tensors=tensors )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'BOI'
@@ -2058,10 +2058,8 @@ class Token( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def batch_encode( self, texts: List[ str ], max: int = 512, trunc: bool = True,
-	                  pad: Union[ bool, str ] = 'max', tensors: str = None ) -> Dict[
-		                                                                            str,
-		                                                                            any ] | None:
+	def batch_encode( self, texts: List[ str ], max: int=512, trunc: bool=True,
+	                  pad: Union[ bool, str ]='max', tensors: str=None ) -> Dict[ str, any ] | None:
 		"""
 
 			Encodes a list of
