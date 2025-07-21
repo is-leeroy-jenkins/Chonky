@@ -38,9 +38,7 @@ cd ../../
 pip install -r requirements.txt
 ```
 
-
----
-## 📁 Module Overview
+##  Module Overview
 
 ### 🧠 `Text` Class
 
@@ -80,7 +78,7 @@ pip install -r requirements.txt
   | `clean_files(src, dest)` | Batch cleans `.txt` files from source to destination. |
   | `convert_jsonl(src, dest)` | Converts text files into JSONL format. |
 
----
+
 ### 📄 `Word` Class
 
 - Parses `.docx` files using Python-docx.
@@ -95,7 +93,7 @@ pip install -r requirements.txt
   | `compute_frequency_distribution()` | Computes token frequency from sentences. |
   | `summarize()` | Prints summary stats: paragraphs, sentences, vocab size. |
 
----
+
 ### 📑 `PDF` Class
 
 - Reads `.pdf` files using `PyMuPDF`.
@@ -110,7 +108,7 @@ pip install -r requirements.txt
 | `export_text(lines, path)` | Writes extracted text lines to a `.txt` file. |
 | `export_excel(tables, path)` | Saves tables to an Excel workbook. |
 
----
+
 ### 🧬 `Token` Class
 
 - Interface to HuggingFace tokenizers and models.
@@ -130,16 +128,16 @@ pip install -r requirements.txt
 
 ## 🧪 Example Usage
 
-```python
-from processing import Text
+```
+    python
+    from processing import Text
+    processor = Text()
+    text = processor.load_text("example.txt")
+    clean = processor.remove_stopwords(text)
+    tokens = processor.tokenize_words(clean)
+    chunks = processor.chunk_text(clean, size=100)
+```
 
-processor = Text()
-text = processor.load_text("example.txt")
-clean = processor.remove_stopwords(text)
-tokens = processor.tokenize_words(clean)
-chunks = processor.chunk_text(clean, size=100)
-
----
 
 ## 📦 Dependencies
 
@@ -159,6 +157,6 @@ chunks = processor.chunk_text(clean, size=100)
 | `pydantic`      | Data validation and parsing with Python type hints.                         |
 
 Install all dependencies using:
+---
 
-```bash
-pip install -r requirements.txt
+
