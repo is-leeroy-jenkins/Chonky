@@ -157,7 +157,12 @@ pip install -r requirements.txt
 | `beautifulsoup4`| Parses and cleans HTML/XML content.                                         |
 | `pydantic`      | Data validation and parsing with Python type hints.                         |
 
-Install all dependencies using:
+
 ---
 
+## 📝 License
 
+Chonky is published under
+the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Chonky/blob/main/LICENSE).
+
+___
