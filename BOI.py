@@ -1664,7 +1664,7 @@ class PDF( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def _has_repeating_header( self, line: str ) -> bool:
+	def _has_repeating_header( self, line: str ) -> bool | None:
 		"""
 
 			Purpose:
