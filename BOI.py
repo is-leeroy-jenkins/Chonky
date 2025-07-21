@@ -42,6 +42,8 @@
   </summary>
   ******************************************************************************************
   '''
+from __future__ import annotations
+
 import os
 from collections import defaultdict
 from docx import Document as Docx
@@ -163,11 +165,13 @@ class Text( ):
 		self.lemmatized = ''
 		self.tokenized = ''
 		self.cleaned_text = ''
+		self.cleaned_html = None
 		self.corrected = None
 		self.lowercase = None
 		self.translator = None
 		self.tokenizer = None
 		self.vectorizer = None
+		self.raw_html = None
 
 	def __dir__( self ) -> List[ str ] | None:
 		'''
@@ -193,8 +197,7 @@ class Text( ):
 		         'translator', 'lemmatizer', 'stemmer', 'tokenizer', 'vectorizer',
 		         'load_text', 'split_lines', 'split_pages', 'collapse_whitespace',
 		         'remove_punctuation', 'remove_special', 'remove_html', 'remove_errors',
-		         'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize'
-		                                                                  'normalize_text',
+		         'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize', 'normalize_text',
 		         'lemmatize', 'tokenize_text', 'tokenize_words',
 		         'tokenize_sentences', 'chunk_text', 'chunk_words',
 		         'create_wordbag', 'create_word2vec', 'create_tfidf',
@@ -401,7 +404,7 @@ class Text( ):
 			else:
 				self.raw_html = text
 				self.cleaned_html = BeautifulSoup( self.raw_html, 'raw_html.parser' )
-				_retval = self.cleaned_html.get_text( separator = ' ', strip = True )
+				_retval = self.cleaned_html.get_text( strip = True )
 				return _retval
 		except Exception as e:
 			exception = Error( e )
@@ -434,7 +437,7 @@ class Text( ):
 			else:
 				self.raw_input = text
 				self.lowercase = text.lower( )
-				self.vocabulary = set( w.lower( ) for w in words.words( ) )
+				self.vocabulary = set( w.lower( ) for w in words( ) )
 				allowed_symbols = { '(', ')', '$', '. ', }
 				self.tokens = re.findall( r'\b[\w.]+\b|[()$]', text.lower( ) )
 
@@ -475,8 +478,8 @@ class Text( ):
 				raise Exception( 'The argument "text" is required.' )
 			else:
 				self.raw_input = text
-				_retval = (BeautifulSoup( self.raw_input, 'raw_html.parser' )
-				           .get_text( separator = ' ', strip = True ))
+				_retval = (BeautifulSoup( self.raw_input, 'raw_html.parser' ).get_text(
+					strip=True ))
 				return _retval
 		except Exception as e:
 			exception = Error( e )
@@ -510,13 +513,13 @@ class Text( ):
 				raise Exception( 'The argument "text" is required.' )
 			else:
 				self.raw_input = text
-				self.cleaned_text = re.sub( r'\[.*?\]\(.*?\)', '', text )
+				self.cleaned_text = re.sub( r'\[.*?]\(.*?\)', '', text )
 				self.corrected = re.sub( r'[`_*#~>-]', '', self.cleaned_text )
-				_retval = re.sub( r'!\[.*?\]\(.*?\)', '', self.corrected )
+				_retval = re.sub( r'!\[.*?]\(.*?\)', '', self.corrected )
 				return _retval
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
 			error = ErrorDialog( exception )
@@ -558,11 +561,12 @@ class Text( ):
 				return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
+
 
 	def clean_space( self, text: str ) -> str | None:
 		"""
@@ -593,17 +597,17 @@ class Text( ):
 				tabs = re.sub( r'[ \t+]', ' ', text.lower( ) )
 				collapsed = re.sub( r'\s+', ' ', tabs )
 				self.cleaned_lines = [ line for line in collapsed if line ]
-				self.cleaned_text = ''.join( cleaned_lines )
+				self.cleaned_text = ''.join( self.cleaned_lines )
 				return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_errors( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def remove_headers( self, pages: List[ str ], min: int = 3 ) -> List[ str ] | None:
+	def remove_headers( self, pages: List[ str ], min: int=3 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -654,11 +658,11 @@ class Text( ):
 
 					# Remove header
 					if self.lines[ 0 ].strip( ) in _head:
-						self.lines = self_node.lines[ 1: ]
+						self.lines = self.lines[ 1: ]
 
 					# Remove footer
 					if self.lines and self.lines[ -1 ].strip( ) in _foot:
-						self.lines = self_node.lines[ : -1 ]
+						self.lines = self.lines[ : -1 ]
 
 					self.cleaned_pages.append( '\n'.join( self.lines ) )
 				_retval = self.cleaned_pages
@@ -671,6 +675,7 @@ class Text( ):
 			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
+
 
 	def normalize_text( self, text: str ) -> str | None:
 		"""
@@ -707,49 +712,6 @@ class Text( ):
 			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'normalize_text( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-
-	def lemmatize_tokens( self, tokens: List[ str ] ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			-----------
-			Performs lemmatization on the path List[ str ] into a path
-			of word-words.
-
-			This function:
-			  - Converts pages to lowercase
-			  - Tokenizes the lowercased pages into words
-			  - Lemmatizes each token using WordNetLemmatizer
-			  - Reconstructs the lemmatized words into a single path
-
-			Parameters:
-			-----------
-			- pages : str
-				The path pages path to be lemmatized.
-
-			Returns:
-			--------
-			- str
-				A path with all words lemmatized.
-
-		"""
-
-		try:
-			if tokens is None:
-				raise Exception( 'The argument "words" is required.' )
-			else:
-				self.tokens = tokens
-				_tags = nltk.pos_tag( self.tokens )
-				_pos = get_wordnet_pos( _tags )
-				self.lemmatized = [ self.lemmatizer.lemmatize( w, _pos ) for w, tag in _tags ]
-				return self.lemmatized
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'BOI'
-			exception.cause = 'Text'
-			exception.method = 'tokenize_words( self, words: List[ str  ] ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -2489,7 +2451,7 @@ class VectorStore( ):
 				return pd.DataFrame( self.data )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = (
 					'create_dataframe( self, words: List[ str ], batch: int=10, max: int=3, '
@@ -2524,7 +2486,7 @@ class VectorStore( ):
 				return [ texts[ i:i + size ] for i in range( 0, len( texts ), size ) ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = (
 					' _batch_chunks( self, words: List[ str ], size: int ) -> [ List[ str '
@@ -2621,7 +2583,7 @@ class VectorStore( ):
 				return self.array / np.clip( _norms, 1e-10, None )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = '_normalize( self, vector: np.ndarray ) -> np.ndarray'
 			error = ErrorDialog( exception )
@@ -2657,7 +2619,7 @@ class VectorStore( ):
 				return np.dot( _matrix, _query )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = (
 					'_cosine_similarity_matrix( self, vector: np.ndarray, matrix: np.ndarray '
@@ -2699,7 +2661,7 @@ class VectorStore( ):
 				return _copy.sort_values( 'similarity', ascending = False ).head( top )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = ('most_similar( self, query: str, df: pd.DataFrame, top: int = 5 ) '
 			                    '-> '
@@ -2737,7 +2699,7 @@ class VectorStore( ):
 				return self.results
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = ('bulk_similar( self, queries: List[ str ], df: pd.DataFrame, '
 			                    'top: int = 5 ) -> { }')
@@ -2771,7 +2733,7 @@ class VectorStore( ):
 					columns = self.dataframe[ 'pages' ] )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'similarity_heatmap( self, df: pd.DataFrame ) -> pd.DataFrame'
 			error = ErrorDialog( exception )
@@ -2806,7 +2768,7 @@ class VectorStore( ):
 						f.write( json.dumps( _record ) + '\n' )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'export_jsonl( self, df: pd.DataFrame, path: str ) -> None'
 			error = ErrorDialog( exception )
@@ -2850,7 +2812,7 @@ class VectorStore( ):
 				return pd.DataFrame( self.data )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'import_jsonl( self, path: str ) -> pd.DataFrame'
 			error = ErrorDialog( exception )
@@ -2881,7 +2843,7 @@ class VectorStore( ):
 				return self.response[ 'id' ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'create_vector_store( self, name: str ) -> str'
 			error = ErrorDialog( exception )
@@ -2905,7 +2867,7 @@ class VectorStore( ):
 			return [ item[ 'id' ] for item in self.response.get( 'df', [ ] ) ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'list_vector_stores( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -2942,7 +2904,7 @@ class VectorStore( ):
 					documents = documents )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'upload_vector_store( self, df: pd.DataFrame, ids: str ) -> None'
 			error = ErrorDialog( exception )
@@ -2983,7 +2945,7 @@ class VectorStore( ):
 				]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = ('query_vector_store( self, id: str, query: str, top: int = 5 ) -> '
 			                    'List[ '
@@ -3016,7 +2978,7 @@ class VectorStore( ):
 					document_ids = self.file_ids )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = ('delete_vector_store( self, storeid: str, ids: List[ str ] ) -> '
 			                    'None')
@@ -3057,7 +3019,7 @@ class VectorStore( ):
 				return { 'file': self.file_name, 'status': 'success' }
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'upload_document( self, path: str, id: str ) -> None'
 			error = ErrorDialog( exception )
@@ -3119,7 +3081,7 @@ class VectorStore( ):
 				return self.stats
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'VectorStore'
 			exception.method = 'upload_documents( self, path: str, id: str ) -> None'
 			error = ErrorDialog( exception )
@@ -3202,7 +3164,7 @@ class Embedding( ):
 				return self.response.data[ 0 ].embedding
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_small_embedding( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3235,7 +3197,7 @@ class Embedding( ):
 				return [ d.embedding for d in self.data ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = (
 					'create_small_embeddings( self, words: List[ str ] ) -> List[ List[ '
@@ -3271,7 +3233,7 @@ class Embedding( ):
 				return self.response.data[ 0 ].embedding
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_large_embedding( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3304,7 +3266,7 @@ class Embedding( ):
 				return [ d.embedding for d in self.data ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = (
 					'create_large_embeddings( self, words: List[ str ] ) -> List[ List[ '
@@ -3340,7 +3302,7 @@ class Embedding( ):
 				return self.response.data[ 0 ].embedding
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_ada_embedding( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3373,7 +3335,7 @@ class Embedding( ):
 				return [ d.embedding for d in self.data ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = ('create_ada_embeddings( self, words: List[ str ] ) -> List[ List[ '
 			                    'float'
@@ -3410,7 +3372,7 @@ class Embedding( ):
 				[ 'df' ][ 0 ][ 'embedding' ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'ccreate_small_async( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3443,7 +3405,7 @@ class Embedding( ):
 							model = self.large_model ))[ 'df' ][ 0 ][ 'embedding' ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_large_async( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3478,7 +3440,7 @@ class Embedding( ):
 				[ 'df' ][ 0 ][ 'embedding' ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_ada_async( self, path: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -3510,7 +3472,7 @@ class Embedding( ):
 				return np.dot( a, b ) / (np.linalg.norm( a ) * np.linalg.norm( b ))
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'c calculate_cosine_similarity( self, a, b )'
 			error = ErrorDialog( exception )
@@ -3590,7 +3552,7 @@ class Embedding( ):
 			plt.legend( self.lines, self.labels )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = ('plot_multiclass_precision( self, y_score, y_original, classes, '
 			                    'classifier )')
@@ -3633,7 +3595,7 @@ class Embedding( ):
 				return self.distances
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = ('calculate_distances( self, query: List[ float ], embd: '
 			                    'List[ List[ float ] ],  metric=')
@@ -3651,7 +3613,7 @@ class Embedding( ):
 			return np.argsort( self.distances )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = ('calculate_nearest_neighbor( self, distances: List[ float ] ) -> '
 			                    'np.ndarray')
@@ -3673,7 +3635,7 @@ class Embedding( ):
 			return pca.fit_transform( array_of_embeddings )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = ('create_pca_components( self, vectors: List[ List[ float ] ], '
 			                    'num=2 ) ->'
@@ -3705,7 +3667,7 @@ class Embedding( ):
 			return tsne.fit_transform( array_of_embeddings )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = (
 					'create_tsne_components( self, vectors: List[ List[ float ] ], num=2 ) '
@@ -3752,7 +3714,7 @@ class Embedding( ):
 			return chart
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tigrr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = "('create_chart( self, df: np.ndarray  mark_size=5 ) -> None')"
 			error = ErrorDialog( exception )

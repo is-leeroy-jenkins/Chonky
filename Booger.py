@@ -1,6 +1,6 @@
 '''
   ******************************************************************************************
-      Assembly:                Mathy
+      Assembly:                Chonky
       Filename:                Booger.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
@@ -8,9 +8,9 @@
       Last Modified By:        Terry D. Eppler
       Last Modified On:        05-01-2025
   ******************************************************************************************
-  <copyright file="Booger.py" company="Terry D. Eppler">
+  <copyright file="Chonky.py" company="Terry D. Eppler">
 
-	     Mathy Booger
+	 Chonky is a modular text-processing framework for machine-learning workflows based in python
 
      Permission is hereby granted, free of charge, to any person obtaining a copy
      of this software and associated documentation files (the “Software”),
@@ -67,6 +67,7 @@ class Dark( BaseModel ):
 		allow_mutation = True
 
 	def __init__( self ):
+		super( ).__init__( )
 		sg.theme( 'DarkGrey15' )
 		sg.theme_input_text_color( '#FFFFFF' )
 		sg.theme_element_text_color( '#69B1EF' )
