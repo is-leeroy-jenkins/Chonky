@@ -107,7 +107,6 @@ class Text( ):
 		remove_special( self, path: str, keep_spaces: bool ) -> str:
 		remove_html( self, path: str ) -> str
 		remove_errors( self, path: str ) -> str
-		correct_errors( self, path: str ) -> str:
 		remove_markdown( self, path: str ) -> str
 		remove_stopwords( self, path: str ) -> str
 		remove_headers( self, pages, min: int=3 ) -> str
@@ -195,29 +194,13 @@ class Text( ):
 		         'words', 'pages', 'chunks', 'chunk_size', 'cleaned_pages',
 		         'stop_words', 'cleaned_lines', 'removed', 'lowercase', 'encoding', 'vocabulary',
 		         'translator', 'lemmatizer', 'stemmer', 'tokenizer', 'vectorizer',
-		         'load_text', 'split_lines', 'split_pages', 'collapse_whitespace',
-		         'remove_punctuation', 'remove_special', 'remove_html', 'remove_errors',
+		         'split_lines', 'split_pages', 'collapse_whitespace',
+		         'remove_punctuation', 'remove_special', 'remove_html',
 		         'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize', 'normalize_text',
 		         'lemmatize', 'tokenize_text', 'tokenize_words',
 		         'tokenize_sentences', 'chunk_text', 'chunk_words',
 		         'create_wordbag', 'create_word2vec', 'create_tfidf',
 		         'clean_files', 'convert_jsonl', 'conditional_distribution' ]
-
-	def load_text( self, path: str ) -> str | None:
-		try:
-			if path is None:
-				raise Exception( 'The argument "path" is required' )
-			else:
-				self.file_path = path
-				self.raw_input = Path( self.file_path ).read_text( encoding = 'utf-8' )
-				return self.raw_input
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'BOI'
-			exception.cause = 'Text'
-			exception.method = 'load_text( self, path: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
 
 	def collapse_whitespace( self, text: str ) -> str | None:
 		"""
@@ -252,48 +235,6 @@ class Text( ):
 			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-
-	def correct_errors( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Corrects misspelled words in the path path path.
-
-			This function:
-			  - Converts path to lowercase
-			  - Tokenizes the path into words
-			  - Applies spelling correction using TextBlob
-			  - Reconstructs and returns the corrected path
-
-			Parameters:
-			-----------
-			- pages : str
-				The path pages path with potential spelling mistakes.
-
-			Returns:
-			--------
-			- str
-				A corrected version of the path path with proper English words.
-
-		"""
-		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.lowercase = self.raw_input.lower( )
-				self.tokens = nltk.word_tokenize( self.lowercase )
-				self.words = [ str( Word( w ).correct( ) ) for w in self.tokens ]
-				_retval = ''.join( self.words )
-				return _retval
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'BOI'
-			exception.cause = 'Text'
-			exception.method = 'correct_errors( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -404,7 +345,7 @@ class Text( ):
 			else:
 				self.raw_html = text
 				self.cleaned_html = BeautifulSoup( self.raw_html, 'raw_html.parser' )
-				_retval = self.cleaned_html.get_text( strip = True )
+				_retval = self.cleaned_html.get_text( strip=True )
 				return _retval
 		except Exception as e:
 			exception = Error( e )
