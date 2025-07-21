@@ -2082,8 +2082,8 @@ class Token( ):
 			if texts is None:
 				raise Exception( 'The argument "texts" must be provided.' )
 			else:
-				return self.tokenizer( texts, truncation = trunc, adding = pad,
-					max_length = max, return_tensors = tensors )
+				return self.tokenizer( texts, truncation=trunc, adding=pad,
+					max_length=max, return_tensors=tensors )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'BOI'
