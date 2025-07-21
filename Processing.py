@@ -667,7 +667,8 @@ class Text( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'Text'
-			exception.method = 'remove_headers( self, pages: List[ str ], min: int=3 ) -> List[str]'
+			exception.method = ('remove_headers( self, pages: List[ str ], min: int=3 ) -> List['
+			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -790,7 +791,8 @@ class Text( ):
 			---------
 		    Tokenizes text text into subword words using OpenAI's tiktoken tokenizer.
 		    This function leverages the tiktoken library, which provides byte-pair encoding (BPE)
-		    tokenization used in models such as GPT-3.5 and GPT-4. Unlike standard word tokenization,
+		    tokenization used in models such as GPT-3.5 and GPT-4. Unlike standard word
+		    tokenization,
 		    this function splits text into model-specific subword units.
 
 		    Parameters
@@ -822,7 +824,8 @@ class Text( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'Text'
-			exception.method = 'tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> List[ str ]'
+			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
+			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -894,9 +897,7 @@ class Text( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def chunk_text( self, text: str, size: int = 50, return_as_string: bool = True ) -> List[
-		                                                                                    List[
-			                                                                                    str ] ] | None:
+	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ List[ str ] ] | None:
 		"""
 
 			Purpose:
@@ -916,7 +917,8 @@ class Text( ):
 				Number of words per chunk_words.
 
 			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of words.
+				If True, returns each chunk_words as a path; otherwise, returns a get_list of
+				words.
 
 			Returns:
 			--------
@@ -942,9 +944,7 @@ class Text( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool = True ) -> List[
-		                                                                                       List[
-			                                                                                       str ] ] | None:
+	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ List[str ] ] | None:
 		"""
 
 			Purpose:
@@ -1114,7 +1114,8 @@ class Text( ):
 			Parameters:
 			-----------
 			- lines (list): List of raw or preprocessed path documents.
-			- process (bool): Applies normalization, tokenization, stopword removal, and lemmatization.
+			- process (bool): Applies normalization, tokenization, stopword removal,
+			and lemmatization.
 
 			Returns:
 			- dict: Dictionary of words and their corresponding frequencies.
@@ -1232,7 +1233,8 @@ class Text( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'Text'
-			exception.method = 'create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List[str]'
+			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
+			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -1343,7 +1345,8 @@ class Text( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'Text'
-			exception.method = ('create_tfidf( self, words: list, max: int=1000, prep: bool=True ) '
+			exception.method = ('create_tfidf( self, words: list, max: int=1000, prep: bool=True '
+			                    ') '
 			                    '-> Tuple')
 			error = ErrorDialog( exception )
 			error.show( )
@@ -1897,8 +1900,9 @@ class PDF( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[
-		                                                                      pd.DataFrame ] | None:
+	def extract_tables( self, path: str, max: Optional[ int ] = None ) -> (List[
+		                                                                      pd.DataFrame ] |
+	                                                                       None):
 		"""
 
 			Purpose:
@@ -1965,7 +1969,8 @@ class PDF( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'PDF'
-			exception.method = 'export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None'
+			exception.method = ('export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> '
+			                    'None')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -2029,7 +2034,8 @@ class PDF( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'PDF'
-			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None'
+			exception.method = ('export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> '
+			                    'None')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -2186,7 +2192,8 @@ class Token( ):
 	def encode( self, text: str, max: int = 512, trunc: bool = True,
 	            padd: Union[ bool, str ] = False, tensors: str = None ) -> Dict[
 		                                                                       str, Union[ List[
-			                                                                       int ], any ] ] | None:
+			                                                                       int ],
+		                                                                       any ] ] | None:
 		"""
 
 			Purpose:
@@ -2217,13 +2224,15 @@ class Token( ):
 			exception = Error( e )
 			exception.module = 'Tiggr'
 			exception.cause = 'Token'
-			exception.method = 'encode( self, text: str ) -> Dict[ str, Union[ List[ int ], any ] ]'
+			exception.method = ('encode( self, text: str ) -> Dict[ str, Union[ List[ int ], '
+			                    'any ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 
 	def batch_encode( self, texts: List[ str ], max: int = 512, trunc: bool = True,
 	                  pad: Union[ bool, str ] = 'max', tensors: str = None ) -> Dict[
-		                                                                            str, any ] | None:
+		                                                                            str,
+		                                                                            any ] | None:
 		"""
 
 			Encodes a list of
@@ -2518,8 +2527,8 @@ class VectorStore( ):
 			exception.module = 'Tigrr'
 			exception.cause = 'VectorStore'
 			exception.method = (
-				' _batch_chunks( self, words: List[ str ], size: int ) -> [ List[ str '
-				'] ]')
+					' _batch_chunks( self, words: List[ str ], size: int ) -> [ List[ str '
+					'] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -2566,7 +2575,8 @@ class VectorStore( ):
 					'.cs': 'path/x-csharp',
 					'.css': 'path/css',
 					'.doc': 'application/msword',
-					'.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+					'.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml'
+					         '.document',
 					'.go': 'path/x-golang',
 					'.html': 'path/html',
 					'.java': 'path/x-java',
@@ -3008,7 +3018,8 @@ class VectorStore( ):
 			exception = Error( e )
 			exception.module = 'Tigrr'
 			exception.cause = 'VectorStore'
-			exception.method = 'delete_vector_store( self, storeid: str, ids: List[ str ] ) -> None'
+			exception.method = ('delete_vector_store( self, storeid: str, ids: List[ str ] ) -> '
+			                    'None')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -3037,9 +3048,11 @@ class VectorStore( ):
 				self.file_path = path
 				self.file_name = os.path.basename( self.file_path )
 				self.client.api_key = os.getenv( 'OPENAI_API_KEY' )
-				self.response = self.client.files.create_audio( file = open( self.file_path, 'rb' ),
+				self.response = self.client.files.create_audio( file = open( self.file_path,
+					'rb' ),
 					purpose = "assistants" )
-				attach_response = self.client.vectorstores.files.create_audio( vector_store_id = id,
+				attach_response = self.client.vectorstores.files.create_audio( vector_store_id =
+				id,
 					file_id = self.response.id )
 				return { 'file': self.file_name, 'status': 'success' }
 		except Exception as e:
@@ -3225,8 +3238,8 @@ class Embedding( ):
 			exception.module = 'Tigrr'
 			exception.cause = 'Embedding'
 			exception.method = (
-				'create_small_embeddings( self, words: List[ str ] ) -> List[ List[ '
-				'float ] ]')
+					'create_small_embeddings( self, words: List[ str ] ) -> List[ List[ '
+					'float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -3294,8 +3307,8 @@ class Embedding( ):
 			exception.module = 'Tigrr'
 			exception.cause = 'Embedding'
 			exception.method = (
-				'create_large_embeddings( self, words: List[ str ] ) -> List[ List[ '
-				'float ] ]')
+					'create_large_embeddings( self, words: List[ str ] ) -> List[ List[ '
+					'float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -3695,8 +3708,8 @@ class Embedding( ):
 			exception.module = 'Tigrr'
 			exception.cause = 'Embedding'
 			exception.method = (
-				'create_tsne_components( self, vectors: List[ List[ float ] ], num=2 ) '
-				'-> np.ndarray')
+					'create_tsne_components( self, vectors: List[ List[ float ] ], num=2 ) '
+					'-> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -3732,7 +3745,8 @@ class Embedding( ):
 						else empty_list,
 				} )
 
-			chart = px.scatter( data, x = x_title, y = y_title, color = 'label' if labels else None,
+			chart = px.scatter( data, x = x_title, y = y_title, color = 'label' if labels else
+			None,
 				symbol = 'label' if labels else None, hover_data = [ 'path' ] if strings else None
 			).update_traces( marker = dict( size = mark_size ) )
 			return chart

@@ -16,3 +16,11 @@ scipy
 scikit-learn
 PyMuPDF
 transformers
+ipywidgets
+ipython
+jupyterlab
+isort
+langchain
+textblob
+tqdm
+sentence-transformers
