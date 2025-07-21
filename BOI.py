@@ -2323,7 +2323,7 @@ class VectorStore( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def _batch_chunks( self, texts: List[ str ], size: int ) -> List[ List[ str ] ]:
+	def _batch_chunks( self, texts: List[ str ], size: int ) -> List[ List[ str ] ] | None:
 		"""
 
 
@@ -2414,7 +2414,6 @@ class VectorStore( ):
 					'.pptx': 'application/vnd.openxmlformats-officedocument.presentationml'
 					         '.presentation',
 					'.py': 'path/x-python',
-					'.py': 'path/x-script.python',
 					'.rb': 'path/x-ruby',
 					'.sh': 'application/x-sh',
 					'.tex': 'path/x-tex',
