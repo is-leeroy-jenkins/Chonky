@@ -1,4 +1,5 @@
-# 🧠 Chonky
+###### Chonky-Py
+![]()
 
 **Chonky** is a powerful, modular text-processing framework tailored for analysts, data scientists,
 and machine learning practitioners working with unstructured text. It unifies high-performance NLP
@@ -7,7 +8,7 @@ feature extraction, and document analysis.
 
 ---
 
-## 🚀 Features
+## 🧠 Features
 
 - **Text Preprocessing**: Clean and normalize text by removing HTML, punctuation, special
   characters, and stopwords.
