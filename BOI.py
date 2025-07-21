@@ -1,7 +1,7 @@
 '''
   ******************************************************************************************
       Assembly:                Boo
-      Filename:                Processing.py
+      Filename:                BOI.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
 
@@ -38,7 +38,7 @@
 
   </copyright>
   <summary>
-    Processing.py
+    BOI.py
   </summary>
   ******************************************************************************************
   '''
@@ -210,7 +210,7 @@ class Text( ):
 				return self.raw_input
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'load_text( self, path: str ) -> str'
 			error = ErrorDialog( exception )
@@ -246,7 +246,7 @@ class Text( ):
 				return ''.join( self.lines )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			error = ErrorDialog( exception )
@@ -288,7 +288,7 @@ class Text( ):
 				return _retval
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'correct_errors( self, text: str ) -> str'
 			error = ErrorDialog( exception )
@@ -322,7 +322,7 @@ class Text( ):
 				return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
@@ -367,7 +367,7 @@ class Text( ):
 				return ''.join( cleaned )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_special( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
@@ -405,7 +405,7 @@ class Text( ):
 				return _retval
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_html( self, text: str ) -> str'
 			error = ErrorDialog( exception )
@@ -445,7 +445,7 @@ class Text( ):
 			return ''.join( self.cleaned_lines )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_errors( self, text: str ) -> str'
 			error = ErrorDialog( exception )
@@ -480,7 +480,7 @@ class Text( ):
 				return _retval
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'remove_html( self, path: str ) -> str'
 			error = ErrorDialog( exception )
@@ -665,7 +665,7 @@ class Text( ):
 				return _retval
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('remove_headers( self, pages: List[ str ], min: int=3 ) -> List['
 			                    'str]')
@@ -704,7 +704,7 @@ class Text( ):
 				return self.normalized
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'normalize_text( self, text: str ) -> str'
 			error = ErrorDialog( exception )
@@ -747,7 +747,7 @@ class Text( ):
 				return self.lemmatized
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'tokenize_words( self, words: List[ str  ] ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -778,7 +778,7 @@ class Text( ):
 				return self.tokens
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'tokenize_text( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -822,7 +822,7 @@ class Text( ):
 				return self.tokens
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
 			                    'List[ str ]')
@@ -860,7 +860,7 @@ class Text( ):
 				return self.tokens
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -891,7 +891,7 @@ class Text( ):
 				return self.tokens
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'tokenize_sentences( self, text: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -938,7 +938,7 @@ class Text( ):
 					return self.chunks
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'chunk_text( self, text: str, max: int=800 ) -> list[ str ]'
 			error = ErrorDialog( exception )
@@ -984,7 +984,7 @@ class Text( ):
 					return self.chunks
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = (
 					'chunk_words( self, words: list[ str ], max: int=800, over: int=50 ) -> list[ '
@@ -1021,7 +1021,7 @@ class Text( ):
 				return nltk.sent_tokenize( text )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'split_sentences( self, text: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1062,7 +1062,7 @@ class Text( ):
 				return self.cleaned_pages
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'split_pages( self, path: str, delimit: str="\f" ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1139,7 +1139,7 @@ class Text( ):
 				return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('compute_frequency_distribution( self, documents: list, process: '
 			                    'bool=True) -> FreqDist')
@@ -1193,14 +1193,14 @@ class Text( ):
 				return self.conditional_distribution
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
-			exception.method = ('compute_conditional_distribution( self, words: List[ str ], '
-			                    'condition=None, process: bool=True ) -> ConditionalFreqDist')
+			exception.method = ( 'compute_conditional_distribution( self, words: List[ str ], '
+			                    'condition=None, process: bool=True ) -> ConditionalFreqDist' )
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def create_vocabulary( self, freq_dist: Dict, min: int = 1 ) -> List[ str ] | None:
+	def create_vocabulary( self, freq_dist: Dict, min: int=1 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1231,7 +1231,7 @@ class Text( ):
 				return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
 			                    'str]')
@@ -1262,14 +1262,14 @@ class Text( ):
 				return dict( Counter( self.words ) )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def create_word2vec( self, words: List[ str ], size = 100, window = 5,
-	                     min = 1 ) -> Word2Vec | None:
+	def create_word2vec( self, words: List[ str ], size=100, window=5,
+	                     min=1 ) -> Word2Vec | None:
 		"""
 
 			Purpose:
@@ -1293,19 +1293,19 @@ class Text( ):
 				raise Exception( 'The argument "words" is required.' )
 			else:
 				self.words = words
-				return Word2Vec( sentences = self.words, vector_size = size,
-					window = window, min_count = min )
+				return Word2Vec( sentences=self.words, vector_size=size,
+					window=window, min_count=min )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('create_word2vec( self, words: List[ str ], '
 			                    'size=100, window=5, min=1 ) -> Word2Vec')
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def create_tfidf( self, words: List[ str ], max: int = 1000,
-	                  prep: bool = True ) -> Tuple | None:
+	def create_tfidf( self, words: List[ str ], max: int=1000,
+	                  prep: bool=True ) -> Tuple | None:
 		"""
 
 			Purpose:
@@ -1315,7 +1315,8 @@ class Text( ):
 			Parameters:
 			--------
 			- words (list): List of raw or preprocessed pages documents.
-			- max (int): Max num of terms to include (vocabulary size).
+			- max (int): Max num of terms to include (vocabulary 
+			size).
 			- prep (bool): If True, normalize, tokenize_text, clean, and lemmatize path.
 
 			Returns:
@@ -1343,11 +1344,10 @@ class Text( ):
 					self.vectorizer )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = ('create_tfidf( self, words: list, max: int=1000, prep: bool=True '
-			                    ') '
-			                    '-> Tuple')
+			                    ') ' + '-> Tuple')
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -1397,7 +1397,7 @@ class Text( ):
 						clean.write( p )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'clean_files( self, src: str, dest: str )'
 			error = ErrorDialog( exception )
@@ -1435,13 +1435,13 @@ class Text( ):
 					_count = 0
 					_basename = os.path.basename( _f )
 					_sourcepath = _source + f'\\{_basename}'
-					_text = open( _sourcepath, 'r', encoding = 'utf-8', errors = 'ignore' ).read( )
+					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 					_stops = self.remove_stopwords( _text )
 					_tokens = self.tokenize_text( _stops )
 					_chunks = self.chunk_text( _text )
 					_filename = _basename.rstrip( '.txt' )
 					_destinationpath = _destination + f'\\{_filename}.jsonl'
-					_clean = open( _destinationpath, 'wt', encoding = 'utf-8', errors = 'ignore' )
+					_clean = open( _destinationpath, 'wt', encoding='utf-8', errors='ignore' )
 					for _i in range( len( _chunks ) ):
 						_list = _chunks[ _i ]
 						_part = ''.join( _list )
@@ -1455,7 +1455,7 @@ class Text( ):
 					_clean.close( )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Text'
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
 			error = ErrorDialog( exception )
@@ -1537,7 +1537,7 @@ class Word( ):
 			return self.raw_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Word'
 			exception.method = 'extract_text( self ) -> str'
 			error = ErrorDialog( exception )
@@ -1556,7 +1556,7 @@ class Word( ):
 			return self.sentences
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Word'
 			exception.method = 'split_sentences( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1579,7 +1579,7 @@ class Word( ):
 				return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Word'
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1605,7 +1605,7 @@ class Word( ):
 			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Word'
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1629,7 +1629,7 @@ class Word( ):
 			return self.freq_dist
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Word'
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, float ]'
 			error = ErrorDialog( exception )
@@ -1757,7 +1757,7 @@ class PDF( ):
 				return self.extracted_lines
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = ('extract_lines( self, path: str, max: Optional[ int ]=None ) -> '
 			                    'List[ str ]')
@@ -1792,7 +1792,7 @@ class PDF( ):
 				return self.lines
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = '_extract_tables( self, page ) -> List[ str ]:'
 			error = ErrorDialog( exception )
@@ -1828,7 +1828,7 @@ class PDF( ):
 				return self.clean_lines
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = '_filter_lines( self, words: List[ str ] ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -1857,7 +1857,7 @@ class PDF( ):
 				return any( kw in line.lower( ) for kw in _keywords )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = '_has_repeating_header( self, line: str ) -> bool'
 			error = ErrorDialog( exception )
@@ -1894,7 +1894,7 @@ class PDF( ):
 					return '\n'.join( self.lines )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = 'extract_text( self, path: str, max: Optional[ int ]=None ) -> str:'
 			error = ErrorDialog( exception )
@@ -1936,7 +1936,7 @@ class PDF( ):
 				return self.tables
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = (
 					'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
@@ -1967,7 +1967,7 @@ class PDF( ):
 					df.to_csv( f'{filename}_{i + 1}.csv', index = False )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = ('export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> '
 			                    'None')
@@ -1999,7 +1999,7 @@ class PDF( ):
 						f.write( line + '\n' )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = 'export_text( self, words: List[ str ], path: str ) -> None'
 			error = ErrorDialog( exception )
@@ -2032,7 +2032,7 @@ class PDF( ):
 					_writer.save( )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'PDF'
 			exception.method = ('export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> '
 			                    'None')
@@ -2131,7 +2131,7 @@ class Token( ):
 				return num_tokens
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'tiktoken_count( self, path: str, encoding: str ) -> int:'
 			error = ErrorDialog( exception )
@@ -2157,7 +2157,7 @@ class Token( ):
 				self.tokenizer = AutoTokenizer.from_pretrained( path )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'load_tokenizer( self, path: str ) -> None'
 			error = ErrorDialog( exception )
@@ -2183,7 +2183,7 @@ class Token( ):
 				self.tokenizer.save_pretrained( path )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'save_tokenizer( self, path: str ) -> None'
 			error = ErrorDialog( exception )
@@ -2222,7 +2222,7 @@ class Token( ):
 					max_length = max, return_tensors = tensors )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = ('encode( self, text: str ) -> Dict[ str, Union[ List[ int ], '
 			                    'any ] ]')
@@ -2259,7 +2259,7 @@ class Token( ):
 					max_length = max, return_tensors = tensors )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = '''batch_encode( self, texts: List[ str ], max: int=512,
 			trunc: bool=True,
@@ -2291,7 +2291,7 @@ class Token( ):
 				return self.tokenizer.decode( ids, skip_special_tokens = skip )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'decode( self, ids: List[ int ], skip: bool=True ) -> str'
 			error = ErrorDialog( exception )
@@ -2320,7 +2320,7 @@ class Token( ):
 				return self.tokenizer.convert_tokens_to_ids( tokens )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'convert_tokens( self, words: List[ str ] ) -> List[ int ]'
 			error = ErrorDialog( exception )
@@ -2350,7 +2350,7 @@ class Token( ):
 				return self.tokenizer.convert_ids_to_tokens( ids )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Token'
 			exception.method = 'convert_ids( self, ids: List[ int ] ) -> List[ str ]'
 			error = ErrorDialog( exception )
@@ -3806,7 +3806,7 @@ class Embedding( ):
 			return chart
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'Tiggr'
+			exception.module = 'BOI'
 			exception.cause = 'Embedding'
 			exception.method = 'create_3dchart'
 			error = ErrorDialog( exception )
