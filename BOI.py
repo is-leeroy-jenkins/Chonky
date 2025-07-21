@@ -2094,7 +2094,7 @@ class Token( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def decode( self, ids: List[ int ], skip: bool = True ) -> str | None:
+	def decode( self, ids: List[ int ], skip: bool=True ) -> str | None:
 		"""
 
 			Purpose:
@@ -2261,8 +2261,8 @@ class VectorStore( ):
 		         'delete_vector_store', 'get_filetype_options',
 		         'upload_document', 'upload_documents', 'get_purpose_options' ]
 
-	def create_dataframe( self, tokens: List[ str ], batch: int = 10, max: int = 3,
-	                      time: float = 2.0 ) -> pd.DataFrame | None:
+	def create_dataframe( self, tokens: List[ str ], batch: int=10, max: int=3,
+	                      time: float=2.0 ) -> pd.DataFrame | None:
 		"""
 
 			Purpose:
@@ -2300,7 +2300,6 @@ class VectorStore( ):
 							break
 						except Exception as e:
 							print( f'[Batch {index + 1}] Retry {attempt + 1}/{max}: {e}' )
-							time.sleep( time )
 					else:
 						raise RuntimeError( f'Failed after {max} attempts on batch {index + 1}' )
 
