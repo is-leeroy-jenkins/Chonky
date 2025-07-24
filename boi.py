@@ -1,7 +1,7 @@
 '''
   ******************************************************************************************
       Assembly:                Boo
-      Filename:                BOI.py
+      Filename:                boi.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
 
@@ -38,7 +38,7 @@
 
   </copyright>
   <summary>
-    BOI.py
+    boi.py
   </summary>
   ******************************************************************************************
   '''
@@ -55,7 +55,7 @@ import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
 from openai import OpenAI
-from boogr import Error, ErrorDialog
+from booger import Error, ErrorDialog
 from gensim.models import Word2Vec, KeyedVectors
 from pathlib import Path
 import nltk

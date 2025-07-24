@@ -1,7 +1,7 @@
 '''
   ******************************************************************************************
       Assembly:                Chonky
-      Filename:                Booger.py
+      Filename:                booger.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
 
@@ -36,7 +36,7 @@
 
   </copyright>
   <summary>
-    Booger.py
+    booger.py
   </summary>
   ******************************************************************************************
   '''
