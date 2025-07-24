@@ -44,9 +44,9 @@
   '''
 from __future__ import annotations
 
+import concurrent
 import os
 from collections import defaultdict
-
 import fitz
 from docx import Document as Docx
 import re
@@ -55,6 +55,7 @@ import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
 from openai import OpenAI
+from tqdm import tqdm
 from booger import Error, ErrorDialog
 from gensim.models import Word2Vec, KeyedVectors
 from pathlib import Path
@@ -1857,7 +1858,7 @@ class PDF( ):
 				with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
 					for i, df in enumerate( self.tables ):
 						_sheet = f'Table_{i + 1}'
-						df.to_excel( writer, sheet_name=_sheet, index=False )
+						df.to_excel( _writer, sheet_name=_sheet, index=False )
 					_writer.save( )
 		except Exception as e:
 			exception = Error( e )
