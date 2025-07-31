@@ -110,21 +110,6 @@ pip install -r requirements.txt
 | `export_excel(tables, path)` | Saves tables to an Excel workbook. |
 
 
-### 🧬 `Token` Class
-
-- Interface to HuggingFace tokenizers and models.
-- Supports token conversion, encoding/decoding, and vocabulary extraction.
-  | Method | Description |
-  |--------|-------------|
-  | `encode(text)` | Encodes text using HuggingFace tokenizer. |
-  | `batch_encode(texts)` | Batch encodes multiple texts. |
-  | `decode(ids)` | Converts token IDs back to readable text. |
-  | `convert_tokens(tokens)` | Converts tokens to string representations. |
-  | `convert_ids(ids)` | Converts token IDs to strings. |
-  | `create_vocabulary()` | Builds vocabulary from tokenizer model. |
-  | `save_tokenizer(path)` | Saves tokenizer to disk. |
-  | `load_tokenizer(path)` | Loads tokenizer from saved path. |
-
 ---
 
 ## 🧪 Example Usage
