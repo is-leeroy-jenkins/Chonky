@@ -124,22 +124,21 @@ pip install -r requirements.txt
     chunks = processor.chunk_text(clean, size=100)
 ```
 
-from processing import Text
 
-# 🧩 0. Initialize Processor
+## 🧩 0. Initialize Processor
 
 ```
   processor = Text()
 
 ```
 
-# 📂 1. Load Raw Text
+## 📂 1. Load Raw Text
 
 ```
   raw_text = processor.load_text("data/sample.txt")
 ```
 
-# 🧼 2. Clean & Normalize
+## 🧼 2. Clean & Normalize
 
 ```
   text = processor.remove_html(raw_text)                     # 🧹 Strip HTML
@@ -150,7 +149,7 @@ from processing import Text
   text = processor.collapse_whitespace(text)                 # 📏 Collapse whitespace
 ```
 
-# 🧠 3. Spelling & Stopwords
+## 🧠 3. Spelling & Stopwords
 
 ```
   cleaned_text = processor.remove_errors(text)               # 🧬 Remove misspellings
@@ -158,33 +157,33 @@ from processing import Text
   no_stopwords_text = processor.remove_stopwords(corrected_text)  # 🚫 Remove stopwords
 ```
 
-# ✂️ 4. Tokenization
+## ✂️ 4. Tokenization
 
 ```
   word_tokens = processor.tokenize_words(no_stopwords_text)       # 🧩 Word tokens
   sentence_tokens = processor.tokenize_sentences(no_stopwords_text)  # 🧾 Sentence tokens
 ```
 
-# 🌱 5. Lemmatization
+## 🌱 5. Lemmatization
 ```
   lemmatized_tokens = processor.lemmatize_tokens(word_tokens)
 ```
 
-# 📦 6. Chunking
+## 📦 6. Chunking
 
 ```  
   text_chunks = processor.chunk_text(no_stopwords_text, max=800)   # 🧳 Word chunked text
   word_chunks = processor.chunk_words(word_tokens, max=100, over=50)  # 🎒 Token chunks
 ```
 
-# 📚 7. Structural Splitting
+## 📚 7. Structural Splitting
 ```
   line_groups = processor.split_lines("data/sample.txt")           # 📏 Lines
   paragraphs = processor.split_paragraphs("data/sample.txt")       # 📄 Paragraphs
   pages = processor.split_pages("data/sample.txt", delimit="\f")   # 📃 Pages (form-feed)
 ```
 
-# 📊 8. Frequency & Vocabulary
+## 📊 8. Frequency & Vocabulary
 ```
   freq_dist = processor.compute_frequency_distribution(word_tokens)  # 📈 Frequency dist
   cond_freq = processor.compute_conditional_distribution(word_tokens, condition="POS")  # 🧮
