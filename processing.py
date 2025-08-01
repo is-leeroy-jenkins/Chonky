@@ -121,7 +121,7 @@ class Processor( ):
 	files: Optional[ List[ str ] ]
 	pages: Optional[ List[ str ] ]
 	paragraphs: Optional[ List[ str ] ]
-	ids: Optional[ List ]
+	ids: Optional[ List[ int ] ]
 	cleaned_lines: Optional[ List[ str ] ]
 	cleaned_tokens: Optional[ List[ str ] ]
 	cleaned_pages: Optional[ List[ str ] ]
@@ -166,6 +166,7 @@ class Processor( ):
 		self.lowercase = None
 		self.raw_html = None
 
+# noinspection PyTypeChecker
 class Text( Processor ):
 	'''
 
@@ -1035,8 +1036,9 @@ class Text( Processor ):
 					if process:
 						self.cleaned_tokens = self.tokenize_text( _line )
 						self.words = self.tokenize_words( self.cleaned_tokens )
+						self.tokens.append( self.words )
 					else:
-						self.words = self.tokenize_words( _line )
+						self.words = self.tokenize_text( _line )
 						self.tokens.append( self.words )
 
 				self.frequency_distribution = dict( Counter( self.tokens ) )
