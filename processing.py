@@ -109,26 +109,26 @@ class Processor( ):
 	normalized: Optional[ str ]
 	lemmatized: Optional[ str ]
 	tokenized: Optional[ str ]
-	encoding: Optional[ str ]
+	encoding: Optional[ Encoding ]
 	chunk_size: Optional[ int ]
 	corrected: Optional[ str ]
 	raw_input: Optional[ str ]
 	raw_html: Optional[ str ]
-	raw_pages: Optional[ List ]
-	words: Optional[ List ]
-	tokens: Optional[ List ]
-	lines: Optional[ List ]
-	files: Optional[ List ]
-	pages: Optional[ List ]
-	paragraphs: Optional[ List ]
+	raw_pages: Optional[ List[str ] ]
+	words: Optional[ List[ str ] ]
+	tokens: Optional[ List[ str ] ]
+	lines: Optional[ List[ str ] ]
+	files: Optional[ List[ str ] ]
+	pages: Optional[ List[ str ] ]
+	paragraphs: Optional[ List[ str ] ]
 	ids: Optional[ List ]
-	cleaned_lines: Optional[ List ]
-	cleaned_tokens: Optional[ List ]
-	cleaned_pages: Optional[ List ]
+	cleaned_lines: Optional[ List[ str ] ]
+	cleaned_tokens: Optional[ List[ str ] ]
+	cleaned_pages: Optional[ List[ str ] ]
 	cleaned_html: Optional[ str ]
-	stop_words: Optional[ List ]
-	vocabulary: Optional[ List ]
-	removed: Optional[ List ]
+	stop_words: Optional[ set ]
+	vocabulary: Optional[ List[ str ] ]
+	removed: Optional[ List[ str ] ]
 	frequency_distribution: Optional[ Dict ]
 	conditional_distribution: Optional[ Dict ]
 		
@@ -150,11 +150,11 @@ class Processor( ):
 		self.cleaned_pages = [ ]
 		self.removed = [ ]
 		self.raw_pages = [ ]
-		self.stop_words = [ ]
+		self.stop_words = set( )
 		self.vocabulary = [ ]
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
-		self.encoding = ''
+		self.encoding = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
@@ -231,11 +231,11 @@ class Text( Processor ):
 		self.cleaned_pages = [ ]
 		self.removed = [ ]
 		self.raw_pages = [ ]
-		self.stop_words = [ ]
+		self.stop_words = set( )
 		self.vocabulary = [ ]
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
-		self.encoding = ''
+		self.encoding = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
@@ -305,8 +305,8 @@ class Text( Processor ):
 				raise Exception( 'The argument "text" is required.' )
 			else:
 				self.raw_input = text
-				self.words = re.sub( r'[ \t]+', ' ', self.raw_input )
-				self.cleaned_lines = [ line.strip( ) for line in self.words.splitlines( ) ]
+				self.cleaned_text = re.sub( r'[ \t]+', ' ', self.raw_input )
+				self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
 				self.lines = [ line for line in self.cleaned_lines if line ]
 				return ''.join( self.lines )
 		except Exception as e:
@@ -688,6 +688,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+	# noinspection PyTypeChecker
 	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
 		"""
 
@@ -720,8 +721,8 @@ class Text( Processor ):
 			else:
 				self.encoding = tiktoken.get_encoding( encoding )
 				_token_ids = self.encoding.encode( text )
-				_tokens = [ t for t in nltk.word_tokenize( text ) ]
-				_words = [ re.sub( r'[^\w"-]', '', w ) for w in _tokens if w.strip( ) ]
+				self.cleaned_tokens = [ t for t in nltk.word_tokenize( text ) ]
+				_words = [ re.sub( r'[^\w"-]', '', w ) for w in self.cleaned_tokens if w.strip( ) ]
 				self.tokens.append( _words )
 				return self.tokens
 		except Exception as e:
@@ -1032,9 +1033,8 @@ class Text( Processor ):
 				self.lines = lines
 				for _line in self.lines:
 					if process:
-						self.normalized = self.normalize_text( _line )
-						self.words = self.tokenize_words( self.normalized )
-						self.tokens = self.lemmatize_tokens( self.words )
+						self.cleaned_tokens = self.tokenize_text( _line )
+						self.words = self.tokenize_words( self.cleaned_tokens )
 					else:
 						self.words = self.tokenize_words( _line )
 						self.tokens.append( self.words )
@@ -1333,8 +1333,13 @@ class Word( Processor ):
 		summarize( self ) -> None:
 
 	"""
-	sentences: Optional[ List ]
-	cleaned_sentences: Optional[ List ]
+	sentences: Optional[ List[ str ] ]
+	cleaned_sentences: Optional[ List[ str ] ]
+	document: Optional[ Docx ]
+	raw_text: Optional[ str ]
+	paragraphs: Optional[ List[ str ] ]
+	file_path: Optional[ str ]
+	vocabulary: Optional[ set ]
 
 
 	def __init__( self, filepath: str ) -> None:
@@ -1355,7 +1360,7 @@ class Word( Processor ):
 		self.paragraphs = [ ]
 		self.sentences = [ ]
 		self.cleaned_sentences = [ ]
-		self.vocabulary = [ ]
+		self.vocabulary = set( )
 
 	def __dir__( self ) -> List[ str ] | None:
 		'''
@@ -1425,15 +1430,15 @@ class Word( Processor ):
 
 			Purpose:
 			-------
-			Cleans each sentence: removes extra whitespace, punctuation, and lowers the text.
+			Cleans each _sentence: removes extra whitespace, punctuation, and lowers the text.
 
 		"""
 		try:
-			for sentence in self.sentences:
-				sentence = re.sub( r'[\r\n\t]+', ' ', sentence )
-				sentence = re.sub( r"[^a-zA-Z0-9\s']", '', sentence )
-				sentence = re.sub( r'\s{2,}', ' ', sentence ).strip( ).lower( )
-				self.cleaned_sentences.append( sentence )
+			for _sentence in self.sentences:
+				_sentence = re.sub( r'[\r\n\t]+', ' ', _sentence )
+				_sentence = re.sub( r"[^a-zA-Z0-9\s']", '', _sentence )
+				_sentence = re.sub( r'\s{2,}', ' ', _sentence ).strip( ).lower( )
+				self.cleaned_sentences.append( _sentence )
 				return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
@@ -1443,7 +1448,7 @@ class Word( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def create_vocabulary( self ) -> List[ str ] | None:
+	def create_vocabulary( self ) -> set | None:
 		"""
 
 			Purpose:
@@ -1454,12 +1459,12 @@ class Word( Processor ):
 		try:
 			all_words = [ ]
 			stop_words = set( stopwords.words( 'english' ) )
-			for sentence in self.cleaned_sentences:
-				tokens = word_tokenize( sentence )
+			for _sentence in self.cleaned_sentences:
+				tokens = word_tokenize( _sentence )
 				tokens = [ token for token in tokens if
 				           token.isalpha( ) and token not in stop_words ]
 				all_words.extend( tokens )
-			self.vocabulary = sorted( set( all_words ) )
+			self.vocabulary = set( all_words )
 			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
@@ -1751,7 +1756,7 @@ class PDF( Processor ):
 			else:
 				if max is not None and max > 0:
 					self.file_path = path
-					self.lines = self.extract_lines( self.file_path, max = max )
+					self.lines = self.extract_lines( self.file_path, max=max )
 					return '\n'.join( self.lines )
 				elif max is None or max <= 0:
 					self.file_path = path
@@ -1828,7 +1833,7 @@ class PDF( Processor ):
 			else:
 				self.tables = tables
 				for i, df in enumerate( self.tables ):
-					df.to_csv( f'{filename}_{i + 1}.csv', index = False )
+					df.to_csv( f'{filename}_{i + 1}.csv', index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1859,7 +1864,7 @@ class PDF( Processor ):
 			else:
 				self.file_path = path
 				self.lines = lines
-				with open( self.file_path, 'w', encoding = 'utf-8', errors = 'ignore' ) as f:
+				with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
 					for line in self.lines:
 						f.write( line + '\n' )
 		except Exception as e:
