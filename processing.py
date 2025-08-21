@@ -544,7 +544,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def remove_headers( self, pages: List[ str ], min: int = 3 ) -> List[ str ] | None:
+	def remove_headers( self, pages: List[ str ], min: int=3 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -815,7 +815,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool=True ) -> List[ str ] | List[ List[ str ] ] | None:
+	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ] | List[ List[ str ] ] | None:
 		"""
 
 			Purpose:
@@ -1193,7 +1193,7 @@ class Text( Processor ):
 					processed = [ ]
 					filename = os.path.basename( f )
 					source_path = source + '\\' + filename
-					text = open( source_path, 'r', encoding = 'utf-8', errors = 'ignore' ).read( )
+					text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
 					punc = self.remove_special( text )
 					dirty = self.split_sentences( punc )
 					for d in dirty:
@@ -1204,7 +1204,7 @@ class Text( Processor ):
 							processed.append( slim )
 
 					dest_path = destination + '\\' + filename
-					clean = open( dest_path, 'wt', encoding = 'utf-8', errors = 'ignore' )
+					clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
 					for p in processed:
 						clean.write( p )
 		except Exception as e:
@@ -1235,7 +1235,7 @@ class Text( Processor ):
 		"""
 		try:
 			if source is None:
-				raise Exception( 'The argument "sourc" is required.' )
+				raise Exception( 'The argument "source" is required.' )
 			elif desination is None:
 				raise Exception( 'The argument "desination" is required.' )
 			else:
@@ -1296,6 +1296,7 @@ class Word( Processor ):
 	paragraphs: Optional[ List[ str ] ]
 	file_path: Optional[ str ]
 	vocabulary: Optional[ set ]
+	document: Optional[ Docx ]
 
 	def __init__( self, filepath: str ) -> None:
 		"""
@@ -1348,8 +1349,8 @@ class Word( Processor ):
 
 		"""
 		try:
-			document = Docx( self.file_path )
-			self.paragraphs = [ para.text.strip( ) for para in document.paragraphs if
+			self.document = Docx( self.file_path )
+			self.paragraphs = [ para.text.strip( ) for para in self.document.paragraphs if
 			                    para.text.strip( ) ]
 			self.raw_text = '\n'.join( self.paragraphs )
 			return self.raw_text
@@ -1394,7 +1395,8 @@ class Word( Processor ):
 				_sentence = re.sub( r"[^a-zA-Z0-9\s']", '', _sentence )
 				_sentence = re.sub( r'\s{2,}', ' ', _sentence ).strip( ).lower( )
 				self.cleaned_sentences.append( _sentence )
-				return self.cleaned_sentences
+
+			return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1413,11 +1415,11 @@ class Word( Processor ):
 		"""
 		try:
 			all_words = [ ]
-			stop_words = set( stopwords.words( 'english' ) )
+			self.stop_words = set( stopwords.words( 'english' ) )
 			for _sentence in self.cleaned_sentences:
 				tokens = word_tokenize( _sentence )
 				tokens = [ token for token in tokens if
-				           token.isalpha( ) and token not in stop_words ]
+				           token.isalpha( ) and token not in self.stop_words ]
 				all_words.extend( tokens )
 			self.vocabulary = set( all_words )
 			return self.vocabulary
@@ -1429,7 +1431,7 @@ class Word( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def compute_frequency_distribution( self ) -> Dict[ str, float ] | None:
+	def compute_frequency_distribution( self ) -> Dict[ str, int ] | None:
 		"""
 
 			Purpose:
@@ -1449,7 +1451,7 @@ class Word( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Word'
-			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, float ]'
+			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -1494,7 +1496,7 @@ class PDF( Processor ):
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
 
-	def __init__( self, headers: bool = False, min: int = 10, tables: bool = True ) -> None:
+	def __init__( self, headers: bool=False, min: int=10, tables: bool=True ) -> None:
 		"""
 
 			Purpose:
@@ -1543,9 +1545,9 @@ class PDF( Processor ):
 		return [ 'strip_headers', 'minimum_length', 'extract_tables',
 		         'path', 'page', 'pages', 'words', 'clean_lines', 'extracted_lines',
 		         'extracted_tables', 'extracted_pages', 'extract_lines',
-		         'extract_text', 'extract_tables', 'export_csv', 'export_text', 'export_excel' ]
+		         'extract_text', 'export_csv', 'export_text', 'export_excel' ]
 
-	def extract_lines( self, path: str, max: Optional[ int ] = None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, max: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1568,18 +1570,18 @@ class PDF( Processor ):
 				raise Exception( 'The argument "path" must be specified' )
 			else:
 				self.file_path = path
+				self.extracted_lines = [ ]
 				with fitz.open( self.file_path ) as doc:
 					for i, page in enumerate( doc ):
 						if max is not None and i >= max:
 							break
 						if self.extract_tables:
-							self.extracted_lines = self._extract_tables( page )
+							page_lines = self._extract_tables( page )
 						else:
-							_text = page.get_text( 'pages' )
-							_lines = _text.splitlines( )
-							self.lines.append( _lines )
-						self.clean_lines.append( self._filter_lines( self.lines ) )
-						self.extracted_lines.extend( self.clean_lines )
+							_text = page.get_text( 'text' )
+							page_lines = _text.splitlines( )
+						filtered = self._filter_lines( page_lines )
+						self.extracted_lines.extend( filtered )
 				return self.extracted_lines
 		except Exception as e:
 			exception = Error( e )
@@ -1611,11 +1613,13 @@ class PDF( Processor ):
 			if page is None:
 				raise Exception( 'The argument "page" cannot be None' )
 			else:
-				_blocks = page.get_contents( )
-				_sorted = sorted( _blocks,
-					key = lambda b: (round( b[ 1 ], 1 ), round( b[ 0 ], 1 )) )
-				self.lines = [ b[ 4 ].strip( ) for b in _sorted if b[ 4 ].strip( ) ]
-				return self.lines
+				tf = page.find_tables( )
+				lines = [ ]
+				for t in getattr( tf, 'tables', [ ] ):
+					df = pd.DataFrame( t.extract( ) )  # or t.to_pandas()
+					for row in df.values.tolist( ):
+						lines.append( ' '.join( map( str, row ) ) )
+				return lines
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1644,14 +1648,15 @@ class PDF( Processor ):
 				raise Exception( 'The argument "lines" is None' )
 			else:
 				self.lines = lines
-				for line in self.lines:
-					_line = line.strip( )
-					if len( _line ) < self.minimum_length:
+				clean = [ ]
+				for line in lines:
+					line = line.strip( )
+					if len( line ) < self.minimum_length:
 						continue
-					if self.strip_headers and self._has_repeating_header( _line ):
+					if self.strip_headers and self._has_repeating_header( line ):
 						continue
-					self.clean_lines.append( _line )
-				return self.clean_lines
+					clean.append( line )
+				return clean
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1689,7 +1694,7 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def extract_text( self, path: str, max: Optional[ int ] = None ) -> str | None:
+	def extract_text( self, path: str, max: Optional[ int ]=None ) -> str | None:
 		"""
 
 			Purpose:
@@ -1712,7 +1717,7 @@ class PDF( Processor ):
 			else:
 				if max is not None and max > 0:
 					self.file_path = path
-					self.lines = self.extract_lines( self.file_path, max = max )
+					self.lines = self.extract_lines( self.file_path, max=max )
 					return '\n'.join( self.lines )
 				elif max is None or max <= 0:
 					self.file_path = path
@@ -1726,7 +1731,7 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def extract_tables( self, path: str, max: Optional[ int ] = None ) -> (
+	def extract_tables( self, path: str, max: Optional[ int ]=None ) -> (
 			List[ pd.DataFrame ] | None):
 		"""
 
@@ -1750,14 +1755,14 @@ class PDF( Processor ):
 				raise Exception( 'The argument "max" must be specified' )
 			else:
 				self.file_path = path
-				with fitz.open( self.file_path ) as _doc:
-					for i, page in enumerate( _doc ):
+				self.tables = [ ]
+				with fitz.open( self.file_path ) as doc:
+					for i, page in enumerate( doc ):
 						if max is not None and i >= max:
 							break
-						_blocks = page.find_tables( )
-						for _tables in _blocks.tables:
-							_dataframe = pd.DataFrame( _tables.extract( ) )
-							self.tables.append( _dataframe )
+						tf = page.find_tables( )
+						for t in getattr( tf, 'tables', [ ] ):
+							self.tables.append( pd.DataFrame( t.extract( ) ) )
 				return self.tables
 		except Exception as e:
 			exception = Error( e )
@@ -1820,14 +1825,14 @@ class PDF( Processor ):
 			else:
 				self.file_path = path
 				self.lines = lines
-				with open( self.file_path, 'w', encoding = 'utf-8', errors = 'ignore' ) as f:
+				with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
 					for line in self.lines:
 						f.write( line + '\n' )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = 'export_text( self, words: List[ str ], path: str ) -> None'
+			exception.method = 'export_text( self, lines: List[ str ], path: str ) -> None'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -1851,10 +1856,10 @@ class PDF( Processor ):
 			else:
 				self.tables = tables
 				self.file_path = path
-				with pd.ExcelWriter( self.file_path, engine = 'xlsxwriter' ) as _writer:
+				with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
 					for i, df in enumerate( self.tables ):
 						_sheet = f'Table_{i + 1}'
-						df.to_excel( _writer, sheet_name = _sheet, index = False )
+						df.to_excel( _writer, sheet_name=_sheet, index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
