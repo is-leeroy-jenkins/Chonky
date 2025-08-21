@@ -44,45 +44,27 @@
   '''
 from __future__ import annotations
 
-import concurrent
 import os
-from collections import defaultdict
-import fitz
-from docx import Document as Docx
 import re
-import json
-import pandas as pd
-import numpy as np
-from bs4 import BeautifulSoup
-from numpy import ndarray, dtype, signedinteger
-from openai import OpenAI
-from tqdm import tqdm
-from booger import Error, ErrorDialog
-from matplotlib.pyplot import plot as plt
-from gensim.models import Word2Vec, KeyedVectors
-from pathlib import Path
-import nltk
-from nltk import pos_tag, FreqDist, ConditionalFreqDist
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords, wordnet
-from nltk.stem import WordNetLemmatizer, PorterStemmer
-from collections import Counter, defaultdict
-from docx import Document
 import string
-import spacy
-from scipy import spatial
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.metrics import average_precision_score, precision_recall_curve
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from pydantic import BaseModel, Field, validator
-from pymupdf import Page, Document
+from collections import Counter, defaultdict
+from typing import List, Optional, Dict
+
+import fitz
+import nltk
+import pandas as pd
 import tiktoken
-from tiktoken.core import Encoding
-from transformers import AutoTokenizer, PreTrainedTokenizerBase, AutoModelForCausalLM
-import textwrap as tr
-from typing import Any, List, Tuple, Optional, Union, Dict
 import unicodedata
+from bs4 import BeautifulSoup
+from docx import Document as Docx
+from gensim.models import Word2Vec
+from nltk import FreqDist, ConditionalFreqDist
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer, PorterStemmer
+from nltk.tokenize import word_tokenize, sent_tokenize
+from tiktoken.core import Encoding
+
+from booger import Error, ErrorDialog
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
