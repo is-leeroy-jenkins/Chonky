@@ -6,7 +6,7 @@ and machine learning practitioners working with unstructured text. It unifies hi
 utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
 feature extraction, and document analysis.
 
----
+
 
 ## 🧠 Features
 
@@ -21,7 +21,7 @@ feature extraction, and document analysis.
 - **Custom Pipelines**: Utilities for JSONL export, batch cleaning, and document segmentation.
 - **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
 
----
+
 
 
 ## 🧰 Setup Instructions
@@ -110,7 +110,7 @@ pip install -r requirements.txt
 | `export_excel(tables, path)` | Saves tables to an Excel workbook. |
 
 
----
+
 
 ## 🧪 Example Usage
 
@@ -227,11 +227,11 @@ pip install -r requirements.txt
 | `pydantic`      | Data validation and parsing with Python type hints.                         |
 
 
----
+
 
 ## 📝 License
 
 Chonky is published under
 the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Chonky/blob/main/LICENSE).
 
-___
+
