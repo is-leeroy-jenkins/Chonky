@@ -1,14 +1,14 @@
 '''
 ******************************************************************************************
   Assembly:                Mathy
-  Filename:                {minion.py
+  Filename:                {minions.py
   Author:                  Terry D. Eppler
   Created:                 05-31-2022
 
   Last Modified By:        Terry D. Eppler
   Last Modified On:        05-01-2025
 ******************************************************************************************
-<copyright file="minion.py" company="Terry D. Eppler">
+<copyright file="minions.py" company="Terry D. Eppler">
 
      Mathy Minions
 
@@ -36,7 +36,7 @@
 
 </copyright>
 <summary>
-	minion.py
+	minions.py
 </summary>
 ******************************************************************************************
 '''
