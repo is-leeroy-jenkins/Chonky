@@ -64,7 +64,7 @@ from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from tiktoken.core import Encoding
 
-from booger import Error, ErrorDialog
+from boogr import Error, ErrorDialog
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
