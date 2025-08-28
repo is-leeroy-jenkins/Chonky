@@ -75,7 +75,11 @@ except LookupError:
 	nltk.download( 'wordnet' )
 	nltk.download( 'omw-1.4' )
 	nltk.download( 'words' )
-
+	
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
+	
 class Processor( ):
 	'''
 		
@@ -278,14 +282,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.cleaned_text = re.sub( r'[ \t]+', ' ', self.raw_input )
-				self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
-				self.lines = [ line for line in self.cleaned_lines if line ]
-				return ' '.join( self.lines )
+			throwif( 'text', text )
+			self.raw_input = text
+			self.cleaned_text = re.sub( r'[ \t]+', ' ', self.raw_input )
+			self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
+			self.lines = [ line for line in self.cleaned_lines if line ]
+			return ' '.join( self.lines )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -313,13 +315,11 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.translator = str.maketrans( '', '', string.punctuation )
-				self.cleaned_text = self.raw_input.translate( self.translator )
-				return self.cleaned_text
+			throw_if( 'text', text )
+			self.raw_input = text
+			self.translator = str.maketrans( '', '', string.punctuation )
+			self.cleaned_text = self.raw_input.translate( self.translator )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -354,17 +354,15 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				cleaned = [ ]
-				keepers = [ '(', ')', '$', '. ', ';', ':' ]
-				for char in text:
-					if char in keepers:
-						cleaned.append( char )
-					elif char.isalnum( ) or char.isspace( ):
-						cleaned.append( char )
-				return ''.join( cleaned )
+			throw_if( 'text', text )
+			cleaned = [ ]
+			keepers = [ '(', ')', '$', '. ', ';', ':' ]
+			for char in text:
+				if char in keepers:
+					cleaned.append( char )
+				elif char.isalnum( ) or char.isspace( ):
+					cleaned.append( char )
+			return ''.join( cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -396,12 +394,10 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_html = text
-				self.cleaned_html = BeautifulSoup( self.raw_html, 'html.parser' ).get_text( )
-				return self.cleaned_html
+			throw_if( 'text', text )
+			self.raw_html = text
+			self.cleaned_html = BeautifulSoup( self.raw_html, 'html.parser' ).get_text( )
+			return self.cleaned_html
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -430,14 +426,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.cleaned_text = re.sub( r'\[.*?]\(.*?\)', '', text )
-				self.corrected = re.sub( r'[`_*#~>-]', '', self.cleaned_text )
-				_retval = re.sub( r'!\[.*?]\(.*?\)', '', self.corrected )
-				return _retval
+			throw_if( 'text', text )
+			self.raw_input = text
+			self.cleaned_text = re.sub( r'\[.*?]\(.*?\)', '', text )
+			self.corrected = re.sub( r'[`_*#~>-]', '', self.cleaned_text )
+			_retval = re.sub( r'!\[.*?]\(.*?\)', '', self.corrected )
+			return _retval
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -470,16 +464,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text.lower( )
-				self.stop_words = stopwords.words( 'english' )
-				self.tokens = nltk.word_tokenize( self.raw_input )
-				self.cleaned_tokens = [ w for w in self.tokens if
-				                        w.isalnum( ) and w not in self.stop_words ]
-				self.cleaned_text = ' '.join( self.cleaned_tokens )
-				return self.cleaned_text
+			throw_if( 'text', text )
+			self.raw_input = text.lower( )
+			self.stop_words = stopwords.words( 'english' )
+			self.tokens = nltk.word_tokenize( self.raw_input )
+			self.cleaned_tokens = [ w for w in self.tokens if
+			                        w.isalnum( ) and w not in self.stop_words ]
+			self.cleaned_text = ' '.join( self.cleaned_tokens )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -510,14 +502,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text.lower( )
-				tabs = re.sub( r'[ \t]+', ' ', text.lower( ) )
-				collapsed = re.sub( r'\s+', ' ', tabs ).strip( )
-				self.cleaned_text = collapsed
-				return self.cleaned_text
+			throw_if( 'text', text )
+			self.raw_input = text.lower( )
+			tabs = re.sub( r'[ \t]+', ' ', text.lower( ) )
+			collapsed = re.sub( r'\s+', ' ', tabs ).strip( )
+			self.cleaned_text = collapsed
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -548,47 +538,39 @@ class Text( Processor ):
 
 		"""
 		try:
-			if pages is None:
-				raise Exception( 'The argument "pages" is required.' )
-			else:
-				_headers = defaultdict( int )
-				_footers = defaultdict( int )
-				self.pages = pages
-
-				# First pass: collect frequency of top/bottom words
-				for _page in self.pages:
-					self.lines = _page.strip( ).splitlines( )
-					if not self.lines:
-						continue
-					_headers[ self.lines[ 0 ].strip( ) ] += 1
-					_footers[ self.lines[ -1 ].strip( ) ] += 1
-
-				# Identify candidates for removal
-				_head = { line for line, count in _headers.items( ) if
-				          count >= min }
-				_foot = { line for line, count in _footers.items( ) if
-				          count >= min }
-
-				# Second pass: clean pages
-				for _page in self.pages:
-					if not self.lines:
-						continue
-					self.lines = _page.strip( ).splitlines( )
-					if not self.lines:
-						self.cleaned_pages.append( _page )
-						continue
-
-					# Remove header
-					if self.lines[ 0 ].strip( ) in _head:
-						self.lines = self.lines[ 1: ]
-
-					# Remove footer
-					if self.lines and self.lines[ -1 ].strip( ) in _foot:
-						self.lines = self.lines[ : -1 ]
-
-					self.cleaned_pages.append( '\n'.join( self.lines ) )
-				_retval = self.cleaned_pages
-				return _retval
+			throw_if( 'pages', pages )
+			_headers = defaultdict( int )
+			_footers = defaultdict( int )
+			self.pages = pages
+			# First pass: collect frequency of top/bottom words
+			for _page in self.pages:
+				self.lines = _page.strip( ).splitlines( )
+				if not self.lines:
+					continue
+				_headers[ self.lines[ 0 ].strip( ) ] += 1
+				_footers[ self.lines[ -1 ].strip( ) ] += 1
+			# Identify candidates for removal
+			_head = { line for line, count in _headers.items( ) if
+			          count >= min }
+			_foot = { line for line, count in _footers.items( ) if
+			          count >= min }
+			# Second pass: clean pages
+			for _page in self.pages:
+				if not self.lines:
+					continue
+				self.lines = _page.strip( ).splitlines( )
+				if not self.lines:
+					self.cleaned_pages.append( _page )
+					continue
+				# Remove header
+				if self.lines[ 0 ].strip( ) in _head:
+					self.lines = self.lines[ 1: ]
+				# Remove footer
+				if self.lines and self.lines[ -1 ].strip( ) in _foot:
+					self.lines = self.lines[ : -1 ]
+				self.cleaned_pages.append( '\n'.join( self.lines ) )
+			_retval = self.cleaned_pages
+			return _retval
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -621,14 +603,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.raw_input = text
-				self.normalized = unicodedata.normalize( 'NFKD', text ).encode( 'ascii',
-					'ignore' ).decode( 'utf-8' )
-				self.normalized = re.sub( r'\s+', ' ', self.normalized ).strip( ).lower( )
-				return self.normalized
+			throw_if( 'text', text )
+			self.raw_input = text
+			self.normalized = unicodedata.normalize( 'NFKD', text ).encode( 'ascii',
+				'ignore' ).decode( 'utf-8' )
+			self.normalized = re.sub( r'\s+', ' ', self.normalized ).strip( ).lower( )
+			return self.normalized
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -653,13 +633,11 @@ class Text( Processor ):
 
 		'''
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" was None' )
-			else:
-				_tokens = nltk.word_tokenize( text )
-				self.words = [ t for t in _tokens ]
-				self.tokens = [ re.sub( r'[^\w"-]', '', w ) for w in self.words if w.strip( ) ]
-				return self.tokens
+			throw_if( 'text', text )
+			_tokens = nltk.word_tokenize( text )
+			self.words = [ t for t in _tokens ]
+			self.tokens = [ re.sub( r'[^\w"-]', '', w ) for w in self.words if w.strip( ) ]
+			return self.tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -696,12 +674,10 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" was None' )
-			else:
-				self.encoding = tiktoken.get_encoding( encoding )
-				token_ids = self.encoding.encode( text )
-				return token_ids  # or [self.encoding.decode_single_token_bytes(t) for t in token_ids]
+			throw_if( 'text', text )
+			self.encoding = tiktoken.get_encoding( encoding )
+			token_ids = self.encoding.encode( text )
+			return token_ids  # or [self.encoding.decode_single_token_bytes(t) for t in token_ids]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -732,14 +708,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			if words is None:
-				raise Exception( 'The argument "words" was None' )
-			else:
-				self.words = words
-				for w in self.words:
-					_tokens = nltk.word_tokenize( w )
-					self.tokens.append( _tokens )
-				return self.tokens
+			throw_if( 'words', words )
+			self.words = words
+			for w in self.words:
+				_tokens = nltk.word_tokenize( w )
+				self.tokens.append( _tokens )
+			return self.tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -779,16 +753,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
+			throw_if( 'text', text )
+			self.tokens = nltk.word_tokenize( text )
+			self.chunks = [ self.tokens[ i: i + size ] for i in
+			                range( 0, len( self.tokens ), size ) ]
+			if return_as_string:
+				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
-				self.tokens = nltk.word_tokenize( text )
-				self.chunks = [ self.tokens[ i: i + size ] for i in
-				                range( 0, len( self.tokens ), size ) ]
-				if return_as_string:
-					return [ ' '.join( chunk ) for chunk in self.chunks ]
-				else:
-					return self.chunks
+				return self.chunks
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -825,16 +797,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			if words is None:
-				raise Exception( 'The argument "words" is required.' )
+			throw_if( 'text', text )
+			self.tokens = [ token for sublist in words for token in sublist ]
+			self.chunks = [ self.tokens[ i: i + size ]
+			                for i in range( 0, len( self.tokens ), size ) ]
+			if as_string:
+				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
-				self.tokens = [ token for sublist in words for token in sublist ]
-				self.chunks = [ self.tokens[ i: i + size ]
-				                for i in range( 0, len( self.tokens ), size ) ]
-				if as_string:
-					return [ ' '.join( chunk ) for chunk in self.chunks ]
-				else:
-					return self.chunks
+				return self.chunks
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -868,11 +838,9 @@ class Text( Processor ):
 
 		"""
 		try:
-			if text is None:
-				raise Exception( 'The argument "text" is required.' )
-			else:
-				self.lines = nltk.sent_tokenize( text )
-				return self.lines
+			throw_if( 'text', text )
+			self.lines = nltk.sent_tokenize( text )
+			return self.lines
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -881,7 +849,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def split_pages( self, path: str, delimit: str = '\f' ) -> List[ str ] | None:
+	def split_pages( self, path: str, delimit: str='\f' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -900,20 +868,17 @@ class Text( Processor ):
 
 		"""
 		try:
-			if path is None:
-				raise Exception( 'The argument "path" is required' )
-			else:
-				self.file_path = path
-				with open( self.file_path, 'r', encoding = 'utf-8', errors = 'ignore' ) as _file:
-					_content = _file.read( )
-					self.raw_pages = _content.split( delimit )
-
-				for _page in self.raw_pages:
-					self.lines = _page.strip( ).splitlines( )
-					self.cleaned_text = '\n'.join(
-						[ l.strip( ) for l in self.lines if l.strip( ) ] )
-					self.cleaned_pages.append( self.cleaned_text )
-				return self.cleaned_pages
+			throw_if( 'path', path )
+			self.file_path = path
+			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
+				_content = _file.read( )
+				self.raw_pages = _content.split( delimit )
+			for _page in self.raw_pages:
+				self.lines = _page.strip( ).splitlines( )
+				self.cleaned_text = '\n'.join(
+					[ l.strip( ) for l in self.lines if l.strip( ) ] )
+				self.cleaned_pages.append( self.cleaned_text )
+			return self.cleaned_pages
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -940,16 +905,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			if path is None:
-				raise Exception( 'The argument "path" is required.' )
-			else:
-				self.file_path = path
-				with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
-					self.raw_input = _file.read( )
-					self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-					                    pg.strip( ) ]
+			throw_if( 'path', path )
+			self.file_path = path
+			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
+				self.raw_input = _file.read( )
+				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
+				                    pg.strip( ) ]
 
-					return self.paragraphs
+				return self.paragraphs
 		except UnicodeDecodeError:
 			with open( self.file_path, 'r', encoding = 'latin1', errors = 'ignore' ) as _file:
 				self.raw_input = _file.read( )
@@ -975,16 +938,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			if lines is None:
-				raise Exception( 'The argument "words" is required.' )
-			else:
-				self.lines = lines
-				all_tokens: list[ str ] = [ ]
-				for _line in lines:
-					toks = self.tokenize_text( _line )
-					all_tokens.extend( toks )
-				self.frequency_distribution = dict( Counter( all_tokens ) )
-				return self.frequency_distribution
+			throw_if( 'lines', lines )
+			self.lines = lines
+			all_tokens: list[ str ] = [ ]
+			for _line in lines:
+				toks = self.tokenize_text( _line )
+				all_tokens.extend( toks )
+			self.frequency_distribution = dict( Counter( all_tokens ) )
+			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1021,18 +982,16 @@ class Text( Processor ):
 
 		"""
 		try:
-			if lines is None:
-				raise Exception( 'The argument "words" is required.' )
-			else:
-				self.lines = lines
-				cfd = ConditionalFreqDist( )
-				for idx, line in enumerate( lines ):
-					key = condition( line ) if condition else f'Doc_{idx}'
-					toks = self.tokenize_text( self.normalize_text( line ) if process else line )
-					for t in toks:
-						cfd[ key ][ t ] += 1
-				self.conditional_distribution = cfd
-				return cfd
+			throw_if( 'lines', lines )
+			self.lines = lines
+			cfd = ConditionalFreqDist( )
+			for idx, line in enumerate( lines ):
+				key = condition( line ) if condition else f'Doc_{idx}'
+				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
+				for t in toks:
+					cfd[ key ][ t ] += 1
+			self.conditional_distribution = cfd
+			return cfd
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1064,13 +1023,11 @@ class Text( Processor ):
 
 		"""
 		try:
-			if freq_dist is None:
-				raise Exception( 'The argument "freq_dist" is required.' )
-			else:
-				self.frequency_distribution = freq_dist
-				self.words = [ word for word, freq in freq_dist.items( ) if freq >= min ]
-				self.vocabulary = sorted( self.words )
-				return self.vocabulary
+			throw_if( 'frequ_dist', freq_dist )
+			self.frequency_distribution = freq_dist
+			self.words = [ word for word, freq in freq_dist.items( ) if freq >= min ]
+			self.vocabulary = sorted( self.words )
+			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1097,11 +1054,9 @@ class Text( Processor ):
 
 		"""
 		try:
-			if words is None:
-				raise Exception( 'The argument "words" is required.' )
-			else:
-				self.words = words
-				return dict( Counter( self.words ) )
+			throw_if( 'words', words )
+			self.words = words
+			return dict( Counter( self.words ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1130,12 +1085,10 @@ class Text( Processor ):
 
 		"""
 		try:
-			if words is None:
-				raise Exception( 'The argument "words" is required.' )
-			else:
-				self.words = words
-				return Word2Vec( sentences=self.words, vector_size=size,
-					window=window, min_count=min )
+			throw_if( 'words', words )
+			self.words = words
+			return Word2Vec( sentences=self.words, vector_size=size,
+				window=window, min_count=min )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1163,32 +1116,29 @@ class Text( Processor ):
 
 		"""
 		try:
-			if src is None:
-				raise Exception( 'The argument "src" is required.' )
-			elif dest is None:
-				raise Exception( 'The argument "dest" is required.' )
-			else:
-				source = src
-				destination = dest
-				files = os.listdir( source )
-				for f in files:
-					processed = [ ]
-					filename = os.path.basename( f )
-					source_path = source + '\\' + filename
-					text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-					punc = self.remove_special( text )
-					dirty = self.split_sentences( punc )
-					for d in dirty:
-						if d != " ":
-							lower = d.lower( )
-							normal = self.normalize_text( lower )
-							slim = self.collapse_whitespace( normal )
-							processed.append( slim )
+			throw_if( 'src', src )
+			throw_if( 'dest', src )
+			source = src
+			destination = dest
+			files = os.listdir( source )
+			for f in files:
+				processed = [ ]
+				filename = os.path.basename( f )
+				source_path = source + '\\' + filename
+				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
+				punc = self.remove_special( text )
+				dirty = self.split_sentences( punc )
+				for d in dirty:
+					if d != " ":
+						lower = d.lower( )
+						normal = self.normalize_text( lower )
+						slim = self.collapse_whitespace( normal )
+						processed.append( slim )
 
-					dest_path = destination + '\\' + filename
-					clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
-					for p in processed:
-						clean.write( p )
+				dest_path = destination + '\\' + filename
+				clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
+				for p in processed:
+					clean.write( p )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1216,37 +1166,34 @@ class Text( Processor ):
 
 		"""
 		try:
-			if source is None:
-				raise Exception( 'The argument "source" is required.' )
-			elif desination is None:
-				raise Exception( 'The argument "desination" is required.' )
-			else:
-				_source = source
-				_destination = desination
-				self.files = os.listdir( _source )
-				_processed = [ ]
-				for _f in self.files:
-					_count = 0
-					_basename = os.path.basename( _f )
-					_sourcepath = _source + f'\\{_basename}'
-					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_stops = self.remove_stopwords( _text )
-					_tokens = self.tokenize_text( _stops )
-					_chunks = self.chunk_text( _text )
-					_filename = _basename.rstrip( '.txt' )
-					_destinationpath = _destination + f'\\{_filename}.jsonl'
-					_clean = open( _destinationpath, 'wt', encoding='utf-8', errors='ignore' )
-					for _i in range( len( _chunks ) ):
-						_list = _chunks[ _i ]
-						_part = ''.join( _list )
-						_row = '{' + f'\"Line-{_i}\":\"{_part}\"' + '}' + '\r'
-						_processed.append( _row )
+			throw_if( 'source', source )
+			throw_if( 'destination', destination )
+			_source = source
+			_destination = desination
+			self.files = os.listdir( _source )
+			_processed = [ ]
+			for _f in self.files:
+				_count = 0
+				_basename = os.path.basename( _f )
+				_sourcepath = _source + f'\\{_basename}'
+				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_stops = self.remove_stopwords( _text )
+				_tokens = self.tokenize_text( _stops )
+				_chunks = self.chunk_text( _text )
+				_filename = _basename.rstrip( '.txt' )
+				_destinationpath = _destination + f'\\{_filename}.jsonl'
+				_clean = open( _destinationpath, 'wt', encoding='utf-8', errors='ignore' )
+				for _i in range( len( _chunks ) ):
+					_list = _chunks[ _i ]
+					_part = ''.join( _list )
+					_row = '{' + f'\"Line-{_i}\":\"{_part}\"' + '}' + '\r'
+					_processed.append( _row )
 
-					for _t in _processed:
-						_clean.write( _t )
+				for _t in _processed:
+					_clean.write( _t )
 
-					_clean.flush( )
-					_clean.close( )
+				_clean.flush( )
+				_clean.close( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1478,7 +1425,7 @@ class PDF( Processor ):
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
 
-	def __init__( self, headers: bool=False, min: int=10, tables: bool=True ) -> None:
+	def __init__( self, headers: bool=False, size: int=10, tables: bool=True ) -> None:
 		"""
 
 			Purpose:
@@ -1495,7 +1442,7 @@ class PDF( Processor ):
 		"""
 		super( ).__init__( )
 		self.strip_headers = headers
-		self.minimum_length = min
+		self.minimum_length = size
 		self.extract_tables = tables
 		self.pages = [ ]
 		self.lines = [ ]
@@ -1529,7 +1476,7 @@ class PDF( Processor ):
 		         'extracted_tables', 'extracted_pages', 'extract_lines',
 		         'extract_text', 'export_csv', 'export_text', 'export_excel' ]
 
-	def extract_lines( self, path: str, max: Optional[ int ]=None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1548,23 +1495,21 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if path is None:
-				raise Exception( 'The argument "path" must be specified' )
-			else:
-				self.file_path = path
-				self.extracted_lines = [ ]
-				with fitz.open( self.file_path ) as doc:
-					for i, page in enumerate( doc ):
-						if max is not None and i >= max:
-							break
-						if self.extract_tables:
-							page_lines = self._extract_tables( page )
-						else:
-							_text = page.get_text( 'text' )
-							page_lines = _text.splitlines( )
-						filtered = self._filter_lines( page_lines )
-						self.extracted_lines.extend( filtered )
-				return self.extracted_lines
+			throw_if( 'path', path )
+			self.file_path = path
+			self.extracted_lines = [ ]
+			with fitz.open( self.file_path ) as doc:
+				for i, page in enumerate( doc ):
+					if size is not None and i >= size:
+						break
+					if self.extract_tables:
+						page_lines = self._extract_tables( page )
+					else:
+						_text = page.get_text( 'text' )
+						page_lines = _text.splitlines( )
+					filtered = self._filter_lines( page_lines )
+					self.extracted_lines.extend( filtered )
+			return self.extracted_lines
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1592,16 +1537,14 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if page is None:
-				raise Exception( 'The argument "page" cannot be None' )
-			else:
-				tf = page.find_tables( )
-				lines = [ ]
-				for t in getattr( tf, 'tables', [ ] ):
-					df = pd.DataFrame( t.extract( ) )  # or t.to_pandas()
-					for row in df.values.tolist( ):
-						lines.append( ' '.join( map( str, row ) ) )
-				return lines
+			throw_if( 'page', page )
+			tf = page.find_tables( )
+			lines = [ ]
+			for t in getattr( tf, 'tables', [ ] ):
+				df = pd.DataFrame( t.extract( ) )  # or t.to_pandas()
+				for row in df.values.tolist( ):
+					lines.append( ' '.join( map( str, row ) ) )
+			return lines
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1663,11 +1606,9 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if line is None:
-				raise Exception( 'The argument "line" is None' )
-			else:
-				_keywords = [ 'page', 'public law', 'u.s. government', 'united states' ]
-				return any( kw in line.lower( ) for kw in _keywords )
+			throw_if( 'line', line )
+			_keywords = [ 'page', 'public law', 'u.s. government', 'united states' ]
+			return any( kw in line.lower( ) for kw in _keywords )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1694,17 +1635,15 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if path is None:
-				raise Exception( 'The argument "path" must be specified' )
-			else:
-				if max is not None and max > 0:
-					self.file_path = path
-					self.lines = self.extract_lines( self.file_path, max=max )
-					return '\n'.join( self.lines )
-				elif max is None or max <= 0:
-					self.file_path = path
-					self.lines = self.extract_lines( self.file_path )
-					return '\n'.join( self.lines )
+			throw_if( 'path', path )
+			if max is not None and max > 0:
+				self.file_path = path
+				self.lines = self.extract_lines( self.file_path, size=max )
+				return '\n'.join( self.lines )
+			elif max is None or max <= 0:
+				self.file_path = path
+				self.lines = self.extract_lines( self.file_path )
+				return '\n'.join( self.lines )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1731,21 +1670,18 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if path is None:
-				raise Exception( 'The argument "path" must be specified' )
-			elif max is None:
-				raise Exception( 'The argument "max" must be specified' )
-			else:
-				self.file_path = path
-				self.tables = [ ]
-				with fitz.open( self.file_path ) as doc:
-					for i, page in enumerate( doc ):
-						if max is not None and i >= max:
-							break
-						tf = page.find_tables( )
-						for t in getattr( tf, 'tables', [ ] ):
-							self.tables.append( pd.DataFrame( t.extract( ) ) )
-				return self.tables
+			throw_if( 'path', path )
+			throw_if( 'max', max )
+			self.file_path = path
+			self.tables = [ ]
+			with fitz.open( self.file_path ) as doc:
+				for i, page in enumerate( doc ):
+					if max is not None and i >= max:
+						break
+					tf = page.find_tables( )
+					for t in getattr( tf, 'tables', [ ] ):
+						self.tables.append( pd.DataFrame( t.extract( ) ) )
+			return self.tables
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1769,14 +1705,11 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if tables is None:
-				raise Exception( 'The argument "tables" must not be None' )
-			elif filename is None:
-				raise Exception( 'The argument "filename" must not be None' )
-			else:
-				self.tables = tables
-				for i, df in enumerate( self.tables ):
-					df.to_csv( f'{filename}_{i + 1}.csv', index = False )
+			throw_if( 'tables', tables )
+			throw_if( 'filename', filename )
+			self.tables = tables
+			for i, df in enumerate( self.tables ):
+				df.to_csv( f'{filename}_{i + 1}.csv', index = False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1800,16 +1733,13 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if lines is None:
-				raise Exception( 'The argument "words" must be provided.' )
-			elif path is None:
-				raise Exception( 'The argument "path" must be provided.' )
-			else:
-				self.file_path = path
-				self.lines = lines
-				with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
-					for line in self.lines:
-						f.write( line + '\n' )
+			throw_if( 'path', path )
+			throw_if( 'liens', lines )
+			self.file_path = path
+			self.lines = lines
+			with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
+				for line in self.lines:
+					f.write( line + '\n' )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1831,17 +1761,13 @@ class PDF( Processor ):
 
 		"""
 		try:
-			if tables is None:
-				raise Exception( 'The argument "tables" must not be None' )
-			elif path is None:
-				raise Exception( 'The argument "path" must not be None' )
-			else:
-				self.tables = tables
-				self.file_path = path
-				with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
-					for i, df in enumerate( self.tables ):
-						_sheet = f'Table_{i + 1}'
-						df.to_excel( _writer, sheet_name=_sheet, index=False )
+			throw_if( 'tables', tables )
+			self.tables = tables
+			self.file_path = path
+			with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
+				for i, df in enumerate( self.tables ):
+					_sheet = f'Table_{i + 1}'
+					df.to_excel( _writer, sheet_name=_sheet, index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'

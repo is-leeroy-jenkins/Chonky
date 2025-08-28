@@ -1,0 +1,17 @@
+[project]
+name = "chonky"
+version = "0.1.0"
+description = "Lightweight text cleaning and document utilities"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chonky*"]
+exclude = ["ipynb*", "github*", "resources*"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+

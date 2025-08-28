@@ -1,14 +1,36 @@
-###### Chonky-Py
-![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/github/chonky_project.png)
+# Chonky
 
 A modular text-processing framework baseed in python tailored for analysts, data scientists,
 and machine learning practitioners working with unstructured text. It unifies high-performance NLP
 utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
 feature extraction, and document analysis.
 
+``` 
+python
+from chonky import Text
+
+t = Text( )
+print( t.clean_space( "A   chonky   example!\tTabs too." ) )
+
+``` 
+
+```
+markdown
+
+# Remove repeating headers/footers
+```
+
+``` 
+from chonky.processing import Text
+
+pages = [ "Header\nPage 1 body\nFooter", "Header\nPage 2 body\nFooter" ]
+t = Text( )
+clean = t.remove_headers( pages, min = 2 )
+print( clean )
+```
 
 
-## 🧠 Features
+## Features
 
 - **Text Preprocessing**: Clean and normalize text by removing HTML, punctuation, special
   characters, and stopwords.
@@ -21,14 +43,11 @@ feature extraction, and document analysis.
 - **Custom Pipelines**: Utilities for JSONL export, batch cleaning, and document segmentation.
 - **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
 
-
-
-
-## 🧰 Setup Instructions
+## Setup Instructions
 
 To ensure a clean and isolated environment for running **Chonky**, follow these steps:
 
-### 1. Clone the Repository
+#### Clone the Repository
 
 ```bash
 git clone https://github.com/yourusername/Chonky.git
@@ -39,80 +58,74 @@ cd ../../
 pip install -r requirements.txt
 ```
 
-##  Module Overview
 
-### 🧠 `Text` Class
+## Text Class
 
 - General-purpose text processor.
 - Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
   `tokenize_text`, `chunk_text`, `create_word2vec`, `create_tfidf`, and more.
-  | Method | Description |
-  |--------|-------------|
-  | `load_text(path)` | Loads raw text from a file. |
-  | `split_lines(path)` | Splits text into individual lines. |
-  | `split_pages(path, delimit)` | Splits text by page delimiters. |
-  | `collapse_whitespace(text)` | Collapses multiple whitespaces into single spaces. |
-  | `remove_punctuation(text)` | Removes punctuation from text. |
-  | `remove_special(text)` | Removes special characters while preserving select symbols. |
-  | `remove_html(text)` | Strips HTML tags using BeautifulSoup. |
-  | `remove_errors(text)` | Removes non-English or misspelled words. |
-  | `correct_errors(text)` | Attempts to autocorrect spelling using TextBlob. |
-  | `remove_markdown(text)` | Strips Markdown syntax like `*`, `#`, etc. |
-  | `remove_stopwords(text)` | Removes English stopwords. |
-  | `remove_headers(pages)` | Removes repetitive headers/footers using frequency. |
-  | `normalize_text(text)` | Normalizes text to lowercase ASCII. |
-  | `lemmatize_tokens(tokens)` | Lemmatizes tokens using NLTK's WordNet. |
-  | `tokenize_text(text)` | Cleans and tokenizes raw text. |
-  | `tokenize_words(words)` | Tokenizes a list of words. |
-  | `tokenize_sentences(text)` | Sentence tokenization using NLTK. |
-  | `split_paragraphs(path)` | Splits text file into paragraphs. |
-  | `chunk_text(text, size)` | Splits text into word chunks. |
-  | `chunk_words(words, size)` | Chunks a list of tokenized words. |
-  | `split_sentences(text)` | Returns a list of sentences. |
-  | `compute_frequency_distribution(lines)` | Computes frequency of tokens. |
-  | `compute_conditional_distribution(lines)` | Computes conditional frequency grouped by
-  condition. |
-  | `create_vocabulary(freq_dist)` | Creates vocabulary list from token frequency. |
-  | `create_wordbag(words)` | Constructs Bag-of-Words from token list. |
-  | `create_word2vec(words)` | Trains a Word2Vec model from tokenized sentences. |
-  | `create_tfidf(words)` | Generates TF-IDF matrix. |
-  | `clean_files(src, dest)` | Batch cleans `.txt` files from source to destination. |
-  | `convert_jsonl(src, dest)` | Converts text files into JSONL format. |
 
+| Method                      | Description                                                |
+|-----------------------------|------------------------------------------------------------|
+| `load_text(path)`           | Loads raw text from a file.                                |
+| `split_lines(path)`         | Splits text into individual lines.                         |
+| `split_pages(path, delimit)` | Splits text by page delimiters.                            |
+| `collapse_whitespace(text)` | Collapses multiple whitespaces into single spaces.         |
+| `remove_punctuation(text)` | Removes punctuation from text.                             |
+| `remove_special(text)`      | Removes special characters while preserving select symbols. |
+| `remove_html(text)`          | Strips HTML tags using BeautifulSoup.                      |
+| `remove_errors(text)`      | Removes non-English or misspelled words.                   |
+| `correct_errors(text)`      | Attempts to autocorrect spelling using TextBlob.           |
+| `remove_markdown(text)`     | Strips Markdown syntax like `*`, `#`, etc.                 |
+| `remove_stopwords(text)`     | Removes English stopwords.                                 |
+| `remove_headers(pages)`     | Removes repetitive headers/footers using frequency.        |
+| `normalize_text(text)`      | Normalizes text to lowercase ASCII.                        |
+| `lemmatize_tokens(tokens)`    | Lemmatizes tokens using NLTK's WordNet.                    |
+| `tokenize_text(text)`       | Cleans and tokenizes raw text.                             |
+| `tokenize_words(words)`    | Tokenizes a list of words.                                 |
+| `tokenize_sentences(text)` | Sentence tokenization using NLTK.                          |
+| `split_paragraphs(path)`     | Splits text file into paragraphs.                          |
+| `chunk_text(text, size)`      | Splits text into word chunks.                              |
+| `chunk_words(words, size)`     | Chunks a list of tokenized words.                          |
+| `split_sentences(text)`       | Returns a list of sentences.                               |
+| `compute_frequency_distribution(lines)` | Computes frequency of tokens.                              |
+| `compute_conditional_distribution(lines)` |Computes conditional frequency grouped by condition.        |
+| `create_vocabulary(freq_dist)` | Creates vocabulary list from token frequency.              |
+| `create_wordbag(words)` | Constructs Bag-of-Words from token list.                   |
+| `create_word2vec(words)` | Trains a Word2Vec model from tokenized sentences.          |
+| `create_tfidf(words)`        | Generates TF-IDF matrix.                                   |
+| `clean_files(src, dest)`     | Batch cleans `.txt` files from source to destination.      |
+| `convert_jsonl(src, dest)`     | Converts text files into JSONL format.                     |
 
-### 📄 `Word` Class
+## Word Class
 
 - Parses `.docx` files using Python-docx.
 - Sentence segmentation, vocabulary extraction, frequency computation.
 
-  | Method | Description |
-  |--------|-------------|
-  | `extract_text()` | Extracts text and paragraphs from a `.docx` file. |
-  | `split_sentences()` | Splits extracted text into sentences. |
-  | `clean_sentences()` | Cleans individual sentences: lowercases and removes punctuation. |
-  | `create_vocabulary()` | Builds vocabulary list from cleaned sentences. |
-  | `compute_frequency_distribution()` | Computes token frequency from sentences. |
-  | `summarize()` | Prints summary stats: paragraphs, sentences, vocab size. |
+| Method                             | Description                                                 |
+|------------------------------------|-------------------------------------------------------------|
+| `extract_text()`                   | Extracts text and paragraphs from a `.docx` file.           |
+| `split_sentences()`                | Splits extracted text into sentences.                       |
+| `clean_sentences()`                | Cleans individual sentences: lowercases and removes punctuation. |
+| `create_vocabulary()`              | Builds vocabulary list from cleaned sentences.              |
+| `compute_frequency_distribution()` | Computes token frequency from sentences.                    |
+| `summarize()`                      | Prints summary stats: paragraphs, sentences, vocab size.    |
 
-
-### 📑 `PDF` Class
+## PDF Class
 
 - Reads `.pdf` files using `PyMuPDF`.
 - Extracts structured or unstructured text and exports CSV/Excel.
 
-| Method | Description |
-|--------|-------------|
-| `extract_lines(path, max)` | Extracts and cleans lines of text from PDF pages. |
-| `extract_text(path, max)` | Extracts full concatenated text from PDF. |
-| `extract_tables(path, max)` | Extracts tables into pandas DataFrames. |
+| Method                         | Description |
+|--------------------------------|-------------|
+| `extract_lines(path, max)`     | Extracts and cleans lines of text from PDF pages. |
+| `extract_text(path, max)`      | Extracts full concatenated text from PDF. |
+| `extract_tables(path, max)`    | Extracts tables into pandas DataFrames. |
 | `export_csv(tables, filename)` | Exports extracted tables to CSV files. |
-| `export_text(lines, path)` | Writes extracted text lines to a `.txt` file. |
-| `export_excel(tables, path)` | Saves tables to an Excel workbook. |
+| `export_text(lines, path)`     | Writes extracted text lines to a `.txt` file. |
+| `export_excel(tables, path)`   | Saves tables to an Excel workbook. |
 
-
-
-
-## 🧪 Example Usage
+## Example Usage
 
 ```
     python
@@ -124,20 +137,20 @@ pip install -r requirements.txt
     chunks = processor.chunk_text(clean, size=100)
 ```
 
-## 🧩 0. Initialize Processor
+## Initialize Processor
 
 ```
   processor = Text()
 
 ```
 
-## 📂 1. Load Raw Text
+## Load Raw Text
 
 ```
   raw_text = processor.load_text("data/sample.txt")
 ```
 
-## 🧼 2. Clean & Normalize
+## Clean & Normalize
 
 ```
   text = processor.remove_html(raw_text)                     # 🧹 Strip HTML
@@ -148,7 +161,7 @@ pip install -r requirements.txt
   text = processor.collapse_whitespace(text)                 # 📏 Collapse whitespace
 ```
 
-## 🧠 3. Spelling & Stopwords
+## Spelling & Stopwords
 
 ```
   cleaned_text = processor.remove_errors(text)               # 🧬 Remove misspellings
@@ -156,28 +169,27 @@ pip install -r requirements.txt
   no_stopwords_text = processor.remove_stopwords(corrected_text)  # 🚫 Remove stopwords
 ```
 
-## ✂️ 4. Tokenization
+## Tokenization
 
 ```
   word_tokens = processor.tokenize_words(no_stopwords_text)       # 🧩 Word tokens
   sentence_tokens = processor.tokenize_sentences(no_stopwords_text)  # 🧾 Sentence tokens
 ```
 
-## 🌱 5. Lemmatization
+## Lemmatization
 
 ```
   lemmatized_tokens = processor.lemmatize_tokens(word_tokens)
 ```
 
-
-## 📦 6. Chunking
+## Chunking
 
 ```  
   text_chunks = processor.chunk_text(no_stopwords_text, max=800)   # 🧳 Word chunked text
   word_chunks = processor.chunk_words(word_tokens, max=100, over=50)  # 🎒 Token chunks
 ```
 
-## 📚 7. Structural Splitting
+## Structural Splitting
 
 ```
   line_groups = processor.split_lines("data/sample.txt")           # 📏 Lines
@@ -185,7 +197,7 @@ pip install -r requirements.txt
   pages = processor.split_pages("data/sample.txt", delimit="\f")   # 📃 Pages (form-feed)
 ```
 
-## 📊 8. Frequency & Vocabulary
+## Frequency & Vocabulary
 
 ```
   freq_dist = processor.compute_frequency_distribution(word_tokens)  # 📈 Frequency dist
@@ -194,7 +206,7 @@ pip install -r requirements.txt
   vocabulary = processor.create_vocabulary(freq_dist, min=2)         # 📖 Vocabulary
 ```
 
-## 🧠 9. Vector Representations
+## Vector Representations
 
 ```
   bow_vector = processor.create_wordbag(word_tokens)                 # 🧰 Bag-of-Words
@@ -202,14 +214,14 @@ pip install -r requirements.txt
   tfidf_matrix, feature_names = processor.create_tfidf(word_tokens, max_features=500)   # 📐 TF-IDF
 ```
 
-## 🗃️ 10. Batch Utilities
+## Batch Utilities
 
 ```
   processor.clean_files("data/input_dir", "data/cleaned_output_dir")     # 🧼 Clean .txt files in bulk
   processor.convert_jsonl("data/cleaned_output_dir", "data/jsonl_output_dir")  # 🔄 .txt ➡️ .jsonl
 ```
 
-## 📦 Dependencies
+## Dependencies
 
 | Package         | Description                                                                 |
 |-----------------|-----------------------------------------------------------------------------|
@@ -226,12 +238,9 @@ pip install -r requirements.txt
 | `beautifulsoup4`| Parses and cleans HTML/XML content.                                         |
 | `pydantic`      | Data validation and parsing with Python type hints.                         |
 
-
-
-
-## 📝 License
+## License
 
 Chonky is published under
-the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Chonky/blob/main/LICENSE.txt)
+the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Chonky/blob/main/LICENSE.txt).
 
 

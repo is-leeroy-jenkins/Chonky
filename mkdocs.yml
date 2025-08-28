@@ -1,0 +1,58 @@
+site_name: Chonky
+site_description: Utilities and pipelines for Chonky
+site_author: Terry
+site_url: https://is-leeroy-jenkins.github.io/chonky
+
+repo_url: https://github.com/is-leeroy-jenkins/chonky
+repo_name: is-leeroy-jenkins/chonky
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.footer
+    - navigation.top
+    - content.code.copy
+    - content.tooltips
+    - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.inlinehilite
+  - pymdownx.highlight
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          # add the repo root to sys.path while building
+          paths: [ "." ]
+          options:
+            docstring_style: google
+            show_source: true
+            separate_signature: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+
+nav:
+  - Home: index.md
+  - Reference:
+      - API: reference/api.md
