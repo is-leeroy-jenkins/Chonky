@@ -44,41 +44,45 @@ pip install -r requirements.txt
 ### 🧠 `Text` Class
 
 - General-purpose text processor.
-- Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
-  `tokenize_text`, `chunk_text`, `create_word2vec`, `create_tfidf`, and more.
-  | Method | Description |
-  |--------|-------------|
-  | `load_text(path)` | Loads raw text from a file. |
-  | `split_lines(path)` | Splits text into individual lines. |
-  | `split_pages(path, delimit)` | Splits text by page delimiters. |
-  | `collapse_whitespace(text)` | Collapses multiple whitespaces into single spaces. |
-  | `remove_punctuation(text)` | Removes punctuation from text. |
-  | `remove_special(text)` | Removes special characters while preserving select symbols. |
-  | `remove_html(text)` | Strips HTML tags using BeautifulSoup. |
-  | `remove_errors(text)` | Removes non-English or misspelled words. |
-  | `correct_errors(text)` | Attempts to autocorrect spelling using TextBlob. |
-  | `remove_markdown(text)` | Strips Markdown syntax like `*`, `#`, etc. |
-  | `remove_stopwords(text)` | Removes English stopwords. |
-  | `remove_headers(pages)` | Removes repetitive headers/footers using frequency. |
-  | `normalize_text(text)` | Normalizes text to lowercase ASCII. |
-  | `lemmatize_tokens(tokens)` | Lemmatizes tokens using NLTK's WordNet. |
-  | `tokenize_text(text)` | Cleans and tokenizes raw text. |
-  | `tokenize_words(words)` | Tokenizes a list of words. |
-  | `tokenize_sentences(text)` | Sentence tokenization using NLTK. |
-  | `split_paragraphs(path)` | Splits text file into paragraphs. |
-  | `chunk_text(text, size)` | Splits text into word chunks. |
-  | `chunk_words(words, size)` | Chunks a list of tokenized words. |
-  | `split_sentences(text)` | Returns a list of sentences. |
-  | `compute_frequency_distribution(lines)` | Computes frequency of tokens. |
-  | `compute_conditional_distribution(lines)` | Computes conditional frequency grouped by
-  condition. |
-  | `create_vocabulary(freq_dist)` | Creates vocabulary list from token frequency. |
-  | `create_wordbag(words)` | Constructs Bag-of-Words from token list. |
-  | `create_word2vec(words)` | Trains a Word2Vec model from tokenized sentences. |
-  | `create_tfidf(words)` | Generates TF-IDF matrix. |
-  | `clean_files(src, dest)` | Batch cleans `.txt` files from source to destination. |
-  | `convert_jsonl(src, dest)` | Converts text files into JSONL format. |
-
+  - Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
+    `tokenize_text`, `chunk_text`, `create_word2vec`, `create_tfidf`, and more.
+    | Method | Description |
+    |--------|-------------|
+    | `load_text(path)` | Loads raw text from a file. |
+    | `split_lines(path)` | Splits text into individual lines. |
+    | `split_pages(path, delimit)` | Splits text by page delimiters. |
+    | `collapse_whitespace(text)` | Collapses multiple whitespaces into single spaces. |
+    | `remove_punctuation(text)` | Removes punctuation from text. |
+    | `remove_special(text)` | Removes special characters while preserving select symbols. |
+    | `remove_html(text)` | Strips HTML tags using BeautifulSoup. |
+    | `remove_errors(text)` | Removes non-English or misspelled words. |
+    | `correct_errors(text)` | Attempts to autocorrect spelling using TextBlob. |
+    | `remove_markdown(text)` | Strips Markdown syntax like `*`, `#`, etc. |
+    | `remove_stopwords(text)` | Removes English stopwords. |
+    | `remove_headers(pages)` | Removes repetitive headers/footers using frequency. |
+    | `normalize_text(text)` | Normalizes text to lowercase ASCII. |
+    | `lemmatize_tokens(tokens)` | Lemmatizes tokens using NLTK's WordNet. |
+    | `tokenize_text(text)` | Cleans and tokenizes raw text. |
+    | `tokenize_words(words)` | Tokenizes a list of words. |
+    | `tokenize_sentences(text)` | Sentence tokenization using NLTK. |
+    | `split_paragraphs(path)` | Splits text file into paragraphs. |
+    | `chunk_text(text, size)` | Splits text into word chunks. |
+    | `chunk_words(words, size)` | Chunks a list of tokenized words. |
+    | `split_sentences(text)` | Returns a list of sentences. |
+    | `compute_frequency_distribution(lines)` | Computes frequency of tokens. |
+    | `compute_conditional_distribution(lines)` | Computes frequency grouped by condition. |
+    | `create_vocabulary(freq_dist)` | Creates vocabulary list from token frequency. |
+    | `create_wordbag(words)` | Constructs Bag-of-Words from token list. |
+    | `create_word2vec(words)` | Trains a Word2Vec model from tokenized sentences. |
+    | `create_tfidf(words)` | Generates TF-IDF matrix. |
+    | `clean_files(src, dest)` | Batch cleans `.txt` files from source to destination. |
+    | `convert_jsonl(src, dest)` | Converts text files into JSONL format. |
+    | `visualize_embeddings`     |  Visualize word vectors using PCA (2D).  |
+    | `filter_tokens`            | Removes stopwords and short tokens.  |
+    | `vectorize_corpus`         | Converts all tokenized sentences into vector embeddings.|
+    | `semantic_search`          | Find top-K similar sentences to query using cosine similarity.|
+    | `encode_sentences`         | Generate contextual sentence embeddings w/ SentenceTransformer.|
+ 
 
 ### 📄 `Word` Class
 

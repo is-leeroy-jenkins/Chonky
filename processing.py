@@ -1535,7 +1535,6 @@ class Word( Processor ):
 				_sent = re.sub( r"[^a-zA-Z0-9\s']", '', _sent )
 				_sent = re.sub( r'\s{2,}', ' ', _sent ).strip( ).lower( )
 				self.cleaned_sentences.append( _sent )
-			
 			return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
@@ -1557,10 +1556,10 @@ class Word( Processor ):
 			all_words = [ ]
 			self.stop_words = set( stopwords.words( 'english' ) )
 			for _sentence in self.cleaned_sentences:
-				tokens = word_tokenize( _sentence )
-				tokens = [ token for token in tokens if
+				_tokens = word_tokenize( _sentence )
+				self.tokens = [ token for token in _tokens if
 				           token.isalpha( ) and token not in self.stop_words ]
-				all_words.extend( tokens )
+				all_words.extend( self.tokens )
 			self.vocabulary = set( all_words )
 			return self.vocabulary
 		except Exception as e:
