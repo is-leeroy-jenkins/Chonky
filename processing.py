@@ -825,12 +825,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool = True ) -> List[
-		                                                                                       str
-	                                                                                       ] | \
-	                                                                                       List[
-		                                                                                       List[
-			                                                                                       str ] ] | None:
+	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
