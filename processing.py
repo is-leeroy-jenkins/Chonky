@@ -62,6 +62,7 @@ from nltk import FreqDist, ConditionalFreqDist
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
+from sklearn.metrics.pairwise import cosine_similarity
 from tiktoken.core import Encoding
 
 from boogr import Error, ErrorDialog
@@ -75,11 +76,11 @@ except LookupError:
 	nltk.download( 'wordnet' )
 	nltk.download( 'omw-1.4' )
 	nltk.download( 'words' )
-	
+
 def throw_if( name: str, value: object ):
 	if not value:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
-	
+
 class Processor( ):
 	'''
 		
@@ -116,7 +117,7 @@ class Processor( ):
 	removed: Optional[ List[ str ] ]
 	frequency_distribution: Optional[ Dict ]
 	conditional_distribution: Optional[ Dict ]
-
+	
 	def __init__( self ):
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
@@ -188,7 +189,7 @@ class Text( Processor ):
 	    create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
 
 	'''
-
+	
 	def __init__( self ):
 		'''
 
@@ -231,7 +232,7 @@ class Text( Processor ):
 		self.translator = None
 		self.tokenizer = None
 		self.vectorizer = None
-
+	
 	def __dir__( self ) -> List[ str ] | None:
 		'''
 
@@ -261,7 +262,7 @@ class Text( Processor ):
 		         'tokenize_sentences', 'chunk_text', 'chunk_words',
 		         'create_wordbag', 'create_word2vec', 'create_tfidf',
 		         'clean_files', 'convert_jsonl', 'conditional_distribution' ]
-
+	
 	def collapse_whitespace( self, text: str ) -> str | None:
 		"""
 
@@ -295,7 +296,7 @@ class Text( Processor ):
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def remove_punctuation( self, text: str ) -> str | None:
 		"""
 
@@ -327,7 +328,7 @@ class Text( Processor ):
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def remove_special( self, text: str ) -> str | None:
 		"""
 
@@ -370,7 +371,7 @@ class Text( Processor ):
 			exception.method = 'remove_special( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def remove_html( self, text: str ) -> str | None:
 		"""
 
@@ -405,7 +406,7 @@ class Text( Processor ):
 			exception.method = 'remove_html( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def remove_markdown( self, text: str ) -> str | None:
 		"""
 
@@ -439,7 +440,7 @@ class Text( Processor ):
 			exception.method = 'remove_markdown( self, path: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def remove_stopwords( self, text: str ) -> str | None:
 		"""
 
@@ -479,8 +480,8 @@ class Text( Processor ):
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def clean_space( self, text: str ) -> str | None:
+	
+	def remove_spaces( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -515,8 +516,8 @@ class Text( Processor ):
 			exception.method = 'remove_errors( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def remove_headers( self, pages: List[ str ], min: int=3 ) -> List[ str ] | None:
+	
+	def remove_headers( self, pages: List[ str ], size: int = 3 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -551,9 +552,9 @@ class Text( Processor ):
 				_footers[ self.lines[ -1 ].strip( ) ] += 1
 			# Identify candidates for removal
 			_head = { line for line, count in _headers.items( ) if
-			          count >= min }
+			          count >= size }
 			_foot = { line for line, count in _footers.items( ) if
-			          count >= min }
+			          count >= size }
 			# Second pass: clean pages
 			for _page in self.pages:
 				if not self.lines:
@@ -579,7 +580,34 @@ class Text( Processor ):
 			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
+	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ List[ str ] ] | None:
+		"""
+		
+			Purpose:
+			Removes stopwords and short tokens.
+			
+			Parameters:
+			tokenized_sentences (list[list[str]]): Tokenized text.
+			
+			Returns:
+			list[list[str]]: Filtered sentences.
+			
+		"""
+		try:
+			throw_if( 'tokens', tokens )
+			self.tokens = tokens
+			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ]
+			         for sentence in self.tokens ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('filter_tokens( self, tokens: list[ list[ str ]])->list[ list[ str '
+			                    ']]')
+			error = ErrorDialog( exception )
+			error.show( )
+	
 	def normalize_text( self, text: str ) -> str | None:
 		"""
 
@@ -606,7 +634,8 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.raw_input = text
 			self.normalized = unicodedata.normalize( 'NFKD', text ).encode( 'ascii',
-				'ignore' ).decode( 'utf-8' )
+			                                                                'ignore' ).decode(
+				'utf-8' )
 			self.normalized = re.sub( r'\s+', ' ', self.normalized ).strip( ).lower( )
 			return self.normalized
 		except Exception as e:
@@ -616,7 +645,33 @@ class Text( Processor ):
 			exception.method = 'normalize_text( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
+	def normalize_whitespace( self, text: str ) -> str | None:
+		"""
+		
+			Purpose:
+				Removes punctuation, digits, and converts to lowercase.
+				
+			Parameters:
+				text (str): Raw text.
+				
+			Returns:
+				str: Cleaned text.
+			
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			_text = re.sub( r'\s+', ' ', self.raw_input )
+			return _text.lower( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'normalize_text( self, text: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+	
 	def tokenize_text( self, text: str ) -> List[ str ] | None:
 		'''
 
@@ -645,9 +700,9 @@ class Text( Processor ):
 			exception.method = 'tokenize_text( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	# noinspection PyTypeChecker
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
+	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -677,7 +732,7 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.encoding = tiktoken.get_encoding( encoding )
 			token_ids = self.encoding.encode( text )
-			return token_ids  # or [self.encoding.decode_single_token_bytes(t) for t in token_ids]
+			return token_ids
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -686,8 +741,8 @@ class Text( Processor ):
 			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def tokenize_words( self, words: List[ str ] ) -> List[ List[ str ] ]| None:
+	
+	def tokenize_words( self, words: List[ str ] ) -> List[ List[ str ] ] | None:
 		"""
 
 			Purpose:
@@ -721,9 +776,10 @@ class Text( Processor ):
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> (List[
-		                                                                                    str ] |
+	
+	def chunk_text( self, text: str, size: int = 50, return_as_string: bool = True ) -> (List[
+		                                                                                     str
+	                                                                                     ] |
 	                                                                                     None):
 		"""
 
@@ -768,8 +824,13 @@ class Text( Processor ):
 			exception.method = 'chunk_text( self, text: str, max: int=800 ) -> list[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ] | List[ List[ str ] ] | None:
+	
+	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool = True ) -> List[
+		                                                                                       str
+	                                                                                       ] | \
+	                                                                                       List[
+		                                                                                       List[
+			                                                                                       str ] ] | None:
 		"""
 
 			Purpose:
@@ -814,7 +875,7 @@ class Text( Processor ):
 					'str ]')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def split_sentences( self, text: str ) -> List[ str ] | None:
 		"""
 
@@ -848,8 +909,8 @@ class Text( Processor ):
 			exception.method = 'split_sentences( self, text: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def split_pages( self, path: str, delimit: str='\f' ) -> List[ str ] | None:
+	
+	def split_pages( self, path: str, delimit: str = '\f' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -876,7 +937,7 @@ class Text( Processor ):
 			for _page in self.raw_pages:
 				self.lines = _page.strip( ).splitlines( )
 				self.cleaned_text = '\n'.join(
-					[ l.strip( ) for l in self.lines if l.strip( ) ] )
+					[ line.strip( ) for line in self.lines if line.strip( ) ] )
 				self.cleaned_pages.append( self.cleaned_text )
 			return self.cleaned_pages
 		except Exception as e:
@@ -886,7 +947,7 @@ class Text( Processor ):
 			exception.method = 'split_pages( self, path: str, delimit: str="\f" ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def split_paragraphs( self, path: str ) -> List[ str ] | None:
 		"""
 
@@ -911,16 +972,16 @@ class Text( Processor ):
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
 				                    pg.strip( ) ]
-
+				
 				return self.paragraphs
 		except UnicodeDecodeError:
-			with open( self.file_path, 'r', encoding = 'latin1', errors = 'ignore' ) as _file:
+			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as _file:
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
 				                    pg.strip( ) ]
 				return self.paragraphs
-
-	def compute_frequency_distribution( self, lines: List[ str ] ) -> FreqDist | None:
+	
+	def compute_frequency_distribution( self, lines: List[ str ] ) -> FreqDist:
 		"""
 
 			Purpose:
@@ -954,9 +1015,9 @@ class Text( Processor ):
 			                    'bool=True) -> FreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def compute_conditional_distribution( self, lines: List[ str ], condition=None,
-	                                      process: bool=True ) -> ConditionalFreqDist | None:
+	                                      process: bool=True ) -> ConditionalFreqDist:
 		"""
 
 			Purpose:
@@ -991,7 +1052,7 @@ class Text( Processor ):
 				for t in toks:
 					cfd[ key ][ t ] += 1
 			self.conditional_distribution = cfd
-			return cfd
+			return self.conditional_distribution
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1000,8 +1061,8 @@ class Text( Processor ):
 			                    'condition=None, process: bool=True ) -> ConditionalFreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def create_vocabulary( self, freq_dist: Dict, min: int=1 ) -> List[ str ] | None:
+	
+	def create_vocabulary( self, freq_dist: Dict, size: int = 1 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1025,7 +1086,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'frequ_dist', freq_dist )
 			self.frequency_distribution = freq_dist
-			self.words = [ word for word, freq in freq_dist.items( ) if freq >= min ]
+			self.words = [ word for word, freq in freq_dist.items( ) if freq >= size ]
 			self.vocabulary = sorted( self.words )
 			return self.vocabulary
 		except Exception as e:
@@ -1036,7 +1097,7 @@ class Text( Processor ):
 			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def create_wordbag( self, words: List[ str ] ) -> dict | None:
 		"""
 
@@ -1064,8 +1125,9 @@ class Text( Processor ):
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def create_word2vec( self, words: List[ List[ str ] ], size=100, window=5, min=1 ) -> Word2Vec | None:
+	
+	def create_word2vec( self, words: List[ List[ str ] ], dims=100, win=5,
+	                     size=1 ) -> Word2Vec | None:
 		"""
 
 			Purpose:
@@ -1074,10 +1136,10 @@ class Text( Processor ):
 
 			Parameters:
 			--------
-			- sentences (get_list of get_list of str): List of tokenized sentences.
-			- vector_size (int): Dimensionality of word vec.
-			- window (int): Max distance between current and predicted word.
-			- min_count (int): Minimum frequency for inclusion in vocabulary.
+			- words (list of list of str): Tokenized, filtered text..
+			- dims (int): Embedding dimensions..
+			- win (int): Context window size
+			- size (int): Minimum frequency to include a word.
 
 			Returns:
 			-------
@@ -1087,8 +1149,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'words', words )
 			self.words = words
-			return Word2Vec( sentences=self.words, vector_size=size,
-				window=window, min_count=min )
+			return Word2Vec( sentences=self.words, vector_size=dims,
+			                 window=win, min_count=size )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1097,7 +1159,7 @@ class Text( Processor ):
 			                    'size=100, window=5, min=1 ) -> Word2Vec')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def clean_files( self, src: str, dest: str ) -> None:
 		"""
 
@@ -1134,7 +1196,7 @@ class Text( Processor ):
 						normal = self.normalize_text( lower )
 						slim = self.collapse_whitespace( normal )
 						processed.append( slim )
-
+				
 				dest_path = destination + '\\' + filename
 				clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
 				for p in processed:
@@ -1146,7 +1208,7 @@ class Text( Processor ):
 			exception.method = 'clean_files( self, src: str, dest: str )'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def convert_jsonl( self, source: str, desination: str ) -> None:
 		"""
 
@@ -1188,10 +1250,10 @@ class Text( Processor ):
 					_part = ''.join( _list )
 					_row = '{' + f'\"Line-{_i}\":\"{_part}\"' + '}' + '\r'
 					_processed.append( _row )
-
+				
 				for _t in _processed:
 					_clean.write( _t )
-
+				
 				_clean.flush( )
 				_clean.close( )
 		except Exception as e:
@@ -1201,6 +1263,96 @@ class Text( Processor ):
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
 			error = ErrorDialog( exception )
 			error.show( )
+	
+	def embed_sentence( self, sentences: List[ str ], model: Word2Vec ) -> np.ndarray:
+		"""
+
+			Purpose:
+				Converts a tokenized sentence into a single vector by averaging word embeddings.
+			Parameters:
+				sentences (list[str]): Tokenized sentence.
+				model (Word2Vec): Trained embedding model.
+			Returns:
+				np.ndarray: Sentence vector.
+
+		"""
+		try:
+			throw_if( 'sentences', sentences )
+			vectors = [ model.wv[ token ] for token in sentences if token in model.wv ]
+			if not vectors:
+				return np.zeros( model.vector_size )
+			return np.mean( vectors, axis=0 )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('embed_sentence( self, sentences: List[ str ], model: Word2Vec ) '
+			                    '-> np.ndarray')
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def vectorize_corpus( self, corpus: List[ List[ str ] ], model: Word2Vec ) -> np.ndarray:
+		"""
+			
+			Purpose:
+				Converts all tokenized sentences into vector embeddings.
+				
+			Parameters:
+				corpus (list[list[str]]): Tokenized & filtered sentences.
+				model (Word2Vec): Trained model.
+				
+			Returns:
+				np.ndarray: Matrix of shape (n_sentences, embedding_dim)
+			
+		"""
+		try:
+			throw_if( 'corpus', corpus )
+			throw_if( 'model', model )
+			return np.array( [ embed_sentence( sentence, model ) for sentence in corpus ] )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('vectorize_corpus( self, corpus: List[ List[ str ] ], '
+			                    'model: Word2Vec ) -> np.ndarray')
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def semantic_search( self, query: str, sentences: List[ str ], embeddings: np.ndarray,
+	                     model: SentenceTransformer, top: int=5 ) -> List[ tuple[ str, float ] ]:
+		"""
+			Purpose:
+				Perform semantic search over embedded corpus using query.
+				
+			Parameters:
+				query (str): Natural language input.
+				sentences (list[str]): Corpus sentences.
+				embeddings (np.ndarray): Sentence embeddings.
+				model (SentenceTransformer): Same model used for encoding.
+				top (int): Number of matches to return.
+				
+			Returns:
+				list[tuple[str, float]]: Top-k (sentence, similarity) pairs.
+		"""
+		try:
+			throw_if( 'query', query )
+			throw_if( 'sentence', sentence )
+			throw_if( 'embedding', embedding )
+			throw_if( 'model', model )
+			query_vec = model.encode( [ clean_text( query ) ] )
+			sims = cosine_similarity( query_vec, embeddings )[ 0 ]
+			top_indices = sims.argsort( )[ ::-1 ][ : top ]
+			return [ (sentences[ i ], sims[ i ]) for i in top_indices ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('semantic_search( self, query: str, sentences: List[ str ], '
+			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
+								'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
+			error = ErrorDialog( exception )
+			error.show( )
+
 
 class Word( Processor ):
 	"""
@@ -1226,7 +1378,7 @@ class Word( Processor ):
 	file_path: Optional[ str ]
 	vocabulary: Optional[ set ]
 	document: Optional[ Docx ]
-
+	
 	def __init__( self, filepath: str ) -> None:
 		"""
 
@@ -1246,7 +1398,7 @@ class Word( Processor ):
 		self.sentences = [ ]
 		self.cleaned_sentences = [ ]
 		self.vocabulary = set( )
-
+	
 	def __dir__( self ) -> List[ str ] | None:
 		'''
 
@@ -1268,7 +1420,7 @@ class Word( Processor ):
 		         'create_vocabulary', 'compute_frequency_distribution',
 		         'summarize', 'filepath', 'raw_text', 'paragraphs',
 		         'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
-
+	
 	def extract_text( self ) -> str | None:
 		"""
 
@@ -1290,7 +1442,7 @@ class Word( Processor ):
 			exception.method = 'extract_text( self ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def split_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -1309,7 +1461,7 @@ class Word( Processor ):
 			exception.method = 'split_sentences( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def clean_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -1319,12 +1471,12 @@ class Word( Processor ):
 
 		"""
 		try:
-			for _sentence in self.sentences:
-				_sentence = re.sub( r'[\r\n\t]+', ' ', _sentence )
-				_sentence = re.sub( r"[^a-zA-Z0-9\s']", '', _sentence )
-				_sentence = re.sub( r'\s{2,}', ' ', _sentence ).strip( ).lower( )
-				self.cleaned_sentences.append( _sentence )
-
+			for _sent in self.sentences:
+				_sent = re.sub( r'[\r\n\t]+', ' ', _sent )
+				_sent = re.sub( r"[^a-zA-Z0-9\s']", '', _sent )
+				_sent = re.sub( r'\s{2,}', ' ', _sent ).strip( ).lower( )
+				self.cleaned_sentences.append( _sent )
+			
 			return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
@@ -1333,7 +1485,7 @@ class Word( Processor ):
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def create_vocabulary( self ) -> set | None:
 		"""
 
@@ -1359,7 +1511,7 @@ class Word( Processor ):
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def compute_frequency_distribution( self ) -> Dict[ str, int ] | None:
 		"""
 
@@ -1383,7 +1535,7 @@ class Word( Processor ):
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def summarize( self ) -> List[ str ] | None:
 		"""
 
@@ -1424,8 +1576,8 @@ class PDF( Processor ):
 	extracted_lines: Optional[ List ]
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
-
-	def __init__( self, headers: bool=False, size: int=10, tables: bool=True ) -> None:
+	
+	def __init__( self, headers: bool = False, size: int = 10, tables: bool = True ) -> None:
 		"""
 
 			Purpose:
@@ -1453,7 +1605,7 @@ class PDF( Processor ):
 		self.tables = None
 		self.file_path = ''
 		self.page = ''
-
+	
 	def __dir__( self ) -> List[ str ] | None:
 		'''
 
@@ -1475,7 +1627,7 @@ class PDF( Processor ):
 		         'path', 'page', 'pages', 'words', 'clean_lines', 'extracted_lines',
 		         'extracted_tables', 'extracted_pages', 'extract_lines',
 		         'extract_text', 'export_csv', 'export_text', 'export_excel' ]
-
+	
 	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
@@ -1518,7 +1670,7 @@ class PDF( Processor ):
 			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def _extract_tables( self, page: Page ) -> List[ str ] | None:
 		"""
 
@@ -1552,7 +1704,7 @@ class PDF( Processor ):
 			exception.method = '_extract_tables( self, page ) -> List[ str ]:'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def _filter_lines( self, lines: List[ str ] ) -> List[ str ] | None:
 		"""
 
@@ -1589,7 +1741,7 @@ class PDF( Processor ):
 			exception.method = '_filter_lines( self, words: List[ str ] ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def _has_repeating_header( self, line: str ) -> bool | None:
 		"""
 
@@ -1616,8 +1768,8 @@ class PDF( Processor ):
 			exception.method = '_has_repeating_header( self, line: str ) -> bool'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def extract_text( self, path: str, max: Optional[ int ]=None ) -> str | None:
+	
+	def extract_text( self, path: str, size: Optional[ int ] = None ) -> str | None:
 		"""
 
 			Purpose:
@@ -1636,11 +1788,11 @@ class PDF( Processor ):
 		"""
 		try:
 			throw_if( 'path', path )
-			if max is not None and max > 0:
+			if size is not None and size > 0:
 				self.file_path = path
-				self.lines = self.extract_lines( self.file_path, size=max )
+				self.lines = self.extract_lines( self.file_path, size=size )
 				return '\n'.join( self.lines )
-			elif max is None or max <= 0:
+			elif size is None or size <= 0:
 				self.file_path = path
 				self.lines = self.extract_lines( self.file_path )
 				return '\n'.join( self.lines )
@@ -1651,8 +1803,8 @@ class PDF( Processor ):
 			exception.method = 'extract_text( self, path: str, max: Optional[ int ]=None ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def extract_tables( self, path: str, max: Optional[ int ]=None ) -> (
+	
+	def extract_tables( self, path: str, size: Optional[ int ] = None ) -> (
 			List[ pd.DataFrame ] | None):
 		"""
 
@@ -1671,12 +1823,12 @@ class PDF( Processor ):
 		"""
 		try:
 			throw_if( 'path', path )
-			throw_if( 'max', max )
+			throw_if( 'max', size )
 			self.file_path = path
 			self.tables = [ ]
 			with fitz.open( self.file_path ) as doc:
 				for i, page in enumerate( doc ):
-					if max is not None and i >= max:
+					if size is not None and i >= size:
 						break
 					tf = page.find_tables( )
 					for t in getattr( tf, 'tables', [ ] ):
@@ -1691,7 +1843,7 @@ class PDF( Processor ):
 					'pd.DataFrame ]')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None:
 		"""
 
@@ -1709,7 +1861,7 @@ class PDF( Processor ):
 			throw_if( 'filename', filename )
 			self.tables = tables
 			for i, df in enumerate( self.tables ):
-				df.to_csv( f'{filename}_{i + 1}.csv', index = False )
+				df.to_csv( f'{filename}_{i + 1}.csv', index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1719,7 +1871,7 @@ class PDF( Processor ):
 					'None')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def export_text( self, lines: List[ str ], path: str ) -> None:
 		"""
 
@@ -1747,7 +1899,7 @@ class PDF( Processor ):
 			exception.method = 'export_text( self, lines: List[ str ], path: str ) -> None'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None:
 		"""
 
