@@ -49,7 +49,6 @@ import re
 import string
 from collections import Counter, defaultdict
 from typing import List, Optional, Dict
-
 import fitz
 import nltk
 import pandas as pd
@@ -64,7 +63,9 @@ from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from sklearn.metrics.pairwise import cosine_similarity
 from tiktoken.core import Encoding
-
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sentence_transformers import SentenceTransformer
 from boogr import Error, ErrorDialog
 
 try:
@@ -96,6 +97,7 @@ class Processor( ):
 	lemmatized: Optional[ str ]
 	tokenized: Optional[ str ]
 	encoding: Optional[ Encoding ]
+	embedddings: Optional[ List[ np.ndarray ] ]
 	chunk_size: Optional[ int ]
 	corrected: Optional[ str ]
 	raw_input: Optional[ str ]
@@ -114,6 +116,7 @@ class Processor( ):
 	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
 	vocabulary: Optional[ List[ str ] ]
+	corpus: Optional[ List[ List[ str ] ] ]
 	removed: Optional[ List[ str ] ]
 	frequency_distribution: Optional[ Dict ]
 	conditional_distribution: Optional[ Dict ]
@@ -140,6 +143,7 @@ class Processor( ):
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
 		self.encoding = None
+		self.embedddings = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
@@ -262,6 +266,31 @@ class Text( Processor ):
 		         'tokenize_sentences', 'chunk_text', 'chunk_words',
 		         'create_wordbag', 'create_word2vec', 'create_tfidf',
 		         'clean_files', 'convert_jsonl', 'conditional_distribution' ]
+	
+	def load_text( self, file_path: str ) -> str | None:
+		"""
+	`
+			Purpose:
+				Loads raw text from a file.
+				
+			Parameters:
+				file_path (str): Path to the .txt file.
+				
+			Returns:
+				str: Raw file content as string.`
+			
+		"""
+		try:
+			throw_if( 'file_path', file_path )
+			self.file_path = file_path
+			return Path( self.file_path ).read_text( encoding='utf-8' )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'load_text( self, file_path: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
 	
 	def collapse_whitespace( self, text: str ) -> str | None:
 		"""
@@ -621,8 +650,8 @@ class Text( Processor ):
 
 			Parameters:
 			-----------
-			- pages : str
-				The raw path pages path to be normalized.
+			- text : str
+				The raw text.
 
 			Returns:
 			--------
@@ -633,37 +662,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			self.normalized = unicodedata.normalize( 'NFKD', text ).encode( 'ascii',
-			                                                                'ignore' ).decode(
-				'utf-8' )
-			self.normalized = re.sub( r'\s+', ' ', self.normalized ).strip( ).lower( )
+			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
+			self.normalized = re.sub( r'\s+', ' ', _n ).strip( ).lower( )
 			return self.normalized
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'normalize_text( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def normalize_whitespace( self, text: str ) -> str | None:
-		"""
-		
-			Purpose:
-				Removes punctuation, digits, and converts to lowercase.
-				
-			Parameters:
-				text (str): Raw text.
-				
-			Returns:
-				str: Cleaned text.
-			
-		"""
-		try:
-			throw_if( 'text', text )
-			self.raw_input = text
-			_text = re.sub( r'\s+', ' ', self.raw_input )
-			return _text.lower( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -701,7 +702,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> List[ str ] | None:
+	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -736,8 +737,8 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
-			                    'List[ str ]')
+			exception.method = ( 'tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
+			                    'List[ str ]' )
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -775,7 +776,7 @@ class Text( Processor ):
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-	
+		
 	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ str ]:
 		"""
 
@@ -806,7 +807,9 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.tokens = nltk.word_tokenize( text )
+			self.words = text
+			_tokens = nltk.word_tokenize( self.words )
+			self.tokens.append( _tokens )
 			self.chunks = [ self.tokens[ i: i + size ] for i in
 			                range( 0, len( self.tokens ), size ) ]
 			if return_as_string:
@@ -1269,16 +1272,44 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'sentences', sentences )
-			vectors = [ model.wv[ token ] for token in sentences if token in model.wv ]
-			if not vectors:
+			self.words = sentences
+			_embeddings = [ model.wv[ t ] for t in self.words if t in model.wv ]
+			self.embeddings.append( _embeddings )
+			if not self.embeddings:
 				return np.zeros( model.vector_size )
-			return np.mean( vectors, axis=0 )
+			return np.mean( self.embeddings, axis=0 )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('embed_sentence( self, sentences: List[ str ], model: Word2Vec ) '
 			                    '-> np.ndarray')
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def encode_sentences( self, sentences: List[ str ], model_name: str='all-MiniLM-L6-v2' ) -> Tuple[
+		List[ str ], np.ndarray ]:
+		"""
+		
+			Purpose:
+				Generate contextual sentence embeddings using SentenceTransformer.
+			Parameters:
+				sentences (list[str]): List of raw sentence strings.
+				model_name (str): Model to use for encoding.
+			Returns:
+				tuple: (Cleaned sentences, Embeddings as np.ndarray)
+			
+		"""
+		try:
+			_transformer = SentenceTransformer( model_name )
+			self.cleaned_tokens = [ clean_text( s ) for s in sentences ]
+			_encoding = _transformer.encode( self.cleaned_tokens, show_progress_bar=True )
+			return self.cleaned_tokens, np.array( _encoding )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name) '
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1299,7 +1330,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'corpus', corpus )
 			throw_if( 'model', model )
-			return np.array( [ embed_sentence( sentence, model ) for sentence in corpus ] )
+			self.corpus.append( corpus )
+			return np.array( [ embed_sentence( sentence, model ) for sentence in self.corpus ] )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1343,7 +1375,43 @@ class Text( Processor ):
 								'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
+	
+	def visualize_embeddings( self, model: Word2Vec, num_words: int = 100 ):
+		"""
 
+			Purpose:
+				Visualize word vectors using PCA (2D).
+
+			Parameters:
+				model (Word2Vec): Trained model.
+				num_words (int): Number of top words to visualize.
+
+			Returns:
+				None
+
+		"""
+		try:
+			throw_if( 'model', model )
+			words = list( model.wv.index_to_key )[ :num_words ]
+			vectors = [ model.wv[ word ] for word in words ]
+			
+			pca = PCA( n_components=2 )
+			result = pca.fit_transform( vectors )
+			
+			plt.figure( figsize=(10, 6) )
+			plt.scatter( result[ :, 0 ], result[ :, 1 ] )
+			for i, word in enumerate( words ):
+				plt.annotate( word, xy=(result[ i, 0 ], result[ i, 1 ]) )
+			plt.title( "Word2Vec Embeddings (PCA)" )
+			plt.grid( True )
+			plt.show( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'tvisualize_embeddings( self, model: Word2Vec, num_words: int=100 )'
+			error = ErrorDialog( exception )
+			error.show( )
 
 class Word( Processor ):
 	"""
