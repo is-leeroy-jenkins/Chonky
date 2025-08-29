@@ -701,7 +701,6 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	# noinspection PyTypeChecker
 	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> List[ str ] | None:
 		"""
 
@@ -777,10 +776,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int = 50, return_as_string: bool = True ) -> (List[
-		                                                                                     str
-	                                                                                     ] |
-	                                                                                     None):
+	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
