@@ -131,7 +131,7 @@ pip install -r requirements.txt
     
 ```
 
-## 🧩 0. Initialize Processor
+## 🧩 Initialize Processor
 
 ```
 
