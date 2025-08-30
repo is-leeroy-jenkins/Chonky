@@ -1986,3 +1986,9 @@ class PDF( Processor ):
 			                    'None')
 			error = ErrorDialog( exception )
 			error.show( )
+
+class SQLite( ):
+	'''
+	
+	'''
+	pass

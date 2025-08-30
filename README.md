@@ -28,20 +28,21 @@ feature extraction, and document analysis.
 
 To ensure a clean and isolated environment for running **Chonky**, follow these steps:
 
-### 1. Clone the Repository
+## ⚡ Clone the Repository
 
-```bash
+```
+
 git clone https://github.com/yourusername/Chonky.git
 cd Chonky
 cd venv/Scripts
 ./activate.bat
 cd ../../
 pip install -r requirements.txt
+
 ```
 
-##  Module Overview
 
-### 🧠 `Text` Class
+## 🧠 `Text` Class
 
 - General-purpose text processor.
   - Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
@@ -84,7 +85,7 @@ pip install -r requirements.txt
     | `encode_sentences`         | Generate contextual sentence embeddings w/ SentenceTransformer.|
  
 
-### 📄 `Word` Class
+## 📄 `Word` Class
 
 - Parses `.docx` files using Python-docx.
 - Sentence segmentation, vocabulary extraction, frequency computation.
@@ -99,7 +100,7 @@ pip install -r requirements.txt
   | `summarize()` | Prints summary stats: paragraphs, sentences, vocab size. |
 
 
-### 📑 `PDF` Class
+## 📑 `PDF` Class
 
 - Reads `.pdf` files using `PyMuPDF`.
 - Extracts structured or unstructured text and exports CSV/Excel.
@@ -119,6 +120,7 @@ pip install -r requirements.txt
 ## 🧪 Example Usage
 
 ```
+
     python
     from processing import Text
     processor = Text()
@@ -126,62 +128,69 @@ pip install -r requirements.txt
     clean = processor.remove_stopwords(text)
     tokens = processor.tokenize_words(clean)
     chunks = processor.chunk_text(clean, size=100)
+    
 ```
 
 ## 🧩 0. Initialize Processor
 
 ```
+
   processor = Text()
 
 ```
 
-## 📂 1. Load Raw Text
+## 📂 Load Raw Text
 
 ```
+
   raw_text = processor.load_text("data/sample.txt")
+  
 ```
 
-## 🧼 2. Clean & Normalize
+## 🧼 Clean & Normalize
 
 ```
+
   text = processor.remove_html(raw_text)                     # 🧹 Strip HTML
   text = processor.normalize_text(text)                      # 🔡 Lowercase + ASCII
   text = processor.remove_markdown(text)                     # ✨ Remove markdown (#, *, etc.)
   text = processor.remove_special(text)                      # ❌ Remove special chars
   text = processor.remove_punctuation(text)                  # 🪛 Remove punctuation
   text = processor.collapse_whitespace(text)                 # 📏 Collapse whitespace
+  
 ```
 
-## 🧠 3. Spelling & Stopwords
+## 🧠 Spelling & Stopwords
 
 ```
   cleaned_text = processor.remove_errors(text)               # 🧬 Remove misspellings
   corrected_text = processor.correct_errors(cleaned_text)    # 🔁 Auto-correct spelling
   no_stopwords_text = processor.remove_stopwords(corrected_text)  # 🚫 Remove stopwords
+  
 ```
 
-## ✂️ 4. Tokenization
+## ✂️ Tokenization
 
 ```
   word_tokens = processor.tokenize_words(no_stopwords_text)       # 🧩 Word tokens
   sentence_tokens = processor.tokenize_sentences(no_stopwords_text)  # 🧾 Sentence tokens
 ```
 
-## 🌱 5. Lemmatization
+## 🌱 Lemmatization
 
 ```
   lemmatized_tokens = processor.lemmatize_tokens(word_tokens)
 ```
 
 
-## 📦 6. Chunking
+## 📦 Chunking
 
 ```  
   text_chunks = processor.chunk_text(no_stopwords_text, max=800)   # 🧳 Word chunked text
   word_chunks = processor.chunk_words(word_tokens, max=100, over=50)  # 🎒 Token chunks
 ```
 
-## 📚 7. Structural Splitting
+## 📚 Structural Splitting
 
 ```
   line_groups = processor.split_lines("data/sample.txt")           # 📏 Lines
@@ -189,7 +198,7 @@ pip install -r requirements.txt
   pages = processor.split_pages("data/sample.txt", delimit="\f")   # 📃 Pages (form-feed)
 ```
 
-## 📊 8. Frequency & Vocabulary
+## 📊 Frequency & Vocabulary
 
 ```
   freq_dist = processor.compute_frequency_distribution(word_tokens)  # 📈 Frequency dist
@@ -198,7 +207,7 @@ pip install -r requirements.txt
   vocabulary = processor.create_vocabulary(freq_dist, min=2)         # 📖 Vocabulary
 ```
 
-## 🧠 9. Vector Representations
+## 🧠 Vector Representations
 
 ```
   bow_vector = processor.create_wordbag(word_tokens)                 # 🧰 Bag-of-Words
@@ -206,7 +215,7 @@ pip install -r requirements.txt
   tfidf_matrix, feature_names = processor.create_tfidf(word_tokens, max_features=500)   # 📐 TF-IDF
 ```
 
-## 🗃️ 10. Batch Utilities
+## 🗃️ Batch Utilities
 
 ```
   processor.clean_files("data/input_dir", "data/cleaned_output_dir")     # 🧼 Clean .txt files in bulk
