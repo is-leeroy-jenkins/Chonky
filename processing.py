@@ -1,49 +1,48 @@
 '''
   ******************************************************************************************
-      Assembly:                Boo
-      Filename:                processing.py
-      Author:                  Terry D. Eppler
-      Created:                 05-31-2022
+	  Assembly:                Boo
+	  Filename:                processing.py
+	  Author:                  Terry D. Eppler
+	  Created:                 05-31-2022
 
-      Last Modified By:        Terry D. Eppler
-      Last Modified On:        05-01-2025
+	  Last Modified By:        Terry D. Eppler
+	  Last Modified On:        05-01-2025
   ******************************************************************************************
   <copyright file="tigrr.py" company="Terry D. Eppler">
 
-	     Boo is a df analysis tool that integrates various Generative AI, Text-Processing, and
-	     Machine-Learning algorithms for federal analysts.
-	     Copyright ©  2022  Terry Eppler
+		 Boo is a df analysis tool that integrates various Generative AI, Text-Processing, and
+		 Machine-Learning algorithms for federal analysts.
+		 Copyright ©  2022  Terry Eppler
 
-     Permission is hereby granted, free of charge, to any person obtaining a copy
-     of this software and associated documentation files (the “Software”),
-     to deal in the Software without restriction,
-     including without limitation the rights to use,
-     copy, modify, merge, publish, distribute, sublicense,
-     and/or sell copies of the Software,
-     and to permit persons to whom the Software is furnished to do so,
-     subject to the following conditions:
+	 Permission is hereby granted, free of charge, to any person obtaining a copy
+	 of this software and associated documentation files (the “Software”),
+	 to deal in the Software without restriction,
+	 including without limitation the rights to use,
+	 copy, modify, merge, publish, distribute, sublicense,
+	 and/or sell copies of the Software,
+	 and to permit persons to whom the Software is furnished to do so,
+	 subject to the following conditions:
 
-     The above copyright notice and this permission notice shall be included in all
-     copies or substantial portions of the Software.
+	 The above copyright notice and this permission notice shall be included in all
+	 copies or substantial portions of the Software.
 
-     THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-     INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
-     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-     DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-     ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     DEALINGS IN THE SOFTWARE.
+	 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+	 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	 FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+	 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+	 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+	 DEALINGS IN THE SOFTWARE.
 
-     You can contact me at:  terryeppler@gmail.com or eppler.terry@epa.gov
+	 You can contact me at:  terryeppler@gmail.com or eppler.terry@epa.gov
 
   </copyright>
   <summary>
-    processing.py
+	processing.py
   </summary>
   ******************************************************************************************
   '''
 from __future__ import annotations
-
 import os
 import re
 import string
@@ -54,6 +53,8 @@ import nltk
 import pandas as pd
 import tiktoken
 import unicodedata
+import sqlite3
+import json
 from bs4 import BeautifulSoup
 from docx import Document as Docx
 from gensim.models import Word2Vec
@@ -163,34 +164,34 @@ class Text( Processor ):
 		---------
 		Class providing path preprocessing functionality
 
-	    Methods:
-	    --------
-	    split_lines( self, path: str ) -> list
-	    split_pages( self, path: str, delimit: str ) -> list
-	    collapse_whitespace( self, path: str ) -> str
-	    remove_punctuation( self, path: str ) -> str:
+		Methods:
+		--------
+		split_lines( self, path: str ) -> list
+		split_pages( self, path: str, delimit: str ) -> list
+		collapse_whitespace( self, path: str ) -> str
+		remove_punctuation( self, path: str ) -> str:
 		remove_special( self, path: str, keep_spaces: bool ) -> str:
 		remove_html( self, path: str ) -> str
 		remove_errors( self, path: str ) -> str
 		remove_markdown( self, path: str ) -> str
 		remove_stopwords( self, path: str ) -> str
 		remove_headers( self, pages, min: int=3 ) -> str
-	    normalize_text( path: str ) -> str
-	    lemmatize_tokens( words: List[ str ] ) -> str
-	    tokenize_text( path: str ) -> str
-	    tokenize_words( path: str ) -> List[ str ]
-	    tokenize_sentences( path: str ) -> str
-	    chunk_text( self, path: str, max: int=800 ) -> List[ str ]
-	    chunk_words( self, path: str, max: int=800, over: int=50 ) -> List[ str ]
-	    split_paragraphs( self, path: str ) -> List[ str ]
-	    compute_frequency_distribution( self, words: List[ str ], proc: bool=True ) -> List[ str ]
-	    compute_conditional_distribution( self, words: List[ str ], condition: str=None,
-	    proc: bool=True ) -> List[ str ]
-	    create_vocabulary( self, frequency, min: int=1 ) -> List[ str ]
-	    create_wordbag( words: List[ str ] ) -> dict
-	    create_word2vec( sentences: List[ str ], vector_size=100, window=5, min_count=1 ) ->
-	    Word2Vec
-	    create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
+		normalize_text( path: str ) -> str
+		lemmatize_tokens( words: List[ str ] ) -> str
+		tokenize_text( path: str ) -> str
+		tokenize_words( path: str ) -> List[ str ]
+		tokenize_sentences( path: str ) -> str
+		chunk_text( self, path: str, max: int=800 ) -> List[ str ]
+		chunk_words( self, path: str, max: int=800, over: int=50 ) -> List[ str ]
+		split_paragraphs( self, path: str ) -> List[ str ]
+		compute_frequency_distribution( self, words: List[ str ], proc: bool=True ) -> List[ str ]
+		compute_conditional_distribution( self, words: List[ str ], condition: str=None,
+		proc: bool=True ) -> List[ str ]
+		create_vocabulary( self, frequency, min: int=1 ) -> List[ str ]
+		create_wordbag( words: List[ str ] ) -> dict
+		create_word2vec( sentences: List[ str ], vector_size=100, window=5, min_count=1 ) ->
+		Word2Vec
+		create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
 
 	'''
 	
@@ -255,17 +256,17 @@ class Text( Processor ):
 
 		'''
 		return [ 'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized',
-		         'tokenized', 'corrected', 'cleaned_text', 'words', 'paragraphs',
-		         'words', 'pages', 'chunks', 'chunk_size', 'cleaned_pages',
-		         'stop_words', 'cleaned_lines', 'removed', 'lowercase', 'encoding', 'vocabulary',
-		         'translator', 'lemmatizer', 'stemmer', 'tokenizer', 'vectorizer',
-		         'split_lines', 'split_pages', 'collapse_whitespace',
-		         'remove_punctuation', 'remove_special', 'remove_html',
-		         'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize',
-		         'normalize_text', 'tokenize_text', 'tokenize_words',
-		         'tokenize_sentences', 'chunk_text', 'chunk_words',
-		         'create_wordbag', 'create_word2vec', 'create_tfidf',
-		         'clean_files', 'convert_jsonl', 'conditional_distribution' ]
+				 'tokenized', 'corrected', 'cleaned_text', 'words', 'paragraphs',
+				 'words', 'pages', 'chunks', 'chunk_size', 'cleaned_pages',
+				 'stop_words', 'cleaned_lines', 'removed', 'lowercase', 'encoding', 'vocabulary',
+				 'translator', 'lemmatizer', 'stemmer', 'tokenizer', 'vectorizer',
+				 'split_lines', 'split_pages', 'collapse_whitespace',
+				 'remove_punctuation', 'remove_special', 'remove_html',
+				 'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize',
+				 'normalize_text', 'tokenize_text', 'tokenize_words',
+				 'tokenize_sentences', 'chunk_text', 'chunk_words',
+				 'create_wordbag', 'create_word2vec', 'create_tfidf',
+				 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
 	def load_text( self, file_path: str ) -> str | None:
 		"""
@@ -499,7 +500,7 @@ class Text( Processor ):
 			self.stop_words = stopwords.words( 'english' )
 			self.tokens = nltk.word_tokenize( self.raw_input )
 			self.cleaned_tokens = [ w for w in self.tokens if
-			                        w.isalnum( ) and w not in self.stop_words ]
+									w.isalnum( ) and w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
@@ -581,9 +582,9 @@ class Text( Processor ):
 				_footers[ self.lines[ -1 ].strip( ) ] += 1
 			# Identify candidates for removal
 			_head = { line for line, count in _headers.items( ) if
-			          count >= size }
+					  count >= size }
 			_foot = { line for line, count in _footers.items( ) if
-			          count >= size }
+					  count >= size }
 			# Second pass: clean pages
 			for _page in self.pages:
 				if not self.lines:
@@ -606,7 +607,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('remove_headers( self, pages: List[ str ], min: int=3 ) -> List['
-			                    'str]')
+								'str]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -627,13 +628,14 @@ class Text( Processor ):
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
 			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ]
-			         for sentence in self.tokens ]
+					 for sentence in self.tokens ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('filter_tokens( self, tokens: list[ list[ str ]])->list[ list[ str '
-			                    ']]')
+			exception.method = ('filter_tokens( self, tokens: list[ list[ str ]])->list[ list[ '
+								'str '
+								']]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -662,7 +664,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
+			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode(
+				'utf-8' )
 			self.normalized = re.sub( r'\s+', ' ', _n ).strip( ).lower( )
 			return self.normalized
 		except Exception as e:
@@ -702,7 +705,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
+	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -737,8 +740,8 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ( 'tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
-			                    'List[ str ]' )
+			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
+								'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -776,8 +779,9 @@ class Text( Processor ):
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-		
-	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ str ]:
+	
+	def chunk_text( self, text: str, size: int = 50, return_as_string: bool = True ) -> List[
+		str ]:
 		"""
 
 			Purpose:
@@ -811,7 +815,7 @@ class Text( Processor ):
 			_tokens = nltk.word_tokenize( self.words )
 			self.tokens.append( _tokens )
 			self.chunks = [ self.tokens[ i: i + size ] for i in
-			                range( 0, len( self.tokens ), size ) ]
+							range( 0, len( self.tokens ), size ) ]
 			if return_as_string:
 				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
@@ -824,7 +828,8 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
+	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool = True ) -> List[
+		str ]:
 		"""
 
 			Purpose:
@@ -855,7 +860,7 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.tokens = [ token for sublist in words for token in sublist ]
 			self.chunks = [ self.tokens[ i: i + size ]
-			                for i in range( 0, len( self.tokens ), size ) ]
+							for i in range( 0, len( self.tokens ), size ) ]
 			if as_string:
 				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
@@ -965,14 +970,14 @@ class Text( Processor ):
 			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-				                    pg.strip( ) ]
+									pg.strip( ) ]
 				
 				return self.paragraphs
 		except UnicodeDecodeError:
 			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as _file:
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-				                    pg.strip( ) ]
+									pg.strip( ) ]
 				return self.paragraphs
 	
 	def compute_frequency_distribution( self, lines: List[ str ] ) -> FreqDist:
@@ -1006,12 +1011,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('compute_frequency_distribution( self, documents: list, process: '
-			                    'bool=True) -> FreqDist')
+								'bool=True) -> FreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
 	
 	def compute_conditional_distribution( self, lines: List[ str ], condition=None,
-	                                      process: bool=True ) -> ConditionalFreqDist:
+										  process: bool = True ) -> ConditionalFreqDist:
 		"""
 
 			Purpose:
@@ -1052,7 +1057,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('compute_conditional_distribution( self, words: List[ str ], '
-			                    'condition=None, process: bool=True ) -> ConditionalFreqDist')
+								'condition=None, process: bool=True ) -> ConditionalFreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1088,7 +1093,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
-			                    'str]')
+								'str]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1121,7 +1126,7 @@ class Text( Processor ):
 			error.show( )
 	
 	def create_word2vec( self, words: List[ List[ str ] ], dims=100, win=5,
-	                     size=1 ) -> Word2Vec | None:
+						 size=1 ) -> Word2Vec | None:
 		"""
 
 			Purpose:
@@ -1144,13 +1149,13 @@ class Text( Processor ):
 			throw_if( 'words', words )
 			self.words = words
 			return Word2Vec( sentences=self.words, vector_size=dims,
-			                 window=win, min_count=size )
+							 window=win, min_count=size )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('create_word2vec( self, words: List[ str ], '
-			                    'size=100, window=5, min=1 ) -> Word2Vec')
+								'size=100, window=5, min=1 ) -> Word2Vec')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1283,11 +1288,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('embed_sentence( self, sentences: List[ str ], model: Word2Vec ) '
-			                    '-> np.ndarray')
+								'-> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def encode_sentences( self, sentences: List[ str ], model_name: str='all-MiniLM-L6-v2' ) -> Tuple[
+	def encode_sentences( self, sentences: List[ str ], model_name: str = 'all-MiniLM-L6-v2' ) -> \
+	Tuple[
 		List[ str ], np.ndarray ]:
 		"""
 		
@@ -1337,12 +1343,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('vectorize_corpus( self, corpus: List[ List[ str ] ], '
-			                    'model: Word2Vec ) -> np.ndarray')
+								'model: Word2Vec ) -> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 	
 	def semantic_search( self, query: str, sentences: List[ str ], embeddings: np.ndarray,
-	                     model: SentenceTransformer, top: int=5 ) -> List[ tuple[ str, float ] ]:
+						 model: SentenceTransformer, top: int = 5 ) -> List[ tuple[ str, float ] ]:
 		"""
 			Purpose:
 				Perform semantic search over embedded corpus using query.
@@ -1371,7 +1377,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('semantic_search( self, query: str, sentences: List[ str ], '
-			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
+								'embeddings: np.ndarray, model: SentenceTransformer,  '
 								'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
@@ -1476,9 +1482,9 @@ class Word( Processor ):
 
 		'''
 		return [ 'extract_text', 'split_sentences', 'clean_sentences',
-		         'create_vocabulary', 'compute_frequency_distribution',
-		         'summarize', 'filepath', 'raw_text', 'paragraphs',
-		         'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
+				 'create_vocabulary', 'compute_frequency_distribution',
+				 'summarize', 'filepath', 'raw_text', 'paragraphs',
+				 'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
 	
 	def extract_text( self ) -> str | None:
 		"""
@@ -1491,7 +1497,7 @@ class Word( Processor ):
 		try:
 			self.document = Docx( self.file_path )
 			self.paragraphs = [ para.text.strip( ) for para in self.document.paragraphs if
-			                    para.text.strip( ) ]
+								para.text.strip( ) ]
 			self.raw_text = '\n'.join( self.paragraphs )
 			return self.raw_text
 		except Exception as e:
@@ -1558,7 +1564,7 @@ class Word( Processor ):
 			for _sentence in self.cleaned_sentences:
 				_tokens = word_tokenize( _sentence )
 				self.tokens = [ token for token in _tokens if
-				           token.isalpha( ) and token not in self.stop_words ]
+								token.isalpha( ) and token not in self.stop_words ]
 				all_words.extend( self.tokens )
 			self.vocabulary = set( all_words )
 			return self.vocabulary
@@ -1619,13 +1625,13 @@ class PDF( Processor ):
 		and includes df detection capabilities.
 
 
-	    Methods:
-	    --------
-	    extract_lines( self, path, max: int=None) -> List[ str ]
-	    extract_text( self, path, max: int=None) -> str
-	    export_csv( self, tables: List[ pd.DataFrame ], filename: str=None ) -> None
-	    export_text( self, words: List[ str ], path: str=None ) -> None
-	    export_excel( self, tables: List[ pd.DataFrame ], path: str=None ) -> None
+		Methods:
+		--------
+		extract_lines( self, path, max: int=None) -> List[ str ]
+		extract_text( self, path, max: int=None) -> str
+		export_csv( self, tables: List[ pd.DataFrame ], filename: str=None ) -> None
+		export_text( self, words: List[ str ], path: str=None ) -> None
+		export_excel( self, tables: List[ pd.DataFrame ], path: str=None ) -> None
 
 	"""
 	strip_headers: Optional[ bool ]
@@ -1682,11 +1688,11 @@ class PDF( Processor ):
 
 		'''
 		return [ 'strip_headers', 'minimum_length', 'extract_tables',
-		         'path', 'page', 'pages', 'words', 'clean_lines', 'extracted_lines',
-		         'extracted_tables', 'extracted_pages', 'extract_lines',
-		         'extract_text', 'export_csv', 'export_text', 'export_excel' ]
+				 'path', 'page', 'pages', 'words', 'clean_lines', 'extracted_lines',
+				 'extracted_tables', 'extracted_pages', 'extract_lines',
+				 'extract_text', 'export_csv', 'export_text', 'export_excel' ]
 	
-	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, size: Optional[ int ] = None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1725,7 +1731,7 @@ class PDF( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = ('extract_lines( self, path: str, max: Optional[ int ]=None ) -> '
-			                    'List[ str ]')
+								'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1982,13 +1988,554 @@ class PDF( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = ('export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> '
-			                    'None')
+			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )->None'
 			error = ErrorDialog( exception )
 			error.show( )
 
 class SQLite( ):
-	'''
+	"""
 	
-	'''
-	pass
+		Purpose:
+		-------
+			Manages storage and retrieval of text chunks and their vector embeddings in a SQLite
+			database. Supports operations for inserting, retrieving, and deleting chunk-level
+			information along with their associated embedding vectors.
+	
+		Methods:
+		--------
+			create(): Initializes the embeddings table.
+			insert(): Inserts a single embedding with metadata.
+			insert_many(): Batch insert of multiple chunks and embeddings.
+			fetch_all(): Retrieves all chunks and vectors from the database.
+			fetch_by_file(): Retrieves chunks and vectors filtered by source file.
+			delete_by_file(): Deletes all records associated with a given source file.
+			close(): Closes the database connection.
+			
+	"""
+	db_path: Optional[ str ]
+	connection: Optional[ Connection ]
+	cursor: Optional[ Cursor ]
+	source_file: Optional[ str ]
+	vector: Optional[ str ]
+	embedding: Optional[ np.ndarray ]
+	text: Optional[ str ]
+	index: Optional[ int ]
+	rows: Optional[ List[ Row ] ]
+	texts: Optional[ List[ str ] ]
+	records: Optional[ List[ Tuple[ str, int, str, str ] ] ]
+	
+	def __init__( self, db_path: str="./embeddings.db" ) -> None:
+		"""
+		
+				Purpose:
+				_______
+				Initializes a new SQLite connection and ensures the embeddings table is created.
+		
+				Parameters:
+				----------
+				db_path (str): File path to the SQLite database.
+		
+				Returns:
+					None
+					
+		"""
+		self.db_path = db_path
+		self.connection = sqlite3.connect( self.db_path )
+		self.cursor = self.conn.cursor( )
+		self.embedding = None
+		self.text = None
+		self.index = 0
+		self.rows = [ ]
+		self.texts = [ ]
+		self.records = [ ]
+		self.create( )
+	
+	def create( self ) -> None:
+		"""
+		
+			Purpose:
+			--------
+			Creates the 'embeddings' table if it does not already exist. Ensures schema integrity
+			for text chunk storage with associated vector embeddings.
+	
+			Parameters:
+			----------
+			None
+	
+			Returns:
+			-----
+			None
+			
+		"""
+		try:
+			self.cursor.execute( """
+				CREATE TABLE IF NOT EXISTS embeddings (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					source_file TEXT NOT NULL,
+					chunk_index INTEGER NOT NULL,
+					chunk_text TEXT NOT NULL,
+					embedding TEXT NOT NULL,
+					created_at TEXT DEFAULT CURRENT_TIMESTAMP ) """ )
+			self.connection.commit( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'create( self ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def insert( self, source: str, index: int, text: str, embedding: np.ndarray ) -> None:
+		"""
+		
+			Purpose:
+			________
+			Inserts a single cleaned text chunk and its associated vector embedding.
+	
+			Parameters:
+			__________
+			source (str): Name or path of the source document.
+			index (int): Position of the chunk within the document.
+			text (str): Cleaned sentence or paragraph text.
+			embedding (np.ndarray): Numpy array containing the embedding vector.
+	
+			Returns:
+			_______
+			None
+			
+		"""
+		try:
+			self.source_file = source
+			self.index = index
+			self.vector = json.dumps( embedding.tolist( ) )
+			self.cursor.execute( """
+				INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+				VALUES (?, ?, ?, ?)""", (source, index, text, vector_str) )
+			self.connection.commit( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'insert( self, src: str, indx: int, txt: str, emb: np.ndarray )->None'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def insert_many( self, file: str, chunks: List[ str ], vectors: np.ndarray ) -> None:
+		"""
+		
+			Purpose:
+			-------
+			Batch inserts multiple cleaned text chunks and their associated embeddings.
+	
+			Parameters:
+			----------
+			source_file (str): Name or path of the source document.
+			chunks (List[str]): List of cleaned text chunks.
+			vectors (np.ndarray): 2D numpy array of shape (n_chunks, vector_dim).
+	
+			Returns:
+			None
+			
+		"""
+		try:
+			self.records = [ (file, i, chunks[ i ], json.dumps( vectors[ i ].tolist( ) ) )
+								for i in range( len( chunks ) ) ]
+			self.cursor.executemany( """
+				INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+				VALUES (?, ?, ?, ?) """, records )
+			self.connection.commit( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'insert_many( self, file: str, chunks: List[ str ], vectors: np.ndarray )'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def fetch_all( self ) -> Tuple[ List[ str ], np.ndarray ]:
+		"""
+		
+			Purpose:
+			--------
+			Retrieves all stored chunk texts and their corresponding embedding vectors.
+	
+			Parameters:
+			----------
+			None
+	
+			Returns:
+			--------
+			Tuple[List[str], np.ndarray]:
+			A list of chunk texts and a numpy matrix of embeddings.
+			
+		"""
+		try:
+			self.cursor.execute( "SELECT chunk_text, embedding FROM embeddings" )
+			self.rows = self.cursor.fetchall( )
+			self.texts, self.vectors = [ ], [ ]
+			for text, emb in rows:
+				self.texts.append( text )
+				self.vectors.append( np.array( json.loads( emb ) ) )
+			return self.texts, np.array( self.vectors )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'fetch_all( self ) -> Tuple[ List[ str ], np.ndarray ] '
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def fetch_by_file( self, file: str ) -> Tuple[ List[ str ], np.ndarray ]:
+		"""
+		
+			Purpose:
+			-------
+			Retrieves all chunk texts and embeddings for a given source file.
+	
+			Parameters:
+			---------
+			file (str): Name of the file to filter results by.
+	
+			Returns:
+			-------
+			Tuple[List[str], np.ndarray]:
+			Filtered chunk texts and corresponding embedding matrix.
+			
+			
+		"""
+		try:
+			self.cursor.execute( """
+				SELECT chunk_text, embedding FROM embeddings
+				WHERE source_file = ?""", ( file, ) )
+			self.rows = self.cursor.fetchall( )
+			self.texts, self.vectors = [ ], [ ]
+			for text, emb in self.rows:
+				self.texts.append( text )
+				self.vectors.append( np.array( json.loads( emb ) ) )
+			return self.texts, np.array( self.vectors )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'fetch_by_file( self, file: str ) -> Tuple[ List[ str ], np.ndarray ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def delete_by_file( self, file: str ) -> None:
+		"""
+		
+			Purpose:
+				Deletes all entries associated with a specific source file.
+	
+			Parameters:
+				file (str): File identifier to target deletion.
+	
+			Returns:
+				None
+				
+		"""
+		try:
+			self.cursor.execute( "DELETE FROM embeddings WHERE source_file = ?", ( file, ) )
+			self.connection.commit( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'delete_by_file( self, file: str ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def close( self ) -> None:
+		"""
+		
+			Purpose:
+			-------
+			Closes the database connection cleanly.
+	
+			Parameters:
+			None
+	
+			Returns:
+			None
+		
+		"""
+		try:
+			self.connection.close( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'close( self ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def purge_all( self ) -> None:
+		"""
+			Purpose:
+			Deletes all records from the embeddings table without removing the schema.
+		
+			Parameters:
+			None
+		
+			Returns:
+			None
+			
+		"""
+		try:
+			self.cursor.execute( "DELETE FROM embeddings" )
+			self.connection.commit( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'purge_all( self ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def count_rows( self ) -> int | None:
+		"""
+		
+			Purpose:
+			Returns the total number of rows in the embeddings table.
+		
+			Parameters:
+			None
+		
+			Returns:
+			int: Number of entries in the table.
+			
+		"""
+		try:
+			self.cursor.execute( "SELECT COUNT(*) FROM embeddings" )
+			return self.cursor.fetchone( )[ 0 ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = ( 'count_rows( self ) -> int ' )
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def fetch_metadata( self ) -> List[ Tuple[ int, str, int ] ] | None:
+		"""
+		
+			Purpose:
+			Retrieves all row metadata: ID, source file, and chunk index.
+		
+			Parameters:
+			None
+		
+			Returns:
+			list[tuple[int, str, int]]: Metadata for all rows.
+		
+		"""
+		try:
+			self.cursor.execute( "SELECT id, source_file, chunk_index FROM embeddings" )
+			return self.cursor.fetchall( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'SQLite'
+			exception.method = 'fetch_metadata( self ) -> List[ Tuple[ int, str, int ] ]'
+			error = ErrorDialog( exception )
+			error.show( )
+
+class Chroma( ):
+	"""
+	
+		Purpose:
+		---------
+		Provides persistent storage and retrieval of sentence-level embeddings using ChromaDB.
+		Supports adding documents, metadata tagging, semantic querying, and deletion by ID.
+	
+		Methods:
+		--------
+		add(): Adds documents with embeddings and optional metadata.
+		query(): Performs semantic search given a list of query texts.
+		delete(): Deletes embeddings by document ID.
+		count(): Returns the number of stored embeddings.
+		clear(): Removes all documents from the collection.
+		persist(): Commits changes to disk.
+		
+	"""
+	client: Optional[ Client ]
+	db_path: Optional[ str ]
+	ids: Optional[ List[ str ] ]
+	texts: Optional[ List[ str ] ]
+	embeddings: Optional[ List[ List[ float ] ] ]
+	metadata: Optional[ List[ Dict ] ]
+	collection: Optional[ str ]
+	telemetry: Optional[ bool ]
+	where: Optional[ Dict ]
+	n_results: Optional[ int ]
+
+	def __init__( self, path: str='./chroma', collection: str='embeddings' ) -> None:
+		"""
+			
+			Purpose:
+				Initializes the Chroma client and retrieves or creates the specified collection.
+	
+			Parameters:
+				path (str): Directory path for Chroma persistence.
+				collection (str): Name of the Chroma collection to use.
+	
+			Returns:
+				None
+			
+		"""
+		self.telemetry = false
+		self.db_path = path
+		self.collection = collection
+		self.client = chromadb.Client( Settings( persist_directory=self.db_path,
+											   anonymized_telemetry=self.telemetry ) )
+		self.collection = self.client.get_or_create_collection( name=collection )
+
+	def add(self, ids: List[ str ], texts: List[ str ], embeddings: List[ List[ float ] ],
+			metadatas: Optional[ List[ Dict ] ]=None) -> None:
+		"""
+			
+			Purpose:
+			---------
+			Adds a list of documents, their embeddings, and optional metadata to the collection.
+	
+			Parameters:
+			-----------
+			ids (List[str]): Unique identifiers for each document.
+			texts (List[str]): Raw sentence or paragraph texts.
+			embeddings (List[List[float]]): Corresponding embedding vectors.
+			metadatas (Optional[List[dict]]): Optional metadata dictionaries for filtering.
+			
+		"""
+		try:
+			self.ids = ids
+			self.texts = texts
+			self.embeddings = embeddings
+			self.metadata = metadatas
+			self.collection.add( documents=self.texts, embeddings=self.embeddings,
+			                     ids=self.ids, metadatas=self.metadata)
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = 'add( self., ids, texts, embeddings, ids, metadatas )'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def query( self, texts: List[ str ], n_results: int=5,
+	           where: Optional[ Dict ]=None ) -> List[ str ] | None:
+		"""
+		
+			Purpose:
+				Performs semantic similarity search over stored embeddings.
+	
+			Parameters:
+				texts (List[str]): List of query strings.
+				n_results (int): Number of top matches to return.
+				where (Optional[dict]): Optional metadata filter.
+	
+			Returns:
+				List[str]: List of matched document texts.
+			
+		"""
+		try:
+			self.texts = texts
+			self.n_results = n_results
+			self.where = where
+			result = self.collection.query( texts=self.texts,
+			                                n_results=self.n_results,
+			                                where=self.where )
+			return result.get( 'documents', [ ] )[ 0 ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = 'query( self, text: List[ str ], n_results: int, where: Dict )'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def delete(self, ids: List[ str ] ) -> None:
+		"""
+		
+			Purpose:
+				Deletes one or more documents from the collection by ID.
+	
+			Parameters:
+				ids (List[str]): Unique identifiers of documents to delete.
+	
+			Returns:
+				None
+				
+		"""
+		try:
+			self.ids = ids
+			self.collection.delete( ids=self.ids )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = ( 'delete(self, ids: List[ str ] ) -> None' )
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def count( self ) -> int | None:
+		"""
+		
+			Purpose:
+				Returns the number of stored embeddings in the collection.
+	
+			Returns:
+				int: Total count of stored documents.
+				
+		"""
+		try:
+			return self.collection.count( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = 'count( self ) -> int'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def clear( self ) -> None:
+		"""
+			
+			Purpose:
+				Clears all embeddings and metadata from the collection.
+	
+			Parameters:
+				None
+	
+			Returns:
+				None
+				
+		"""
+		try:
+			self.collection.delete( where=self.where )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = 'clear( self )'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def persist( self ) -> None:
+		"""
+			
+			Purpose:
+				Persists the current collection state to disk.
+	
+			Returns:
+				None
+				
+		"""
+		try:
+			self.client.persist( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Chroma'
+			exception.method = 'persist( self )'
+			error = ErrorDialog( exception )
+			error.show( )
