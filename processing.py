@@ -2389,6 +2389,15 @@ class Chroma( ):
 		self.client = chromadb.Client( Settings( persist_directory=self.db_path,
 											   anonymized_telemetry=self.telemetry ) )
 		self.collection = self.client.get_or_create_collection( name=collection )
+		self.ids = [ ]
+		self.texts = [ ]
+		self.embeddings = [ ]
+		self.metadata = [ ]
+		self.collection = None
+		self.telemetry = false
+		self.where = { }
+		self.n_results = None
+		
 
 	def add(self, ids: List[ str ], texts: List[ str ], embeddings: List[ List[ float ] ],
 			metadatas: Optional[ List[ Dict ] ]=None) -> None:
