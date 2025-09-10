@@ -2044,7 +2044,7 @@ class SQLite( ):
 	texts: Optional[ List[ str ] ]
 	records: Optional[ List[ Tuple[ str, int, str, str ] ] ]
 	
-	def __init__( self, db_path: str="./embeddings.db" ) -> None:
+	def __init__( self, db_path: str='./embeddings.db' ) -> None:
 		"""
 		
 				Purpose:
@@ -2372,7 +2372,7 @@ class SQLite( ):
 		
 		"""
 		try:
-			self.cursor.execute( "SELECT id, source_file, chunk_index FROM embeddings" )
+			self.cursor.execute( 'SELECT id, source_file, chunk_index FROM embeddings' )
 			return self.cursor.fetchall( )
 		except Exception as e:
 			exception = Error( e )
