@@ -2044,7 +2044,7 @@ class SQLite( ):
 	texts: Optional[ List[ str ] ]
 	records: Optional[ List[ Tuple[ str, int, str, str ] ] ]
 	
-	def __init__( self, db_path: str = "./embeddings.db" ) -> None:
+	def __init__( self, db_path: str="./embeddings.db" ) -> None:
 		"""
 		
 				Purpose:
@@ -2470,7 +2470,7 @@ class Chroma( ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def query( self, texts: List[ str ], n_results: int = 5, where: Optional[ Dict ]=None ) -> \
+	def query( self, texts: List[ str ], n_results: int=5, where: Optional[ Dict ]=None ) -> \
 	List[ str ] | None:
 		"""
 		
