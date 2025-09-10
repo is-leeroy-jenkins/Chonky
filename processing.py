@@ -43,18 +43,23 @@
   ******************************************************************************************
   '''
 from __future__ import annotations
+
+import json
 import os
 import re
+import sqlite3
 import string
-from collections import Counter, defaultdict
+from collections import Counter
+from pathlib import Path
 from typing import List, Optional, Dict
+
 import fitz
+import numpy as np
+import matplotlib.pyplot as plt
 import nltk
 import pandas as pd
 import tiktoken
 import unicodedata
-import sqlite3
-import json
 from bs4 import BeautifulSoup
 from docx import Document as Docx
 from gensim.models import Word2Vec
@@ -62,11 +67,11 @@ from nltk import FreqDist, ConditionalFreqDist
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
+from sentence_transformers import SentenceTransformer
+from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from tiktoken.core import Encoding
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sentence_transformers import SentenceTransformer
+
 from boogr import Error, ErrorDialog
 
 try:
@@ -255,18 +260,15 @@ class Text( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized',
-				 'tokenized', 'corrected', 'cleaned_text', 'words', 'paragraphs',
-				 'words', 'pages', 'chunks', 'chunk_size', 'cleaned_pages',
-				 'stop_words', 'cleaned_lines', 'removed', 'lowercase', 'encoding', 'vocabulary',
-				 'translator', 'lemmatizer', 'stemmer', 'tokenizer', 'vectorizer',
-				 'split_lines', 'split_pages', 'collapse_whitespace',
-				 'remove_punctuation', 'remove_special', 'remove_html',
-				 'remove_markdown', 'remove_stopwords', 'remove_headers', 'tiktokenize',
-				 'normalize_text', 'tokenize_text', 'tokenize_words',
-				 'tokenize_sentences', 'chunk_text', 'chunk_words',
-				 'create_wordbag', 'create_word2vec', 'create_tfidf',
-				 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
+		return [ 'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized', 'tokenized',
+			'corrected', 'cleaned_text', 'words', 'paragraphs', 'words', 'pages', 'chunks',
+			'chunk_size', 'cleaned_pages', 'stop_words', 'cleaned_lines', 'removed', 'lowercase',
+			'encoding', 'vocabulary', 'translator', 'lemmatizer', 'stemmer', 'tokenizer',
+			'vectorizer', 'split_lines', 'split_pages', 'collapse_whitespace', 'remove_punctuation',
+			'remove_special', 'remove_html', 'remove_markdown', 'remove_stopwords',
+			'remove_headers', 'tiktokenize', 'normalize_text', 'tokenize_text', 'tokenize_words',
+			'tokenize_sentences', 'chunk_text', 'chunk_words', 'create_wordbag', 'create_word2vec',
+			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
 	def load_text( self, file_path: str ) -> str | None:
 		"""
@@ -306,14 +308,14 @@ class Text( Processor ):
 
 			Returns:
 			--------
-			A cleaned_lines path path with:
+			A string with:
 				- Consecutive whitespace reduced to a single space
 				- Leading/trailing spaces removed
 				- Blank words removed
 
 		"""
 		try:
-			throwif( 'text', text )
+			throw_if( 'text', text )
 			self.raw_input = text
 			self.cleaned_text = re.sub( r'[ \t]+', ' ', self.raw_input )
 			self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
@@ -342,7 +344,7 @@ class Text( Processor ):
 			Returns:
 			--------
 			- str
-				The path path with all punctuation removed.
+				The string with all punctuation removed.
 
 		"""
 		try:
@@ -500,7 +502,7 @@ class Text( Processor ):
 			self.stop_words = stopwords.words( 'english' )
 			self.tokens = nltk.word_tokenize( self.raw_input )
 			self.cleaned_tokens = [ w for w in self.tokens if
-									w.isalnum( ) and w not in self.stop_words ]
+				w.isalnum( ) and w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
@@ -547,67 +549,94 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_headers( self, pages: List[ str ], size: int = 3 ) -> List[ str ] | None:
+	def remove_headers( self, file_path: str, lines_per_page: int=50,
+		header_lines: int=3, footer_lines: int=3, ) -> str:
 		"""
-
+		
 			Purpose:
 			--------
-			Removes repetitive headers and footers across a list of pages by frequency analysis.
-
+			Remove repetitive headers and footers from a text document by identifying recurring
+			line blocks at page boundaries and stripping the most frequent candidates.
+	
 			Parameters:
 			-----------
-			- pages (list of str):
-				A list where each element is the full path of one page.
-
-			- min (int):
-				Minimum num of times a line must appear at the top/bottom to be a header/footer.
-
+			file_path (str):
+			Path to the plain-text document to clean.
+			lines_per_page (int, optional):
+			Approximate number of lines per page. Defaults to 50. Tune for your source.
+			header_lines (int, optional):
+			Number of top lines per page to consider a header candidate. Defaults to 3.
+			footer_lines (int, optional):
+			Number of bottom lines per page to consider a footer candidate. Defaults to 3.
+	
 			Returns:
-			---------
-			- list of str:
-				List of cleaned_lines page words without detected headers/footers.
-
+			--------
+			str:
+			Cleaned document text with repetitive headers and footers removed.
+				
 		"""
 		try:
-			throw_if( 'pages', pages )
-			_headers = defaultdict( int )
-			_footers = defaultdict( int )
-			self.pages = pages
-			# First pass: collect frequency of top/bottom words
-			for _page in self.pages:
-				self.lines = _page.strip( ).splitlines( )
-				if not self.lines:
+			throw_if( 'file_path', file_path )
+			if lines_per_page < 6:
+				raise ValueError( "Argument \"lines_per_page\" should be at least 6." )
+			if header_lines < 0 or footer_lines < 0:
+				raise ValueError( "Arguments \"header_lines\" and \"footer_lines\" must be non-negative." )
+			
+			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as fh:
+				all_lines: List[ str ] = fh.readlines( )
+			
+			pages: List[ List[ str ] ] = [ all_lines[ i: i + lines_per_page ] for i in
+				range( 0, len( all_lines ), lines_per_page ) ]
+			
+			header_counts: Dict[ Tuple[ str, ... ], int ] = { }
+			footer_counts: Dict[ Tuple[ str, ... ], int ] = { }
+			
+			for page in pages:
+				n = len( page )
+				if n == 0:
 					continue
-				_headers[ self.lines[ 0 ].strip( ) ] += 1
-				_footers[ self.lines[ -1 ].strip( ) ] += 1
-			# Identify candidates for removal
-			_head = { line for line, count in _headers.items( ) if
-					  count >= size }
-			_foot = { line for line, count in _footers.items( ) if
-					  count >= size }
-			# Second pass: clean pages
-			for _page in self.pages:
-				if not self.lines:
-					continue
-				self.lines = _page.strip( ).splitlines( )
-				if not self.lines:
-					self.cleaned_pages.append( _page )
-					continue
-				# Remove header
-				if self.lines[ 0 ].strip( ) in _head:
-					self.lines = self.lines[ 1: ]
-				# Remove footer
-				if self.lines and self.lines[ -1 ].strip( ) in _foot:
-					self.lines = self.lines[ : -1 ]
-				self.cleaned_pages.append( '\n'.join( self.lines ) )
-			_retval = self.cleaned_pages
-			return _retval
+				
+				if header_lines > 0 and n >= header_lines:
+					hdr = tuple( page[ :header_lines ] )
+					if hdr in header_counts:
+						header_counts[ hdr ] += 1
+					else:
+						header_counts[ hdr ] = 1
+				
+				if footer_lines > 0 and n >= footer_lines:
+					ftr = tuple( page[ -footer_lines: ] )
+					if ftr in footer_counts:
+						footer_counts[ ftr ] += 1
+					else:
+						footer_counts[ ftr ] = 1
+			
+			common_header: Tuple[ str, ... ] = ()
+			if header_counts:
+				common_header = max( header_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
+			
+			common_footer: Tuple[ str, ... ] = ()
+			if footer_counts:
+				common_footer = max( footer_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
+			
+			cleaned_pages: List[ str ] = [ ]
+			for page in pages:
+				lines = list( page )
+				
+				if common_header and len( lines ) >= len( common_header ):
+					if tuple( lines[ : len( common_header ) ] ) == common_header:
+						lines = lines[ len( common_header ): ]
+				
+				if common_footer and len( lines ) >= len( common_footer ):
+					if tuple( lines[ -len( common_footer ): ] ) == common_footer:
+						lines = lines[ : -len( common_footer ) ]
+				
+				cleaned_pages.append( ''.join( lines ) )
+			return '\n'.join( cleaned_pages )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('remove_headers( self, pages: List[ str ], min: int=3 ) -> List['
-								'str]')
+			exception.method = ( )
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -627,15 +656,15 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
-			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ]
-					 for sentence in self.tokens ]
+			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ] for
+				sentence in self.tokens ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('filter_tokens( self, tokens: list[ list[ str ]])->list[ list[ '
-								'str '
-								']]')
+			                    'str '
+			                    ']]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -664,8 +693,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode(
-				'utf-8' )
+			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
 			self.normalized = re.sub( r'\s+', ' ', _n ).strip( ).lower( )
 			return self.normalized
 		except Exception as e:
@@ -705,7 +733,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> List[ str ] | None:
+	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -741,7 +769,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
-								'List[ str ]')
+			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -780,8 +808,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int = 50, return_as_string: bool = True ) -> List[
-		str ]:
+	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -815,7 +842,7 @@ class Text( Processor ):
 			_tokens = nltk.word_tokenize( self.words )
 			self.tokens.append( _tokens )
 			self.chunks = [ self.tokens[ i: i + size ] for i in
-							range( 0, len( self.tokens ), size ) ]
+				range( 0, len( self.tokens ), size ) ]
 			if return_as_string:
 				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
@@ -828,8 +855,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, words: List[ str ], size: int = 50, as_string: bool = True ) -> List[
-		str ]:
+	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -859,8 +885,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.tokens = [ token for sublist in words for token in sublist ]
-			self.chunks = [ self.tokens[ i: i + size ]
-							for i in range( 0, len( self.tokens ), size ) ]
+			self.chunks = [ self.tokens[ i: i + size ] for i in
+				range( 0, len( self.tokens ), size ) ]
 			if as_string:
 				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
@@ -869,9 +895,8 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Token'
-			exception.method = (
-					'chunk_words( self, words: list[ str ], max: int=800, over: int=50 ) -> list[ '
-					'str ]')
+			exception.method = ('chunk_words( self, words: list[ str ], max: int=800, over: int=50 ) -> list[ '
+				'str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -909,7 +934,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, path: str, delimit: str = '\f' ) -> List[ str ] | None:
+	def split_pages( self, path: str, delimit: str='\f' ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -935,8 +960,8 @@ class Text( Processor ):
 				self.raw_pages = _content.split( delimit )
 			for _page in self.raw_pages:
 				self.lines = _page.strip( ).splitlines( )
-				self.cleaned_text = '\n'.join(
-					[ line.strip( ) for line in self.lines if line.strip( ) ] )
+				self.cleaned_text = '\n'.join( [ line.strip( ) for line in self.lines if
+					line.strip( ) ] )
 				self.cleaned_pages.append( self.cleaned_text )
 			return self.cleaned_pages
 		except Exception as e:
@@ -970,14 +995,14 @@ class Text( Processor ):
 			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-									pg.strip( ) ]
+					pg.strip( ) ]
 				
 				return self.paragraphs
 		except UnicodeDecodeError:
 			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as _file:
 				self.raw_input = _file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-									pg.strip( ) ]
+					pg.strip( ) ]
 				return self.paragraphs
 	
 	def compute_frequency_distribution( self, lines: List[ str ] ) -> FreqDist:
@@ -1011,12 +1036,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('compute_frequency_distribution( self, documents: list, process: '
-								'bool=True) -> FreqDist')
+			                    'bool=True) -> FreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
 	
 	def compute_conditional_distribution( self, lines: List[ str ], condition=None,
-										  process: bool = True ) -> ConditionalFreqDist:
+		process: bool=True ) -> ConditionalFreqDist:
 		"""
 
 			Purpose:
@@ -1057,11 +1082,11 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('compute_conditional_distribution( self, words: List[ str ], '
-								'condition=None, process: bool=True ) -> ConditionalFreqDist')
+			                    'condition=None, process: bool=True ) -> ConditionalFreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_vocabulary( self, freq_dist: Dict, size: int = 1 ) -> List[ str ] | None:
+	def create_vocabulary( self, freq_dist: Dict, size: int=1 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1083,7 +1108,7 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'frequ_dist', freq_dist )
+			throw_if( 'freq_dist', freq_dist )
 			self.frequency_distribution = freq_dist
 			self.words = [ word for word, freq in freq_dist.items( ) if freq >= size ]
 			self.vocabulary = sorted( self.words )
@@ -1093,7 +1118,7 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
-								'str]')
+			                    'str]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1125,8 +1150,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_word2vec( self, words: List[ List[ str ] ], dims=100, win=5,
-						 size=1 ) -> Word2Vec | None:
+	def create_word2vec( self, words: List[ List[ str ] ], dims=100, win=5, size=1 ) -> Word2Vec | None:
 		"""
 
 			Purpose:
@@ -1148,14 +1172,13 @@ class Text( Processor ):
 		try:
 			throw_if( 'words', words )
 			self.words = words
-			return Word2Vec( sentences=self.words, vector_size=dims,
-							 window=win, min_count=size )
+			return Word2Vec( sentences=self.words, vector_size=dims, window=win, min_count=size )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('create_word2vec( self, words: List[ str ], '
-								'size=100, window=5, min=1 ) -> Word2Vec')
+			                    'size=100, window=5, min=1 ) -> Word2Vec')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1288,13 +1311,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('embed_sentence( self, sentences: List[ str ], model: Word2Vec ) '
-								'-> np.ndarray')
+			                    '-> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def encode_sentences( self, sentences: List[ str ], model_name: str = 'all-MiniLM-L6-v2' ) -> \
-	Tuple[
-		List[ str ], np.ndarray ]:
+	def encode_sentences( self, sentences: List[ str ], model_name: str='all-MiniLM-L6-v2' ) -> \
+			Tuple[ List[ str ], np.ndarray ]:
 		"""
 		
 			Purpose:
@@ -1343,12 +1365,13 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('vectorize_corpus( self, corpus: List[ List[ str ] ], '
-								'model: Word2Vec ) -> np.ndarray')
+			                    'model: Word2Vec ) -> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def semantic_search( self, query: str, sentences: List[ str ], embeddings: np.ndarray,
-						 model: SentenceTransformer, top: int = 5 ) -> List[ tuple[ str, float ] ]:
+	def semantic_search( self, query: str, sentences: List[
+		str ], embeddings: np.ndarray, model: SentenceTransformer, top: int=5 ) -> List[
+		tuple[ str, float ] ]:
 		"""
 			Purpose:
 				Perform semantic search over embedded corpus using query.
@@ -1377,12 +1400,12 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('semantic_search( self, query: str, sentences: List[ str ], '
-								'embeddings: np.ndarray, model: SentenceTransformer,  '
-								'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
+			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
+			                    'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def visualize_embeddings( self, model: Word2Vec, num_words: int = 100 ):
+	def visualize_embeddings( self, model: Word2Vec, num_words: int=100 ):
 		"""
 
 			Purpose:
@@ -1481,10 +1504,9 @@ class Word( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'extract_text', 'split_sentences', 'clean_sentences',
-				 'create_vocabulary', 'compute_frequency_distribution',
-				 'summarize', 'filepath', 'raw_text', 'paragraphs',
-				 'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
+		return [ 'extract_text', 'split_sentences', 'clean_sentences', 'create_vocabulary',
+			'compute_frequency_distribution', 'summarize', 'filepath', 'raw_text', 'paragraphs',
+			'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
 	
 	def extract_text( self ) -> str | None:
 		"""
@@ -1497,7 +1519,7 @@ class Word( Processor ):
 		try:
 			self.document = Docx( self.file_path )
 			self.paragraphs = [ para.text.strip( ) for para in self.document.paragraphs if
-								para.text.strip( ) ]
+				para.text.strip( ) ]
 			self.raw_text = '\n'.join( self.paragraphs )
 			return self.raw_text
 		except Exception as e:
@@ -1564,7 +1586,7 @@ class Word( Processor ):
 			for _sentence in self.cleaned_sentences:
 				_tokens = word_tokenize( _sentence )
 				self.tokens = [ token for token in _tokens if
-								token.isalpha( ) and token not in self.stop_words ]
+					token.isalpha( ) and token not in self.stop_words ]
 				all_words.extend( self.tokens )
 			self.vocabulary = set( all_words )
 			return self.vocabulary
@@ -1612,8 +1634,7 @@ class Word( Processor ):
 		print( f'Paragraphs: {len( self.paragraphs )}' )
 		print( f'Sentences: {len( self.sentences )}' )
 		print( f'Vocabulary Size: {len( self.vocabulary )}' )
-		print(
-			f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
+		print( f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
 
 class PDF( Processor ):
 	"""
@@ -1641,7 +1662,7 @@ class PDF( Processor ):
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
 	
-	def __init__( self, headers: bool = False, size: int = 10, tables: bool = True ) -> None:
+	def __init__( self, headers: bool=False, size: int=10, tables: bool=True ) -> None:
 		"""
 
 			Purpose:
@@ -1687,12 +1708,11 @@ class PDF( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'strip_headers', 'minimum_length', 'extract_tables',
-				 'path', 'page', 'pages', 'words', 'clean_lines', 'extracted_lines',
-				 'extracted_tables', 'extracted_pages', 'extract_lines',
-				 'extract_text', 'export_csv', 'export_text', 'export_excel' ]
+		return [ 'strip_headers', 'minimum_length', 'extract_tables', 'path', 'page', 'pages',
+			'words', 'clean_lines', 'extracted_lines', 'extracted_tables', 'extracted_pages',
+			'extract_lines', 'extract_text', 'export_csv', 'export_text', 'export_excel' ]
 	
-	def extract_lines( self, path: str, size: Optional[ int ] = None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1731,7 +1751,7 @@ class PDF( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = ('extract_lines( self, path: str, max: Optional[ int ]=None ) -> '
-								'List[ str ]')
+			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1833,7 +1853,7 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def extract_text( self, path: str, size: Optional[ int ] = None ) -> str | None:
+	def extract_text( self, path: str, size: Optional[ int ]=None ) -> str | None:
 		"""
 
 			Purpose:
@@ -1868,7 +1888,7 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def extract_tables( self, path: str, size: Optional[ int ] = None ) -> (
+	def extract_tables( self, path: str, size: Optional[ int ]=None ) -> (
 			List[ pd.DataFrame ] | None):
 		"""
 
@@ -1903,8 +1923,8 @@ class PDF( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = (
-					'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
-					'pd.DataFrame ]')
+				'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
+				'pd.DataFrame ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1931,8 +1951,8 @@ class PDF( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = (
-					'export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> '
-					'None')
+				'export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> '
+				'None')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -2024,7 +2044,7 @@ class SQLite( ):
 	texts: Optional[ List[ str ] ]
 	records: Optional[ List[ Tuple[ str, int, str, str ] ] ]
 	
-	def __init__( self, db_path: str="./embeddings.db" ) -> None:
+	def __init__( self, db_path: str = "./embeddings.db" ) -> None:
 		"""
 		
 				Purpose:
@@ -2069,13 +2089,34 @@ class SQLite( ):
 		"""
 		try:
 			self.cursor.execute( """
-				CREATE TABLE IF NOT EXISTS embeddings (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					source_file TEXT NOT NULL,
-					chunk_index INTEGER NOT NULL,
-					chunk_text TEXT NOT NULL,
-					embedding TEXT NOT NULL,
-					created_at TEXT DEFAULT CURRENT_TIMESTAMP ) """ )
+                                 CREATE TABLE IF NOT EXISTS embeddings
+                                 (
+                                     id
+                                     INTEGER
+                                     PRIMARY
+                                     KEY
+                                     AUTOINCREMENT,
+                                     source_file
+                                     TEXT
+                                     NOT
+                                     NULL,
+                                     chunk_index
+                                     INTEGER
+                                     NOT
+                                     NULL,
+                                     chunk_text
+                                     TEXT
+                                     NOT
+                                     NULL,
+                                     embedding
+                                     TEXT
+                                     NOT
+                                     NULL,
+                                     created_at
+                                     TEXT
+                                     DEFAULT
+                                     CURRENT_TIMESTAMP
+                                 ) """ )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2109,8 +2150,8 @@ class SQLite( ):
 			self.index = index
 			self.vector = json.dumps( embedding.tolist( ) )
 			self.cursor.execute( """
-				INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-				VALUES (?, ?, ?, ?)""", (source, index, text, vector_str) )
+                                 INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+                                 VALUES (?, ?, ?, ?)""", (source, index, text, vector_str) )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2138,11 +2179,11 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.records = [ (file, i, chunks[ i ], json.dumps( vectors[ i ].tolist( ) ) )
-								for i in range( len( chunks ) ) ]
+			self.records = [ (file, i, chunks[ i ], json.dumps( vectors[ i ].tolist( ) )) for i in
+				range( len( chunks ) ) ]
 			self.cursor.executemany( """
-				INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-				VALUES (?, ?, ?, ?) """, records )
+                                     INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+                                     VALUES (?, ?, ?, ?) """, records )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2205,8 +2246,9 @@ class SQLite( ):
 		"""
 		try:
 			self.cursor.execute( """
-				SELECT chunk_text, embedding FROM embeddings
-				WHERE source_file = ?""", ( file, ) )
+                                 SELECT chunk_text, embedding
+                                 FROM embeddings
+                                 WHERE source_file = ?""", (file,) )
 			self.rows = self.cursor.fetchall( )
 			self.texts, self.vectors = [ ], [ ]
 			for text, emb in self.rows:
@@ -2235,7 +2277,7 @@ class SQLite( ):
 				
 		"""
 		try:
-			self.cursor.execute( "DELETE FROM embeddings WHERE source_file = ?", ( file, ) )
+			self.cursor.execute( "DELETE FROM embeddings WHERE source_file = ?", (file,) )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2312,7 +2354,7 @@ class SQLite( ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'SQLite'
-			exception.method = ( 'count_rows( self ) -> int ' )
+			exception.method = ('count_rows( self ) -> int ')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -2368,7 +2410,7 @@ class Chroma( ):
 	telemetry: Optional[ bool ]
 	where: Optional[ Dict ]
 	n_results: Optional[ int ]
-
+	
 	def __init__( self, path: str='./chroma', collection: str='embeddings' ) -> None:
 		"""
 			
@@ -2387,7 +2429,7 @@ class Chroma( ):
 		self.db_path = path
 		self.collection = collection
 		self.client = chromadb.Client( Settings( persist_directory=self.db_path,
-											   anonymized_telemetry=self.telemetry ) )
+			anonymized_telemetry=self.telemetry ) )
 		self.collection = self.client.get_or_create_collection( name=collection )
 		self.ids = [ ]
 		self.texts = [ ]
@@ -2397,10 +2439,9 @@ class Chroma( ):
 		self.telemetry = false
 		self.where = { }
 		self.n_results = None
-		
-
-	def add(self, ids: List[ str ], texts: List[ str ], embeddings: List[ List[ float ] ],
-			metadatas: Optional[ List[ Dict ] ]=None) -> None:
+	
+	def add( self, ids: List[ str ], texts: List[ str ], embeddings: List[ List[ float ] ],
+	         metadatas: Optional[ List[ Dict ] ]=None ) -> None:
 		"""
 			
 			Purpose:
@@ -2420,8 +2461,7 @@ class Chroma( ):
 			self.texts = texts
 			self.embeddings = embeddings
 			self.metadata = metadatas
-			self.collection.add( documents=self.texts, embeddings=self.embeddings,
-			                     ids=self.ids, metadatas=self.metadata)
+			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids, metadatas=self.metadata )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -2429,9 +2469,9 @@ class Chroma( ):
 			exception.method = 'add( self., ids, texts, embeddings, ids, metadatas )'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def query( self, texts: List[ str ], n_results: int=5,
-	           where: Optional[ Dict ]=None ) -> List[ str ] | None:
+	
+	def query( self, texts: List[ str ], n_results: int = 5, where: Optional[ Dict ]=None ) -> \
+	List[ str ] | None:
 		"""
 		
 			Purpose:
@@ -2450,9 +2490,7 @@ class Chroma( ):
 			self.texts = texts
 			self.n_results = n_results
 			self.where = where
-			result = self.collection.query( texts=self.texts,
-			                                n_results=self.n_results,
-			                                where=self.where )
+			result = self.collection.query( texts=self.texts, n_results=self.n_results, where=self.where )
 			return result.get( 'documents', [ ] )[ 0 ]
 		except Exception as e:
 			exception = Error( e )
@@ -2461,8 +2499,8 @@ class Chroma( ):
 			exception.method = 'query( self, text: List[ str ], n_results: int, where: Dict )'
 			error = ErrorDialog( exception )
 			error.show( )
-
-	def delete(self, ids: List[ str ] ) -> None:
+	
+	def delete( self, ids: List[ str ] ) -> None:
 		"""
 		
 			Purpose:
@@ -2482,10 +2520,10 @@ class Chroma( ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Chroma'
-			exception.method = ( 'delete(self, ids: List[ str ] ) -> None' )
+			exception.method = ('delete(self, ids: List[ str ] ) -> None')
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def count( self ) -> int | None:
 		"""
 		
@@ -2497,7 +2535,7 @@ class Chroma( ):
 				
 		"""
 		try:
-			return self.collection.count( )
+			return self.collection.count( self.ids )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -2505,7 +2543,7 @@ class Chroma( ):
 			exception.method = 'count( self ) -> int'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def clear( self ) -> None:
 		"""
 			
@@ -2528,7 +2566,7 @@ class Chroma( ):
 			exception.method = 'clear( self )'
 			error = ErrorDialog( exception )
 			error.show( )
-
+	
 	def persist( self ) -> None:
 		"""
 			
