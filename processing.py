@@ -132,18 +132,18 @@ class Processor( ):
 		self.stemmer = PorterStemmer( )
 		self.files = [ ]
 		self.words = [ ]
-		self.tokens = [ ]
+		self.tokens = List[ List[ str ] ]
 		self.lines = [ ]
 		self.pages = [ ]
 		self.ids = [ ]
-		self.paragraphs = [ ]
-		self.chunks = [ ]
+		self.paragraphs = List[ List[ str ] ]
+		self.chunks = List[ List[ str ] ]
 		self.chunk_size = 0
 		self.cleaned_lines = [ ]
-		self.cleaned_tokens = [ ]
-		self.cleaned_pages = [ ]
+		self.cleaned_tokens = List[ List[ str ] ]
+		self.cleaned_pages = List[ List[ str ] ]
 		self.removed = [ ]
-		self.raw_pages = [ ]
+		self.raw_pages = List[ List[ str ] ]
 		self.stop_words = set( )
 		self.vocabulary = [ ]
 		self.frequency_distribution = { }
@@ -212,16 +212,16 @@ class Text( Processor ):
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.words = [ ]
-		self.tokens = [ ]
+		self.tokens = List[ List[ str ] ]
 		self.lines = [ ]
-		self.pages = [ ]
+		self.pages = List[ List[ str ] ]
 		self.ids = [ ]
-		self.paragraphs = [ ]
-		self.chunks = [ ]
+		self.paragraphs = List[ List[ str ] ]
+		self.chunks = List[ List[ str ] ]
 		self.chunk_size = 0
 		self.cleaned_lines = [ ]
-		self.cleaned_tokens = [ ]
-		self.cleaned_pages = [ ]
+		self.cleaned_tokens = List[ List[ str ] ]
+		self.cleaned_pages = List[ List[ str ] ] = [ ]
 		self.removed = [ ]
 		self.raw_pages = [ ]
 		self.stop_words = set( )
@@ -286,7 +286,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'file_path', file_path )
 			self.file_path = file_path
-			return Path( self.file_path ).read_text( encoding='utf-8' )
+			return Path( self.file_path ).read_text( encoding='utf-8', errors='ignore' )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -500,7 +500,8 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.raw_input = text.lower( )
 			self.stop_words = stopwords.words( 'english' )
-			self.tokens = nltk.word_tokenize( self.raw_input )
+			_tokens = nltk.word_tokenize( self.raw_input )
+			self.tokens.append( _tokens )
 			self.cleaned_tokens = [ w for w in self.tokens if
 				w.isalnum( ) and w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
@@ -549,7 +550,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_headers( self, file_path: str, lines_per_page: int=50,
+	def remove_headers( self, file_path: str, lines_per_page: int=55,
 		header_lines: int=3, footer_lines: int=3, ) -> str:
 		"""
 		
@@ -585,7 +586,7 @@ class Text( Processor ):
 			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as fh:
 				all_lines: List[ str ] = fh.readlines( )
 			
-			pages: List[ List[ str ] ] = [ all_lines[ i: i + lines_per_page ] for i in
+			pages = [ all_lines[ i: i + lines_per_page ] for i in
 				range( 0, len( all_lines ), lines_per_page ) ]
 			
 			header_counts: Dict[ Tuple[ str, ... ], int ] = { }
@@ -662,9 +663,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('filter_tokens( self, tokens: list[ list[ str ]])->list[ list[ '
-			                    'str '
-			                    ']]')
+			exception.method = ('filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ [ ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -693,8 +692,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_n = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
-			self.normalized = re.sub( r'\s+', ' ', _n ).strip( ).lower( )
+			_normal = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
+			self.normalized = re.sub( r'\s+', ' ', _normal ).strip( ).lower( )
 			return self.normalized
 		except Exception as e:
 			exception = Error( e )
@@ -704,7 +703,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_text( self, text: str ) -> List[ str ] | None:
+	def tokenize_text( self, text: str ) -> List[ List[ str ] ] | None:
 		'''
 
 			Purpose:
@@ -723,7 +722,8 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			_tokens = nltk.word_tokenize( text )
 			self.words = [ t for t in _tokens ]
-			self.tokens = [ re.sub( r'[^\w"-]', '', w ) for w in self.words if w.strip( ) ]
+			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in self.words if w.strip( ) ]
+			self.tokens.append( _tokenlist )
 			return self.tokens
 		except Exception as e:
 			exception = Error( e )
@@ -768,8 +768,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('tiktokenize( self, text: str, encoding: str="cl100k_base" ) -> '
-			                    'List[ str ]')
+			exception.method = ('tiktokenize( self, text, encoding) -> List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -808,7 +807,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int=50, return_as_string: bool=True ) -> List[ str ]:
+	def chunk_text( self, text: str, size: int=55, return_as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -841,8 +840,8 @@ class Text( Processor ):
 			self.words = text
 			_tokens = nltk.word_tokenize( self.words )
 			self.tokens.append( _tokens )
-			self.chunks = [ self.tokens[ i: i + size ] for i in
-				range( 0, len( self.tokens ), size ) ]
+			_chunk = [ self.tokens[ i: i + size ] for i in range( 0, len( self.tokens ), size ) ]
+			self.chunks.append( _chunk )
 			if return_as_string:
 				return [ ' '.join( chunk ) for chunk in self.chunks ]
 			else:
@@ -895,8 +894,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Token'
-			exception.method = ('chunk_words( self, words: list[ str ], max: int=800, over: int=50 ) -> list[ '
-				'str ]')
+			exception.method = ('chunk_words( self, words: list[ str ], max: int=800, over: int=50)')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -934,43 +932,52 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, path: str, delimit: str='\f' ) -> List[ str ] | None:
+	def split_pages( self, file_path: str, lines_per_page: int=55 ) -> List[ str ] | None:
 		"""
-
-			Purpose:
-			--------
-			Reads path from a file, splits it into words,
-			and groups them into path.
-
-			Parameters:
-			-----------
-			- path (str): Path to the path file.
-			- delimiter (str): Page separator path (default is '\f' for form feed).
-
-			Returns:
-			---------
-			- list[ str ]  where each element is the path.
+		    
+		    Purpose:
+		    ---------
+	        Splits a plain-text document into a list of pages using either form-feed characters
+	        or fixed line count windows when form-feeds are absent.
+		
+		    Parameters:
+		    -----------
+	        file_path (str): Path to the text document.
+	        lines_per_page (int): Approximate number of lines per page (default: 55).
+		
+		    Returns:
+		    ---------
+	        List[str]: List of page-level string segments.
+		
 
 		"""
 		try:
-			throw_if( 'path', path )
-			self.file_path = path
-			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
-				_content = _file.read( )
-				self.raw_pages = _content.split( delimit )
-			for _page in self.raw_pages:
-				self.lines = _page.strip( ).splitlines( )
-				self.cleaned_text = '\n'.join( [ line.strip( ) for line in self.lines if
-					line.strip( ) ] )
-				self.cleaned_pages.append( self.cleaned_text )
-			return self.cleaned_pages
+			throw_if( 'file_path', file_path )
+			if not os.path.exists( file_path ):
+				raise FileNotFoundError( f'File not found: {file_path}' )
+			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
+				content = file.read( )
+			if '\f' in content:
+				return [ page.strip( ) for page in content.split( '\f' ) if page.strip( ) ]
+			self.lines = content.splitlines( )
+			i = 0
+			n = len( self.lines )
+			while i < n:
+				page_lines = self.lines[ i: i + lines_per_page ]
+				page_text = '\n'.join( page_lines ).strip( )
+				if page_text:
+					self.pages.append( page_text )
+				i += lines_per_page
+			return self.pages
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'split_pages( self, path: str, delimit: str="\f" ) -> List[ str ]'
+			exception.module = "NLPTools"
+			exception.cause = "Document Splitting"
+			exception.method = "split_pages(file_path)"
 			error = ErrorDialog( exception )
 			error.show( )
+		
+	
 	
 	def split_paragraphs( self, path: str ) -> List[ str ] | None:
 		"""
@@ -1081,8 +1088,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('compute_conditional_distribution( self, words: List[ str ], '
-			                    'condition=None, process: bool=True ) -> ConditionalFreqDist')
+			exception.method = 'compute_conditional_distribution( self, words, cond, proc  )'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1438,7 +1444,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'tvisualize_embeddings( self, model: Word2Vec, num_words: int=100 )'
+			exception.method = 'visualize_embeddings( self, model: Word2Vec, num_words: int=100 )'
 			error = ErrorDialog( exception )
 			error.show( )
 
