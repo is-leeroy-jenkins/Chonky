@@ -742,7 +742,8 @@ class Text( Processor ):
 			if lines_per_page < 6:
 				raise ValueError( "Argument \"lines_per_page\" should be at least 6." )
 			if header_lines < 0 or footer_lines < 0:
-				raise ValueError( "Arguments \"header_lines\" and \"footer_lines\" must be non-negative." )
+				msg = "Arguments \"header_lines\" and \"footer_lines\" must be non-negative."
+				raise ValueError( msg )
 			
 			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as fh:
 				all_lines: List[ str ] = fh.readlines( )
@@ -2590,6 +2591,200 @@ class HTML( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class Fetch( ):
+	"""
+
+		Purpose:
+		Provides a unified conversational system with explicit methods for
+		querying structured data (SQL), unstructured documents, or free-form
+		chat with an OpenAI LLM. Each method is deterministic and isolates
+		a specific capability.
+
+		Parameters:
+		db_uri (str):
+		URI string for the SQLite database connection.
+		doc_paths (List[str]):
+		File paths to documents (txt, pdf, csv, html) for ingestion.
+		model (str, optional):
+		OpenAI model to use (default: 'gpt-4o-mini').
+		temperature (float, optional):
+		Sampling temperature for the LLM (default: 0.8).
+
+		Attributes:
+		model (str): OpenAI model identifier.
+		temperature (float): Temperature setting for sampling.
+		llm (ChatOpenAI): Instantiated OpenAI-compatible chat model.
+		db_uri (str): SQLite database URI.
+		doc_paths (List[str]): Paths to local document sources.
+		memory (ConversationBufferMemory): LangChain conversation buffer.
+		sql_tool (Optional[Tool]): SQL query tool.
+		doc_tool (Optional[Tool]): Vector document retrieval tool.
+		api_tools (List[Tool]): List of custom API tools.
+		agent (AgentExecutor): LangChain multi-tool agent.
+		__tools (List[Tool]): Consolidated tool list used by agent.
+		documents (List[str]): Cached document source text or metadata.
+		db_toolkit (Optional[object]): SQLDatabaseToolkit instance.
+		database (Optional[object]): Underlying SQLAlchemy database.
+		loader (Optional[object]): Last-used document loader.
+		tool (Optional[object]): Active retrieval tool.
+		extension (Optional[str]): File extension for routing.
+
+	"""
+	model: Optional[ str ]
+	temperature: Optional[ float ]
+	llm: Optional[ ChatOpenAI ]
+	db_uri: Optional[ str ]
+	doc_paths: Optional[ List[ str ] ]
+	memory: Optional[ ConversationBufferMemory ]
+	sql_tool: Optional[ Tool ]
+	doc_tool: Optional[ Tool ]
+	api_tools: List[ Tool ]
+	agent: Optional[ AgentExecutor ]
+	__tools: List[ Tool ]
+	documents: List[ str ]
+	db_toolkit: Optional[ object ]
+	database: Optional[ object ]
+	loader: Optional[ object ]
+	tool: Optional[ object ]
+	extension: Optional[ str ]
+	answer: Optional[ Dict ]
+	sources: Optional[ Dict[ str, str ] ]
+	
+	def __init__( self, db_uri: str, doc_paths: List[ str ], model: str='gpt-4o-mini',
+			temperature: float=0.8 ):
+		"""
+
+			Purpose:
+			-------
+			Initializes the Fetch system and configures tools for SQL,
+			document retrieval, and conversational use.
+
+			Parameters:
+			-----------
+			db_uri (str): Path or URI to SQLite database.
+			doc_paths (List[str]): Files to be processed for retrieval.
+			model (str): LLM model name (default: gpt-4o-mini).
+			temperature (float): Sampling diversity (default: 0.8).
+
+			Returns:
+				None
+
+		"""
+		self.model = model
+		self.temperature = temperature
+		self.llm = ChatOpenAI( model=self.model, temperature=self.temperature, streaming=True )
+		self.db_uri = db_uri
+		self.doc_paths = doc_paths
+		self.memory = ConversationBufferMemory( memory_key='chat_history', return_messages=True )
+		self.sql_tool = self._init_sql_tool( )
+		self.doc_tool = self._init_doc_tool( )
+		self.api_tools = self._init_api_tools( )
+		self.documents = [ ]
+		self.db_toolkit = None
+		self.database = None
+		self.loader = None
+		self.tool = None
+		self.extension = None
+		self.answer = { }
+		self.__tools = [ t for t in [ self.sql_tool, self.doc_tool ] + self.api_tools if
+		                 t is not None ]
+		self.agent = initialize_agent( tools=self.__tools, llm=self.llm, memory=self.memory,
+			agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True )
+	
+	def query_sql( self, question: str ) -> str | None:
+		"""
+
+			Purpose:
+			Answer a question using ONLY the SQL database tool.
+
+			Parameters:
+			question (str): Natural language SQL-like question.
+
+			Returns:
+			str: Answer from the SQL query tool.
+
+		"""
+		try:
+			throw_if( 'question', question )
+			return self.sql_tool.func( question )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'sketchy'
+			exception.cause = 'Fetch'
+			exception.method = 'query_sql(self, question)'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def query_docs( self, question: str, with_sources: bool=False ) -> str | None:
+		"""
+
+			Purpose:
+			Answer a question using ONLY the document retrieval tool.
+
+			Parameters:
+			question (str):
+			Natural language question grounded in the loaded documents.
+			
+			with_sources (bool):
+			If True, returns sources alongside the answer.
+
+			Returns:
+				str:
+					Response from the document retriever. Includes sources if available.
+
+		"""
+		try:
+			throw_if( 'question', question )
+			if with_sources:
+				if self.doc_chain_with_sources is None:
+					raise RuntimeError( 'Document chain with sources is not available' )
+				
+				result = self.doc_chain_with_sources( { 'question': question } )
+				if 'answer' not in result or 'sources' not in result:
+					raise RuntimeError( 'Malformed response from doc_chain_with_sources' )
+				
+				answer = result[ 'answer' ]
+				sources = result[ 'sources' ]
+				
+				if sources:
+					return f"{answer}\n\nSOURCES:\n{sources}"
+				return answer
+			else:
+				return self.doc_tool.func( question )
+		
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'sketchy'
+			exception.cause = 'Fetch'
+			exception.method = 'query_docs(self, question, with_sources)'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def query_chat( self, prompt: str ) -> str | None:
+		"""
+
+			Purpose:
+				Send a general-purpose prompt directly to the LLM without using
+				tools, but with full memory context.
+
+			Parameters:
+				prompt (str): User message for free-form reasoning.
+
+			Returns:
+				str: LLM-generated conversational response.
+
+		"""
+		try:
+			throw_if( 'prompt', prompt )
+			return self.llm.invoke( prompt ).content
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'sketchy'
+			exception.cause = 'Fetch'
+			exception.method = 'query_chat(self, prompt)'
+			error = ErrorDialog( exception )
+			error.show( )
+
 # noinspection SqlResolve,SqlWithoutWhere
 class SQLite( ):
 	"""
@@ -3041,7 +3236,7 @@ class Chroma( ):
 			self.texts = texts
 			self.embeddings = embd
 			self.metadata = metadatas
-			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids,
+			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids, 
 				metadatas=self.metadata )
 		except Exception as e:
 			exception = Error( e )
