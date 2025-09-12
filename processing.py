@@ -1,6 +1,6 @@
 '''
   ******************************************************************************************
-	  Assembly:                Boo
+	  Assembly:                Chonky
 	  Filename:                processing.py
 	  Author:                  Terry D. Eppler
 	  Created:                 05-31-2022
@@ -8,7 +8,7 @@
 	  Last Modified By:        Terry D. Eppler
 	  Last Modified On:        05-01-2025
   ******************************************************************************************
-  <copyright file="tigrr.py" company="Terry D. Eppler">
+  <copyright file="processing.py" company="Terry D. Eppler">
 
 		 Boo is a df analysis tool that integrates various Generative AI, Text-Processing, and
 		 Machine-Learning algorithms for federal analysts.
@@ -44,35 +44,66 @@
   '''
 from __future__ import annotations
 
-import json
-import os
-import re
-import sqlite3
-import string
-from collections import Counter
-from pathlib import Path
-from typing import List, Optional, Dict
+from chromadb.api.models.Collection import Collection
 
-import fitz
-import numpy as np
-import matplotlib.pyplot as plt
-import nltk
-import pandas as pd
-import tiktoken
-import unicodedata
+from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
-from docx import Document as Docx
-from gensim.models import Word2Vec
+import chromadb
+from chromadb.config import Settings
+from collections import Counter
+from gensim.models import Word2Vec, KeyedVectors
+import glob
+import json
+from langchain.agents import initialize_agent, AgentType, AgentExecutor
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.tools.base import Tool
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain_community.document_loaders import UnstructuredHTMLLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from langchain.agents import initialize_agent, AgentType, AgentExecutor
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.tools.base import Tool
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain_community.document_loaders import UnstructuredHTMLLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+
+try:
+    from langchain_core.documents import Document
+except Exception:
+    from langchain.schema import Document
+
+from langchain_community.document_loaders import (
+    CSVLoader,
+    Docx2txtLoader,
+    PyPDFLoader,
+    UnstructuredExcelLoader,
+    WebBaseLoader,
+)
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+import matplotlib.pyplot as plt
+import numpy as np
+import nltk
 from nltk import FreqDist, ConditionalFreqDist
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
+import os
+from pathlib import Path
+import pandas as pd
+import re
+import sqlite3
+import string
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Optional, Dict
+import tiktoken
 from tiktoken.core import Encoding
+import unicodedata
 
-from boogr import Error, ErrorDialog
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
@@ -87,6 +118,136 @@ except LookupError:
 def throw_if( name: str, value: object ):
 	if not value:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
+
+class Loader( ):
+	'''
+
+		Purpose:
+		--------
+		Base class providing shared utilities for concrete loader wrappers.
+		Encapsulates file validation, path resolution, and document splitting.
+
+	'''
+	documents: Optional[ List[ Document ] ]
+	file_path: Optional[ str ]
+	pattern: Optional[ str ]
+	expanded: Optional[ List[ str ] ]
+	candidates: Optional[ List[ str ] ]
+	resolved: Optional[ List[ str ] ]
+	splitter: Optional[ RecursiveCharacterTextSplitter ]
+	chunk_size: Optional[ int ]
+	overlap_amount: Optional[ int ]
+	
+	def __init__( self ) -> None:
+		self.documents = [ ]
+		self.candidates = [ ]
+		self.resolved = [ ]
+		self.expanded = [ ]
+	
+	def _ensure_existing_file( self, path: str ) -> str | None:
+		'''
+
+			Purpose:
+			--------
+			Ensure the given file path exists.
+
+			Parameters:
+			-----------
+			path (str): Path to a file on disk.
+
+			Returns:
+			--------
+			str: The validated file path.
+
+		'''
+		try:
+			throw_if( 'path', path )
+			self.file_path = path
+			if not os.path.isfile( self.file_path ):
+				raise FileNotFoundError( f'File not found: {self.file_path}' )
+			else:
+				self.file_path = path
+			return self.file_path
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def _resolve_paths( self, pattern: str ) -> List[ str ] | None:
+		'''
+
+			Purpose:
+			--------
+			Normalize a string glob pattern or a list of paths to a list of real file paths.
+
+			Parameters:
+			-----------
+			pattern (str | List[str]): Path pattern or list of file paths.
+
+			Returns:
+			--------
+			List[str]: Validated list of file paths.
+
+		'''
+		try:
+			throw_if( 'pattern', pattern )
+			self.candidates.append( pattern )
+			for p in self.candidates:
+				if os.path.isfile( p ):
+					self.resolved.append( p )
+				else:
+					for m in glob.glob( p ):
+						if os.path.isfile( m ):
+							self.resolved.append( m )
+			
+			if not self.resolved:
+				raise FileNotFoundError( f'No files matched or existed for input: {pattern}' )
+			return sorted( set( self.resolved ) )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def _split_documents( self, docs: List[ Document ], chunk: int=1000, overlap: int=200 ) -> \
+	List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split long Document objects into smaller chunks for better token management.
+
+			Parameters:
+			-----------
+			docs (List[Document]): Input LangChain Document objects.
+			chunk_size (int): Max characters in each chunk.
+			chunk_overlap (int): Overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: Re-chunked list of Document objects.
+
+		'''
+		try:
+			throw_if( 'docs', docs )
+			self.documents = docs
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.splitter = RecursiveCharacterTextSplitter( chunk_size=self.chunk_size,
+				chunk_overlap=self.overlap_amount )
+			return self.splitter.split_documents( docs )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
 
 class Processor( ):
 	'''
@@ -161,7 +322,7 @@ class Processor( ):
 		self.lowercase = None
 		self.raw_html = None
 
-# noinspection PyTypeChecker
+# noinspection PyTypeChecker,PyArgumentList
 class Text( Processor ):
 	'''
 
@@ -611,11 +772,11 @@ class Text( Processor ):
 					else:
 						footer_counts[ ftr ] = 1
 			
-			common_header: Tuple[ str, ... ] = ()
+			common_header: Tuple[ str, ... ] = ( )
 			if header_counts:
 				common_header = max( header_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
 			
-			common_footer: Tuple[ str, ... ] = ()
+			common_footer: Tuple[ str, ... ] = ( )
 			if footer_counts:
 				common_footer = max( footer_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
 			
@@ -796,8 +957,8 @@ class Text( Processor ):
 			throw_if( 'words', words )
 			self.words = words
 			for w in self.words:
-				_tokens = nltk.word_tokenize( w )
-				self.tokens.append( _tokens )
+				tokens = nltk.word_tokenize( w )
+				self.tokens.append( tokens )
 			return self.tokens
 		except Exception as e:
 			exception = Error( e )
@@ -971,14 +1132,12 @@ class Text( Processor ):
 			return self.pages
 		except Exception as e:
 			exception = Error( e )
-			exception.module = "NLPTools"
-			exception.cause = "Document Splitting"
-			exception.method = "split_pages(file_path)"
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'split_pages( file_path )'
 			error = ErrorDialog( exception )
 			error.show( )
 		
-	
-	
 	def split_paragraphs( self, path: str ) -> List[ str ] | None:
 		"""
 
@@ -999,15 +1158,15 @@ class Text( Processor ):
 		try:
 			throw_if( 'path', path )
 			self.file_path = path
-			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as _file:
-				self.raw_input = _file.read( )
+			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
+				self.raw_input = file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
 					pg.strip( ) ]
 				
 				return self.paragraphs
 		except UnicodeDecodeError:
-			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as _file:
-				self.raw_input = _file.read( )
+			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as file:
+				self.raw_input = file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
 					pg.strip( ) ]
 				return self.paragraphs
@@ -1077,7 +1236,7 @@ class Text( Processor ):
 			throw_if( 'lines', lines )
 			self.lines = lines
 			cfd = ConditionalFreqDist( )
-			for idx, line in enumerate( lines ):
+			for idx, line in enumerate( self.lines ):
 				key = condition( line ) if condition else f'Doc_{idx}'
 				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
 				for t in toks:
@@ -1326,24 +1485,26 @@ class Text( Processor ):
 		"""
 		
 			Purpose:
-				Generate contextual sentence embeddings using SentenceTransformer.
+			Generate contextual sentence embeddings using SentenceTransformer.
+			
 			Parameters:
-				sentences (list[str]): List of raw sentence strings.
-				model_name (str): Model to use for encoding.
+			sentences (list[str]): List of raw sentence strings.
+			model_name (str): Model to use for encoding.
+			
 			Returns:
-				tuple: (Cleaned sentences, Embeddings as np.ndarray)
+			tuple: (Cleaned sentences, Embeddings as np.ndarray)
 			
 		"""
 		try:
 			_transformer = SentenceTransformer( model_name )
 			self.cleaned_tokens = [ clean_text( s ) for s in sentences ]
 			_encoding = _transformer.encode( self.cleaned_tokens, show_progress_bar=True )
-			return self.cleaned_tokens, np.array( _encoding )
+			return ( self.cleaned_tokens, np.array( _encoding ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name) '
+			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1429,10 +1590,8 @@ class Text( Processor ):
 			throw_if( 'model', model )
 			words = list( model.wv.index_to_key )[ :num_words ]
 			vectors = [ model.wv[ word ] for word in words ]
-			
 			pca = PCA( n_components=2 )
 			result = pca.fit_transform( vectors )
-			
 			plt.figure( figsize=(10, 6) )
 			plt.scatter( result[ :, 0 ], result[ :, 1 ] )
 			for i, word in enumerate( words ):
@@ -1976,7 +2135,7 @@ class PDF( Processor ):
 		"""
 		try:
 			throw_if( 'path', path )
-			throw_if( 'liens', lines )
+			throw_if( 'lines', lines )
 			self.file_path = path
 			self.lines = lines
 			with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
@@ -2018,6 +2177,420 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class CSV( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Wrap LangChain's CSVLoader to parse CSV files into Document objects.
+
+	'''
+	loader: Optional[ CSVLoader ]
+	documents: Optional[ List[ Document ] ]
+	file_path: Optional[ str ]
+	pattern: Optional[ List[ str ] ]
+	expanded: Optional[ List[ str ] ]
+	candidates: Optional[ List[ str ] ]
+	resolved: Optional[ List[ str ] ]
+	path: Optional[ str ]
+	encoding: Optional[ str ]
+	csv_args: Optional[ Dict[ str, Any ] ]
+	source_column: Optional[ str ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.encoding = None
+		self.csv_args = None
+		self.source_column = None
+		self.docs = None
+	
+	def load( self, path: str, encoding: Optional[ str ] = None,
+			csv_args: Optional[ Dict[ str, Any ] ] = None,
+			source_column: Optional[ str ] = None ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load a CSV file into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the CSV file.
+			encoding (Optional[str]): File encoding (e.g., 'utf-8') if known.
+			csv_args (Optional[Dict[str, Any]]): Additional CSV parsing arguments.
+			source_column (Optional[str]): Column name used for source attribution.
+
+			Returns:
+			--------
+			List[Document]: List of LangChain Document objects parsed from the CSV.
+
+		'''
+		try:
+			self.path = self._ensure_existing_file( path )
+			self.encoding = encoding
+			self.csv_args = csv_args
+			self.source_column = source_column
+			self.loader = CSVLoader( file_path=self.path, encoding=self.encoding,
+				csv_args=self.csv_args, source_column=self.source_column )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, size: int = 1000, amount: int = 200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded CSV documents into smaller text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Maximum number of characters per chunk.
+			chunk_overlap (int): Number of overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: List of split Document chunks.
+
+		'''
+		try:
+			throw_if( 'docs', self.docs )
+			self.documents = self._split_documents( self.docs, chunk=size, overlap=amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+
+class Web( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Wrap LangChain's WebBaseLoader to retrieve and parse HTML content into Document objects.
+
+	'''
+	loader: Optional[ WebBaseLoader ]
+	urls: Optional[ List[ str ] ]
+	documents: Optional[ List[ Document ] ]
+	file_path: Optional[ str ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.urls = None
+	
+	def load( self, urls: List[ str ] ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load one or more web pages and convert to Document objects.
+
+			Parameters:
+			-----------
+			urls (str | List[str]): A single URL string or list of URL strings.
+
+			Returns:
+			--------
+			List[Document]: Parsed Document objects from fetched HTML content.
+
+		'''
+		try:
+			throw_if( 'urls', urls )
+			self.urls = urls
+			loader = WebBaseLoader( web_path=self.urls )
+			self.documents = loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+		'''
+		
+			Purpose:
+			--------
+			Split loaded web documents into smaller chunks for better LLM processing.
+
+			Parameters:
+			-----------
+			chunk(int): Max characters per chunk.
+			overlap(int): Overlap between chunks in characters.
+
+			Returns:
+			--------
+			List[ Document ]: Chunked Document objects.
+
+		'''
+		try:
+			throw_if( 'documents', self.documents )
+			self.documents = self._split_documents( self.documents, chunk=chunk, overlap=overlap )
+			return self.docs
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+
+class DOCX( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Wrap LangChain's Docx2txtLoader to convert Word .docx files into Document objects.
+
+	'''
+	loader: Optional[ Docx2txtLoader ]
+	file_path: str | None
+	documents: List[ Document ] | None
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.path = None
+		self.docs = None
+	
+	def __repr__( self ) -> str:
+		return f'Word(path={self.path!r}, docs={len( self.docs or [ ] )})'
+	
+	def load( self, path: str ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load the contents of a Word .docx file into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): File path to the .docx document.
+
+			Returns:
+			--------
+			List[Document]: Parsed Document list from Word file.
+
+		'''
+		try:
+			self.file_path = self._ensure_existing_file( path )
+			self.loader = Docx2txtLoader( self.file_path )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split Word documents into text chunks suitable for LLM processing.
+
+			Parameters:
+			-----------
+			chunk(int): Maximum characters per chunk.
+			overlap(int): Overlap between chunks in characters.
+
+			Returns:
+			--------
+			List[Document]: Chunked list of Document objects.
+
+		'''
+		try:
+			throw_if( 'documents', self.documents )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self._split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.docs
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+
+class Markdown( Loader ):
+	'''
+	
+		Purpose:
+		--------
+		Wrap LangChain's UnstructuredMarkdownLoader to parse
+		Markdown files into Document objects.
+	
+	
+	'''
+	loader: Optional[ UnstructuredMarkdownLoader ]
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = [ ]
+		self.loader = None
+	
+	def load( self, path: str ) -> List[ Document ] | None:
+		'''
+		
+			Purpose:
+			--------
+			Load a Markdown (.md) file into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): File path to the Markdown file.
+
+			Returns:
+			--------
+			List[Document]: List of parsed Document objects from the Markdown file.
+			
+		'''
+		try:
+			self.file_path = self._ensure_existing_file( path )
+			self.loader = UnstructuredMarkdownLoader( file_path=self.file_path )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded Markdown content into text chunks for LLM consumption.
+
+			Parameters:
+			-----------
+			chunk(int): Max characters per chunk.
+			overlap(int): Number of characters that overlap between chunks.
+
+			Returns:
+			--------
+			List[Document]: Split Document chunks from the original Markdown content.
+
+		'''
+		try:
+			throw_if( 'documents', self.documents )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self._split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+
+class HTML( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Wrap LangChain's UnstructuredHTMLLoader to parse
+		HTML files into Document objects.
+
+	'''
+	loader: Optional[ UnstructuredHTMLLoader ]
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = [ ]
+		self.loader = None
+	
+	def load( self, path: str ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load an HTML file and convert its contents into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the HTML (.html or .htm) file.
+
+			Returns:
+			--------
+			List[Document]: List of Document objects parsed from HTML content.
+
+		'''
+		try:
+			self.file_path = self._ensure_existing_file( path )
+			self.loader = UnstructuredHTMLLoader( file_path=self.file_path )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded HTML documents into manageable text chunks.
+
+			Parameters:
+			-----------
+			chunk(int): Max characters per chunk.
+			overlap(int): Overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: Chunked list of LangChain Document objects.
+
+		'''
+		try:
+			throw_if( 'documents', self.documents )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self._split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
+
+# noinspection SqlResolve,SqlWithoutWhere
 class SQLite( ):
 	"""
 	
@@ -2043,6 +2616,7 @@ class SQLite( ):
 	cursor: Optional[ Cursor ]
 	source_file: Optional[ str ]
 	vector: Optional[ str ]
+	vectors: Optional[ List[ str ] ]
 	embedding: Optional[ np.ndarray ]
 	text: Optional[ str ]
 	index: Optional[ int ]
@@ -2074,6 +2648,7 @@ class SQLite( ):
 		self.rows = [ ]
 		self.texts = [ ]
 		self.records = [ ]
+		self.vectors = [ ]
 		self.create( )
 	
 	def create( self ) -> None:
@@ -2094,35 +2669,19 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.cursor.execute( """
-                                 CREATE TABLE IF NOT EXISTS embeddings
-                                 (
-                                     id
-                                     INTEGER
-                                     PRIMARY
-                                     KEY
-                                     AUTOINCREMENT,
-                                     source_file
-                                     TEXT
-                                     NOT
-                                     NULL,
-                                     chunk_index
-                                     INTEGER
-                                     NOT
-                                     NULL,
-                                     chunk_text
-                                     TEXT
-                                     NOT
-                                     NULL,
-                                     embedding
-                                     TEXT
-                                     NOT
-                                     NULL,
-                                     created_at
-                                     TEXT
-                                     DEFAULT
-                                     CURRENT_TIMESTAMP
-                                 ) """ )
+			sql = \
+			"""
+             CREATE TABLE IF NOT EXISTS embeddings
+             (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 source_file TEXT NOT NULL,
+                 chunk_index INTEGER NOT NULL,
+                 chunk_text TEXT NOT NULL,
+                 embedding TEXT NOT NULL,
+                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
+             );
+		      """
+			self.cursor.execute( sql )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2132,7 +2691,7 @@ class SQLite( ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def insert( self, source: str, index: int, text: str, embedding: np.ndarray ) -> None:
+	def insert( self, source: str, index: int, text: str, embd: np.ndarray ) -> None:
 		"""
 		
 			Purpose:
@@ -2154,10 +2713,13 @@ class SQLite( ):
 		try:
 			self.source_file = source
 			self.index = index
-			self.vector = json.dumps( embedding.tolist( ) )
-			self.cursor.execute( """
-                                 INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-                                 VALUES (?, ?, ?, ?)""", (source, index, text, vector_str) )
+			self.vector = json.dumps( embd.tolist( ) )
+			sql = \
+				'''
+                INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+                VALUES (?, ?, ?, ?)
+				'''
+			self.cursor.execute( sql, (source, index, text, vector_str) )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2185,17 +2747,20 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.records = [ (file, i, chunks[ i ], json.dumps( vectors[ i ].tolist( ) )) for i in
-				range( len( chunks ) ) ]
-			self.cursor.executemany( """
-                                     INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-                                     VALUES (?, ?, ?, ?) """, records )
+			self.records = [ (file, i, chunks[ i ],
+			                  json.dumps( vectors[ i ].tolist( ) )) for i in range( len( chunks )) ]
+			sql = \
+				"""
+                INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
+                VALUES (?, ?, ?, ?)
+				"""
+			self.cursor.executemany( sql, records )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'SQLite'
-			exception.method = 'insert_many( self, file: str, chunks: List[ str ], vectors: np.ndarray )'
+			exception.method = 'insert_many( self, file: str, chks: List[ str ], vect: np.ndarray )'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -2217,7 +2782,8 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.cursor.execute( "SELECT chunk_text, embedding FROM embeddings" )
+			sql = 'SELECT chunk_text, embedding FROM embeddings'
+			self.cursor.execute( sql )
 			self.rows = self.cursor.fetchall( )
 			self.texts, self.vectors = [ ], [ ]
 			for text, emb in rows:
@@ -2251,10 +2817,13 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.cursor.execute( """
-                                 SELECT chunk_text, embedding
-                                 FROM embeddings
-                                 WHERE source_file = ?""", (file,) )
+			sql = \
+				"""
+                SELECT chunk_text, embedding \
+                FROM embeddings
+                WHERE source_file = ?
+				"""
+			self.cursor.execute( sql, ( file, ) )
 			self.rows = self.cursor.fetchall( )
 			self.texts, self.vectors = [ ], [ ]
 			for text, emb in self.rows:
@@ -2283,7 +2852,8 @@ class SQLite( ):
 				
 		"""
 		try:
-			self.cursor.execute( "DELETE FROM embeddings WHERE source_file = ?", (file,) )
+			sql = 'DELETE FROM embeddings WHERE source_file = ?'
+			self.cursor.execute( sql, (file,) )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2330,7 +2900,8 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.cursor.execute( "DELETE FROM embeddings" )
+			sql = 'DELETE FROM embeddings'
+			self.cursor.execute( sql )
 			self.connection.commit( )
 		except Exception as e:
 			exception = Error( e )
@@ -2354,7 +2925,8 @@ class SQLite( ):
 			
 		"""
 		try:
-			self.cursor.execute( "SELECT COUNT(*) FROM embeddings" )
+			sql = 'SELECT COUNT(*) FROM embeddings'
+			self.cursor.execute( sql )
 			return self.cursor.fetchone( )[ 0 ]
 		except Exception as e:
 			exception = Error( e )
@@ -2378,7 +2950,8 @@ class SQLite( ):
 		
 		"""
 		try:
-			self.cursor.execute( 'SELECT id, source_file, chunk_index FROM embeddings' )
+			sql = 'SELECT id, source_file, chunk_index FROM embeddings'
+			self.cursor.execute( sql )
 			return self.cursor.fetchall( )
 		except Exception as e:
 			exception = Error( e )
@@ -2412,12 +2985,13 @@ class Chroma( ):
 	texts: Optional[ List[ str ] ]
 	embeddings: Optional[ List[ List[ float ] ] ]
 	metadata: Optional[ List[ Dict ] ]
-	collection: Optional[ str ]
+	collection: Optional[ Collection ]
+	collection_name: Optional[ str ]
 	telemetry: Optional[ bool ]
 	where: Optional[ Dict ]
 	n_results: Optional[ int ]
 	
-	def __init__( self, path: str='./chroma', collection: str='embeddings' ) -> None:
+	def __init__( self, path: str='./chroma', colname: str='embeddings' ) -> None:
 		"""
 			
 			Purpose:
@@ -2425,28 +2999,28 @@ class Chroma( ):
 	
 			Parameters:
 				path (str): Directory path for Chroma persistence.
-				collection (str): Name of the Chroma collection to use.
+				colname (str): Name of the Chroma collection to use.
 	
 			Returns:
 				None
 			
 		"""
-		self.telemetry = false
+		self.telemetry = False
 		self.db_path = path
-		self.collection = collection
+		self.collection_name = colname
 		self.client = chromadb.Client( Settings( persist_directory=self.db_path,
 			anonymized_telemetry=self.telemetry ) )
-		self.collection = self.client.get_or_create_collection( name=collection )
+		self.collection = self.client.get_or_create_collection( name=self.collection_name )
 		self.ids = [ ]
 		self.texts = [ ]
 		self.embeddings = [ ]
 		self.metadata = [ ]
 		self.collection = None
-		self.telemetry = false
+		self.telemetry = False
 		self.where = { }
 		self.n_results = None
 	
-	def add( self, ids: List[ str ], texts: List[ str ], embeddings: List[ List[ float ] ],
+	def add( self, ids: List[ str ], texts: List[ str ], embd: List[ List[ float ] ],
 	         metadatas: Optional[ List[ Dict ] ]=None ) -> None:
 		"""
 			
@@ -2465,14 +3039,15 @@ class Chroma( ):
 		try:
 			self.ids = ids
 			self.texts = texts
-			self.embeddings = embeddings
+			self.embeddings = embd
 			self.metadata = metadatas
-			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids, metadatas=self.metadata )
+			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids,
+				metadatas=self.metadata )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Chroma'
-			exception.method = 'add( self., ids, texts, embeddings, ids, metadatas )'
+			exception.method = 'add( self, ids, texts, embeddings, ids, metadatas )'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -2496,7 +3071,8 @@ class Chroma( ):
 			self.texts = texts
 			self.n_results = n_results
 			self.where = where
-			result = self.collection.query( texts=self.texts, n_results=self.n_results, where=self.where )
+			result = self.collection.query( self.texts,
+				n_results=self.n_results, where=self.where )
 			return result.get( 'documents', [ ] )[ 0 ]
 		except Exception as e:
 			exception = Error( e )
@@ -2541,7 +3117,7 @@ class Chroma( ):
 				
 		"""
 		try:
-			return self.collection.count( self.ids )
+			return self.collection.count( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'

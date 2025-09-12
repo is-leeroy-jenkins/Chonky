@@ -1,4 +1,6 @@
+jupytext
 beautifulsoup4
+chromadb
 docx
 FreeSimpleGUI
 fitz
@@ -6,12 +8,13 @@ gensim
 ipywidgets
 ipython
 isort
-jupyterlab
+jupyterlab==4.0.2
 matplotlib
 numpy
 nltk
 openai
 langchain
+langchain-community
 PyMuPDF
 python-docx
 pathlib
@@ -26,3 +29,4 @@ transformers
 textblob
 tqdm
 typing
+unicodedata
