@@ -102,7 +102,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Optional, Dict
 import tiktoken
 from tiktoken.core import Encoding
-import unicodedata
 
 
 try:
@@ -256,8 +255,8 @@ class Processor( ):
 		Base class for processing classes
 		
 	'''
-	lemmatizer: WordNetLemmatizer
-	stemmer: PorterStemmer
+	lemmatizer: Optional[ WordNetLemmatizer ]
+	stemmer: Optional[ PorterStemmer ]
 	file_path: Optional[ str ]
 	lowercase: Optional[ str ]
 	normalized: Optional[ str ]
@@ -556,7 +555,7 @@ class Text( Processor ):
 					cleaned.append( char )
 				elif char.isalnum( ) or char.isspace( ):
 					cleaned.append( char )
-			return ''.join( cleaned )
+			return ' '.join( cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -698,9 +697,9 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text.lower( )
-			tabs = re.sub( r'[ \t]+', ' ', text.lower( ) )
-			collapsed = re.sub( r'\s+', ' ', tabs ).strip( )
+			normalized = text.lower( )
+			tabs = re.sub( r'[ \t]+', '  ', normalized )
+			collapsed = re.sub( r'\s+', '  ', tabs )
 			self.cleaned_text = collapsed
 			return self.cleaned_text
 		except Exception as e:
@@ -751,8 +750,8 @@ class Text( Processor ):
 			pages = [ all_lines[ i: i + lines_per_page ] for i in
 				range( 0, len( all_lines ), lines_per_page ) ]
 			
-			header_counts: Dict[ Tuple[ str, ... ], int ] = { }
-			footer_counts: Dict[ Tuple[ str, ... ], int ] = { }
+			header_counts = { }
+			footer_counts = { }
 			
 			for page in pages:
 				n = len( page )
@@ -773,15 +772,15 @@ class Text( Processor ):
 					else:
 						footer_counts[ ftr ] = 1
 			
-			common_header: Tuple[ str, ... ] = ( )
+			common_header = ( )
 			if header_counts:
 				common_header = max( header_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
 			
-			common_footer: Tuple[ str, ... ] = ( )
+			common_footer = ( )
 			if footer_counts:
 				common_footer = max( footer_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
 			
-			cleaned_pages: List[ str ] = [ ]
+			cleaned_pages = [ ]
 			for page in pages:
 				lines = list( page )
 				

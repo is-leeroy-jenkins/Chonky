@@ -28,5 +28,3 @@ tiktoken
 transformers
 textblob
 tqdm
-typing
-unicodedata
