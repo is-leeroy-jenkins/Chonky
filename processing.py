@@ -823,7 +823,7 @@ class Text( Processor ):
 		"""
 		try:
 			self.vocabulary = set( w.lower( ) for w in words.words( ) )
-			return [ token for token in tokens if token.lower( ) in self.vocabultary
+			return [ token for token in tokens if token.lower( ) in self.vocabulary
 			         or token.isnumeric( ) ]
 		except Exception as e:
 			exception = Error( e )
