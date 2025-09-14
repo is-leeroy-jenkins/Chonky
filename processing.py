@@ -283,7 +283,7 @@ class Processor( ):
 	cleaned_pages: Optional[ List[ str ] ]
 	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
-	vocabulary: Optional[ List[ str ] ]
+	vocabulary: Optional[ set ]
 	corpus: Optional[ List[ List[ str ] ] ]
 	removed: Optional[ List[ str ] ]
 	frequency_distribution: Optional[ Dict ]
@@ -823,8 +823,9 @@ class Text( Processor ):
 			
 		"""
 		try:
-			english_vocab = set( w.lower( ) for w in words.words( ) )
-			return [ token for token in tokens if token.lower( ) in english_vocab ]
+			self.vocabulary = set( w.lower( ) for w in words.words( ) )
+			return [ token for token in tokens if token.lower( ) in self.vocabultary
+			         or token.isnumeric( ) ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
