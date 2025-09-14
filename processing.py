@@ -1401,7 +1401,7 @@ class Text( Processor ):
 			throw_if( 'src', src )
 			throw_if( 'dest', src )
 			source = src
-			destination = dest
+			dest_path = dest
 			files = os.listdir( source )
 			for f in files:
 				processed = [ ]
@@ -1409,15 +1409,16 @@ class Text( Processor ):
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
 				dirty = self.split_sentences( text )
-				for d in dirty:
+				_errors = self.remove_errors( dirty )
+				for d in _errors:
 					if d != " ":
 						normal = self.normalize_text( d )
 						slim = self.collapse_whitespace( normal )
 						punctuation = self.remove_punctuation( slim )
 						processed.append( punctuation )
 				
-				dest_path = destination + '\\' + filename
-				clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
+				destination = dest_path + '\\' + filename
+				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
 				for p in processed:
 					clean.write( p )
 		except Exception as e:
