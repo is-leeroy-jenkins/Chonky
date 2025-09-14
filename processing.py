@@ -87,7 +87,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nltk
 from nltk import FreqDist, ConditionalFreqDist
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, words
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 import os
@@ -102,6 +102,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Optional, Dict
 import tiktoken
 from tiktoken.core import Encoding
+import unicodedata
 
 
 try:
@@ -136,6 +137,7 @@ class Loader( ):
 	splitter: Optional[ RecursiveCharacterTextSplitter ]
 	chunk_size: Optional[ int ]
 	overlap_amount: Optional[ int ]
+	
 	
 	def __init__( self ) -> None:
 		self.documents = [ ]
@@ -224,8 +226,8 @@ class Loader( ):
 			Parameters:
 			-----------
 			docs (List[Document]): Input LangChain Document objects.
-			chunk_size (int): Max characters in each chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
+			chunk(int): Max characters in each chunk.
+			overlap(int): Overlapping characters between chunks.
 
 			Returns:
 			--------
@@ -243,8 +245,8 @@ class Loader( ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'Loader'
+			exception.method = '_split_documents( self, docs, chunk, overlap ) -> List[ Document ]'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -381,7 +383,7 @@ class Text( Processor ):
 		self.chunk_size = 0
 		self.cleaned_lines = [ ]
 		self.cleaned_tokens = List[ List[ str ] ]
-		self.cleaned_pages = List[ List[ str ] ] = [ ]
+		self.cleaned_pages = List[ List[ str ] ]
 		self.removed = [ ]
 		self.raw_pages = [ ]
 		self.stop_words = set( )
@@ -430,22 +432,22 @@ class Text( Processor ):
 			'tokenize_sentences', 'chunk_text', 'chunk_words', 'create_wordbag', 'create_word2vec',
 			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
-	def load_text( self, file_path: str ) -> str | None:
+	def load_text( self, path: str ) -> str | None:
 		"""
 	`
 			Purpose:
 				Loads raw text from a file.
 				
 			Parameters:
-				file_path (str): Path to the .txt file.
+				path (str): Path to the .txt file.
 				
 			Returns:
 				str: Raw file content as string.`
 			
 		"""
 		try:
-			throw_if( 'file_path', file_path )
-			self.file_path = file_path
+			throw_if( 'file_path', path )
+			self.file_path = path
 			return Path( self.file_path ).read_text( encoding='utf-8', errors='ignore' )
 		except Exception as e:
 			exception = Error( e )
@@ -549,13 +551,11 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', ';', ':' ]
+			keepers = [ '(', ')', '$', '. ', '; ', ': ' ]
 			for char in text:
-				if char in keepers:
+				if char.isalnum( ) or char.isspace( ):
 					cleaned.append( char )
-				elif char.isalnum( ) or char.isspace( ):
-					cleaned.append( char )
-			return ' '.join( cleaned )
+			return ''.join( cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -658,11 +658,10 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text.lower( )
-			self.stop_words = stopwords.words( 'english' )
-			_tokens = nltk.word_tokenize( self.raw_input )
-			self.tokens.append( _tokens )
-			self.cleaned_tokens = [ w for w in self.tokens if
+			self.stop_words = set( stopwords.words( 'english' ) )
+			list = text.split( ' ' )
+			tokens = [ t for t in list ]
+			self.cleaned_tokens = [ w for w in tokens if
 				w.isalnum( ) and w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
@@ -802,6 +801,39 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+	def remove_errors( self, tokens: List[ str ] ) -> List[ str ] | None:
+		"""
+		
+			Removes tokens that are not recognized as valid English words
+			using the NLTK `words` corpus as a reference dictionary.
+	
+			This function is useful for cleaning text from OCR output, web-scraped data,
+			or noisy documents by removing pseudo-words, typos, and out-of-vocabulary items.
+	
+			Parameters
+			----------
+			tokens : List[str]
+			A list of word tokens to filter.
+	
+			Returns
+			-------
+			List[str]
+			A list of tokens that are valid English words according to the NLTK corpus.
+	
+			
+		"""
+		try:
+			english_vocab = set( w.lower( ) for w in words.words( ) )
+			return [ token for token in tokens if token.lower( ) in english_vocab ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'Text'
+			exception.method = ('remove_errors( self, tokens: List[ str ] ) -> List[ str ]')
+			error = ErrorDialog( exception )
+			error.show( )
+		
+	
 	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ List[ str ] ] | None:
 		"""
 		
@@ -894,7 +926,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ str ] | None:
+	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ int ] | None:
 		"""
 
 			Purpose:
@@ -929,7 +961,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('tiktokenize( self, text, encoding) -> List[ str ]')
+			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1375,14 +1407,13 @@ class Text( Processor ):
 				filename = os.path.basename( f )
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				punc = self.remove_special( text )
-				dirty = self.split_sentences( punc )
+				dirty = self.split_sentences( text )
 				for d in dirty:
 					if d != " ":
-						lower = d.lower( )
-						normal = self.normalize_text( lower )
+						normal = self.normalize_text( d )
 						slim = self.collapse_whitespace( normal )
-						processed.append( slim )
+						punctuation = self.remove_punctuation( slim )
+						processed.append( punctuation )
 				
 				dest_path = destination + '\\' + filename
 				clean = open( dest_path, 'wt', encoding='utf-8', errors='ignore' )
@@ -2192,7 +2223,6 @@ class CSV( Loader ):
 	expanded: Optional[ List[ str ] ]
 	candidates: Optional[ List[ str ] ]
 	resolved: Optional[ List[ str ] ]
-	path: Optional[ str ]
 	encoding: Optional[ str ]
 	csv_args: Optional[ Dict[ str, Any ] ]
 	source_column: Optional[ str ]
@@ -2200,14 +2230,18 @@ class CSV( Loader ):
 	def __init__( self ) -> None:
 		super( ).__init__( )
 		self.file_path = None
+		self.documents = None
 		self.encoding = None
 		self.csv_args = None
 		self.source_column = None
-		self.docs = None
+		self.pattern = None
+		self.expanded = None
+		self.candidates = None
+		self.resolved = None
 	
-	def load( self, path: str, encoding: Optional[ str ] = None,
-			csv_args: Optional[ Dict[ str, Any ] ] = None,
-			source_column: Optional[ str ] = None ) -> List[ Document ] | None:
+	def load( self, path: str, encoding: Optional[ str ]=None,
+			csv_args: Optional[ Dict[ str, Any ] ]=None,
+			source_column: Optional[ str ]=None ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2227,23 +2261,23 @@ class CSV( Loader ):
 
 		'''
 		try:
-			self.path = self._ensure_existing_file( path )
+			self.file_path = self._ensure_existing_file( path )
 			self.encoding = encoding
 			self.csv_args = csv_args
 			self.source_column = source_column
-			self.loader = CSVLoader( file_path=self.path, encoding=self.encoding,
+			self.loader = CSVLoader( file_path=self.file_path, encoding=self.encoding,
 				csv_args=self.csv_args, source_column=self.source_column )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'CSV'
+			exception.method = 'load( self, path: str ) -> List[ Documents ]'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split( self, size: int = 1000, amount: int = 200 ) -> List[ Document ] | None:
+	def split( self, size: int=1000, amount: int=200 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2261,14 +2295,14 @@ class CSV( Loader ):
 
 		'''
 		try:
-			throw_if( 'docs', self.docs )
-			self.documents = self._split_documents( self.docs, chunk=size, overlap=amount )
+			throw_if( 'documenys', self.documents )
+			self.documents = self._split_documents( self.documents, chunk=size, overlap=amount )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'CSV'
+			exception.method = 'split( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -2283,10 +2317,14 @@ class Web( Loader ):
 	loader: Optional[ WebBaseLoader ]
 	urls: Optional[ List[ str ] ]
 	documents: Optional[ List[ Document ] ]
+	encoding: Optional[ str ]
 	file_path: Optional[ str ]
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
+		self.file_path = None
+		self.documents = None
+		self.encoding = None
 		self.urls = None
 	
 	def load( self, urls: List[ str ] ) -> List[ Document ] | None:
@@ -2308,7 +2346,7 @@ class Web( Loader ):
 		try:
 			throw_if( 'urls', urls )
 			self.urls = urls
-			loader = WebBaseLoader( web_path=self.urls )
+			self.loader = WebBaseLoader( web_path=self.urls )
 			self.documents = loader.load( )
 			return self.documents
 		except Exception as e:
@@ -2362,11 +2400,9 @@ class DOCX( Loader ):
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
-		self.path = None
-		self.docs = None
-	
-	def __repr__( self ) -> str:
-		return f'Word(path={self.path!r}, docs={len( self.docs or [ ] )})'
+		self.file_path = None
+		self.documents = None
+		self.encoding = None
 	
 	def load( self, path: str ) -> List[ Document ] | None:
 		'''
