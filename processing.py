@@ -307,7 +307,7 @@ class Processor( ):
 		self.removed = [ ]
 		self.raw_pages = List[ List[ str ] ]
 		self.stop_words = set( )
-		self.vocabulary = [ ]
+		self.vocabulary = set( )
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
 		self.encoding = None
@@ -1047,7 +1047,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, words: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
+	def chunk_words( self, sent: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -1075,8 +1075,8 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'text', text )
-			self.tokens = [ token for sublist in words for token in sublist ]
+			throw_if( 'sent', sent )
+			self.tokens = [ token for sublist in sent for token in sublist ]
 			self.chunks = [ self.tokens[ i: i + size ] for i in
 				range( 0, len( self.tokens ), size ) ]
 			if as_string:
