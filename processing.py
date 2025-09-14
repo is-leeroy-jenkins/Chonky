@@ -659,11 +659,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.stop_words = set( stopwords.words( 'english' ) )
-			list = text.split( ' ' )
-			tokens = [ t for t in list ]
-			self.cleaned_tokens = [ w for w in tokens if
-				w.isalnum( ) and w not in self.stop_words ]
-			self.cleaned_text = ' '.join( self.cleaned_tokens )
+			_words = text.split( ' ' )
+			tokens = [ t for t in _words ]
+			self.cleaned_tokens = [ w for w in tokens if w.isalnum( ) and w not in self.stop_words ]
+			self.cleaned_text = ''.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
@@ -967,7 +966,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_words( self, words: List[ str ] ) -> List[ List[ str ] ] | None:
+	def tokenize_words( self, sentence: List[ str ] ) -> List[ List[ str ] ] | None:
 		"""
 
 			Purpose:
@@ -988,11 +987,11 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'words', words )
-			self.words = words
+			throw_if( 'tokens', sentence )
+			self.words = sentence
 			for w in self.words:
-				tokens = nltk.word_tokenize( w )
-				self.tokens.append( tokens )
+				token = nltk.word_tokenize( w )
+				self.tokens.append( token )
 			return self.tokens
 		except Exception as e:
 			exception = Error( e )
@@ -1049,7 +1048,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, sent: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
+	def chunk_words( self, sentence: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -1077,8 +1076,8 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'sent', sent )
-			self.tokens = [ token for sublist in sent for token in sublist ]
+			throw_if( 'sentence', sentence )
+			self.tokens = [ token for sublist in sentence for token in sublist ]
 			self.chunks = [ self.tokens[ i: i + size ] for i in
 				range( 0, len( self.tokens ), size ) ]
 			if as_string:
