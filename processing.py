@@ -886,7 +886,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_normal = unicodedata.normalize( 'NFKD', text ).encode( 'ascii', 'ignore' ).decode( 'utf-8' )
+			_normal = ( unicodedata.normalize( 'NFKD', self.raw_input )
+			           .encode( 'ascii', 'ignore' ).decode( 'utf-8' ) )
 			self.normalized = re.sub( r'\s+', ' ', _normal ).strip( ).lower( )
 			return self.normalized
 		except Exception as e:
