@@ -822,8 +822,8 @@ class Text( Processor ):
 			
 		"""
 		try:
-			english = words.words( )
-			return [ token for token in tokens if token.lower( ) in english or token.isnumeric( ) ]
+			throw_if( 'tokens', tokens )
+			return [ token for token in tokens if token.lower( ) in words.words( )  ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
