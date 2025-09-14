@@ -852,7 +852,7 @@ class Text( Processor ):
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
 			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ] for
-				sentence in self.tokens ]
+			         sentence in self.tokens ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
