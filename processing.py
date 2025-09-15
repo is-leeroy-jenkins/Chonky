@@ -43,9 +43,6 @@
   ******************************************************************************************
   '''
 from __future__ import annotations
-
-from chromadb.api.models.Collection import Collection
-
 from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
 import chromadb
@@ -61,7 +58,6 @@ from langchain.tools.base import Tool
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
-from langchain.agents import initialize_agent, AgentType, AgentExecutor
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.tools.base import Tool
@@ -87,15 +83,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nltk
 from nltk import FreqDist, ConditionalFreqDist
-from nltk.corpus import stopwords, words
+from nltk.corpus import stopwords, wordnet
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 import os
-from pathlib import Path
 import pandas as pd
+from pandas import DataFrame
+from pathlib import Path
 import re
 import sqlite3
-import string
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
@@ -271,7 +267,7 @@ class Processor( ):
 	raw_input: Optional[ str ]
 	raw_html: Optional[ str ]
 	raw_pages: Optional[ List[ str ] ]
-	words: Optional[ List[ str ] ]
+	lines: Optional[ List[ str ] ]
 	tokens: Optional[ List[ str ] ]
 	lines: Optional[ List[ str ] ]
 	files: Optional[ List[ str ] ]
@@ -293,7 +289,7 @@ class Processor( ):
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.files = [ ]
-		self.words = [ ]
+		self.lines = [ ]
 		self.tokens = List[ List[ str ] ]
 		self.lines = [ ]
 		self.pages = [ ]
@@ -373,7 +369,7 @@ class Text( Processor ):
 		super( ).__init__( )
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
-		self.words = [ ]
+		self.lines = [ ]
 		self.tokens = List[ List[ str ] ]
 		self.lines = [ ]
 		self.pages = List[ List[ str ] ]
@@ -429,7 +425,8 @@ class Text( Processor ):
 			'vectorizer', 'split_lines', 'split_pages', 'collapse_whitespace', 'remove_punctuation',
 			'remove_special', 'remove_html', 'remove_markdown', 'remove_stopwords',
 			'remove_headers', 'tiktokenize', 'normalize_text', 'tokenize_text', 'tokenize_words',
-			'tokenize_sentences', 'chunk_text', 'chunk_words', 'create_wordbag', 'create_word2vec',
+			'tokenize_sentences', 'chunk_text', 'chunk_words', 'chunk_files', 'create_wordbag',
+			'create_word2vec', 'chunk_data', 'remove_errors',
 			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
 	def load_text( self, path: str ) -> str | None:
@@ -662,7 +659,7 @@ class Text( Processor ):
 			_words = text.split( ' ' )
 			tokens = [ t for t in _words ]
 			self.cleaned_tokens = [ w for w in tokens if w.isalnum( ) and w not in self.stop_words ]
-			self.cleaned_text = ''.join( self.cleaned_tokens )
+			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
@@ -811,7 +808,7 @@ class Text( Processor ):
 	
 			Parameters
 			----------
-			tokens : List[str]
+			lines : List[str]
 			A list of word tokens to filter.
 	
 			Returns
@@ -823,7 +820,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			return [ token for token in tokens if token.lower( ) in words.words( )  ]
+			_lines = [ t for t in tokens if t in wordnet.synsets( t ) ]
+			return _lines
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
@@ -914,8 +912,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_tokens = nltk.word_tokenize( text )
-			self.words = [ t for t in _tokens ]
-			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in self.words if w.strip( ) ]
+			self.lines = [ t for t in _tokens ]
+			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in self.lines if w.strip( ) ]
 			self.tokens.append( _tokenlist )
 			return self.tokens
 		except Exception as e:
@@ -965,7 +963,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_words( self, sentence: List[ str ] ) -> List[ List[ str ] ] | None:
+	def tokenize_words( self, sentence: List[ str ] ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -987,11 +985,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', sentence )
-			self.words = sentence
-			for w in self.words:
+			self.lines = sentence
+			_tokens = [ ]
+			for w in self.lines:
 				token = nltk.word_tokenize( w )
-				self.tokens.append( token )
-			return self.tokens
+				_tokens.append( token )
+			return _tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1000,7 +999,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int=55, return_as_string: bool=True ) -> List[ str ]:
+	def chunk_text( self, text: str, size: int=512 ) -> Dict[ int, Any ] | None:
 		"""
 
 			Purpose:
@@ -1030,24 +1029,21 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.words = text
-			_tokens = nltk.word_tokenize( self.words )
-			self.tokens.append( _tokens )
-			_chunk = [ self.tokens[ i: i + size ] for i in range( 0, len( self.tokens ), size ) ]
-			self.chunks.append( _chunk )
-			if return_as_string:
-				return [ ' '.join( chunk ) for chunk in self.chunks ]
-			else:
-				return self.chunks
+			_tokens = text.split( ' ' )
+			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_datamap = {}
+			for index, chunk in enumerate( _chunks ):
+				_datamap[ index ] = chunk
+			return _datamap
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'chunk_text( self, text: str, max: int=800 ) -> list[ str ]'
+			exception.method = 'chunk_text( self, text: str, max: int=256 ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, sentence: List[ str ], size: int=50, as_string: bool=True ) -> List[ str ]:
+	def chunk_words( self, sentence: List[ str ], size: int=512 ) -> List[ List[ str ] ]:
 		"""
 
 			Purpose:
@@ -1076,18 +1072,19 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'sentence', sentence )
-			self.tokens = [ token for sublist in sentence for token in sublist ]
-			self.chunks = [ self.tokens[ i: i + size ] for i in
-				range( 0, len( self.tokens ), size ) ]
-			if as_string:
-				return [ ' '.join( chunk ) for chunk in self.chunks ]
-			else:
-				return self.chunks
+			_chunks = [ ]
+			for s in sentence:
+				if len( s ) > 3:
+					_chunks.append( s )
+					
+			self.chunks = [ _chunks[ i: i + size ] for i in
+				range( 0, len( _chunks ), size ) ]
+			return self.chunks
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Token'
-			exception.method = ('chunk_words( self, words: list[ str ], max: int=800, over: int=50)')
+			exception.method = ('chunk_words( self, words: list[ str ], size: int=50)')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1125,7 +1122,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, file_path: str, lines_per_page: int=55 ) -> List[ str ] | None:
+	def split_pages( self, file_path: str, lines_per_page: int=100 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1307,8 +1304,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'freq_dist', freq_dist )
 			self.frequency_distribution = freq_dist
-			self.words = [ word for word, freq in freq_dist.items( ) if freq >= size ]
-			self.vocabulary = sorted( self.words )
+			self.lines = [ word for word, freq in freq_dist.items( ) if freq >= size ]
+			self.vocabulary = sorted( self.lines )
 			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
@@ -1337,8 +1334,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'words', words )
-			self.words = words
-			return dict( Counter( self.words ) )
+			self.lines = words
+			return dict( Counter( self.lines ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1368,8 +1365,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'words', words )
-			self.words = words
-			return Word2Vec( sentences=self.words, vector_size=dims, window=win, min_count=size )
+			self.lines = words
+			return Word2Vec( sentences=self.lines, vector_size=dims, window=win, min_count=size )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1407,9 +1404,9 @@ class Text( Processor ):
 				filename = os.path.basename( f )
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				dirty = self.split_sentences( text )
-				_errors = self.remove_errors( dirty )
-				for d in _errors:
+				stops = self.remove_stopwords( text )
+				dirty = self.split_sentences( stops )
+				for d in dirty:
 					if d != " ":
 						normal = self.normalize_text( d )
 						slim = self.collapse_whitespace( normal )
@@ -1428,6 +1425,98 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+	def chunk_files( self, src: str, dest: str, size: int=512 ) -> None:
+		"""
+
+			Purpose:
+			________
+			Chunks cleaned text files given a source directory and destination directory
+
+			Parameters:
+			----------
+			- src (str): Source directory
+			- dest (str): Destination directory
+
+			Returns:
+			--------
+			- None
+
+		"""
+		try:
+			throw_if( 'src', src )
+			throw_if( 'dest', src )
+			source = src
+			dest_path = dest
+			files = os.listdir( source )
+			for f in files:
+				processed = [ ]
+				filename = os.path.basename( f )
+				source_path = source + '\\' + filename
+				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_tokens = text.split( )
+				_chunks = self.chunk_words( _tokens )
+				_datamap = [ ]
+				for i, c in enumerate( _chunks ):
+					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+					_datamap.append( _value )
+					
+				for s in _datamap:
+					processed.append( s )
+				
+				destination = dest_path + '\\' + filename
+				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
+				
+				for p in processed:
+					clean.write( p )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'chunk_files( self, src: str, dest: str )'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def chunk_data( self, src: str, size: int=512 ) -> DataFrame | None:
+		"""
+
+			Purpose:
+			________
+			Chunks cleaned text files given a source directory and destination directory
+
+			Parameters:
+			----------
+			- src (str): Source directory
+
+			Returns:
+			--------
+			- DataFrame
+
+		"""
+		try:
+			throw_if( 'src', src )
+			source = src
+			files = os.listdir( source )
+			for f in files:
+				processed = [ ]
+				filename = os.path.basename( f )
+				source_path = source + '\\' + filename
+				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_tokens = text.split( )
+				_chunks = self.chunk_words( _tokens )
+				_datamap = { }
+				for i, c in enumerate( _chunks ):
+					_datamap[ i ] = '[ ' + ' '.join( c ) + ' ]'
+				
+				_data = pd.DataFrame( data=_datamap  )
+				return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'chunk_files( self, src: str, dest: str )'
+			error = ErrorDialog( exception )
+			error.show( )
+			
 	def convert_jsonl( self, source: str, desination: str ) -> None:
 		"""
 
@@ -1497,8 +1586,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'sentences', sentences )
-			self.words = sentences
-			_embeddings = [ model.wv[ t ] for t in self.words if t in model.wv ]
+			self.lines = sentences
+			_embeddings = [ model.wv[ t ] for t in self.lines if t in model.wv ]
 			self.embeddings.append( _embeddings )
 			if not self.embeddings:
 				return np.zeros( model.vector_size )
