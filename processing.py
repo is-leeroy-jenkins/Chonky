@@ -83,7 +83,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nltk
 from nltk import FreqDist, ConditionalFreqDist
-from nltk.corpus import stopwords, wordnet
+from nltk.corpus import stopwords, wordnet, words
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 import os
@@ -95,6 +95,7 @@ import sqlite3
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
+from textblob import TextBlob
 from typing import List, Optional, Dict
 import tiktoken
 from tiktoken.core import Encoding
@@ -512,13 +513,88 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			no_punctuation = re.sub(r'[^\w\s]', ' ', self.raw_input )
+			no_punctuation = re.sub(r'[^\w\s]', '', self.raw_input )
 			return no_punctuation
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def normalize_text( self, text: str ) -> str | None:
+		"""
+
+			Purpose:
+			-----------
+			Converts the input 'text' to lower case
+
+			This function:
+			  - Converts the input 'text' to lower case
+
+			Parameters:
+			-----------
+			- text : str
+				The raw text
+
+			Returns:
+			--------
+			- str
+				A cleaned_lines path containing
+				only letters, numbers, and spaces.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			lower_cased = [ ]
+			for char in text:
+				if char.isalpha( ) or char.isspace( ):
+					lower = char.lower()
+					lower_cased.append( lower )
+			return ''.join( lower_cased )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'Text'
+			exception.method = 'normalize_text( self, text: str ) -> str:'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def remove_fragments( self, text: str ) -> str | None:
+		"""
+
+			Purpose:
+			-----------
+			Removes strings less that 4 chars in length
+
+
+			Parameters:
+			-----------
+			- pages : str
+				The raw path path path potentially
+				containing special characters.
+
+			Returns:
+			--------
+			- str
+				A cleaned_lines path containing
+				only letters, numbers, and spaces.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			cleaned = [ ]
+			fragments = text.split( ' ' )
+			for char in fragments:
+				if len( char ) > 4:
+					cleaned.append( char )
+			return ' '.join( cleaned )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'remove_special( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -552,7 +628,7 @@ class Text( Processor ):
 			cleaned = [ ]
 			keepers = [ '(', ')', '$', '. ', '; ', ': ' ]
 			for char in text:
-				if char.isalnum( ) or char.isspace( ):
+				if char.isalpha( ) or char.isspace( ):
 					cleaned.append( char )
 			return ''.join( cleaned )
 		except Exception as e:
@@ -799,7 +875,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_errors( self, tokens: List[ str ] ) -> List[ str ] | None:
+	def remove_errors( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
 		"""
 		
 			Removes tokens that are not recognized as valid English words
@@ -822,18 +898,28 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			_lines = [ t for t in tokens if t in wordnet.words() ]
-			return _lines
+			processed = [ ]
+			wordlist = [ ]
+			for s in tokens:
+				if len( s ) > 4:
+					wordlist.append( s )
+			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
+			for i, c in enumerate( self.chunks ):
+				_item =  ' '.join( c )
+				processed.append( _item )
+			_data = pd.DataFrame( processed )
+			_data[ 0 ].apply( lambda x: str( TextBlob( x ).correct( ) ) )
+			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'chonky'
+			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('remove_errors( self, tokens: List[ str ] ) -> List[ str ]')
+			exception.method = 'correct_data( text: str )'
 			error = ErrorDialog( exception )
 			error.show( )
 		
 	
-	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ List[ str ] ] | None:
+	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> DataFrame:
 		"""
 		
 			Purpose:
@@ -848,9 +934,16 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			self.tokens = tokens
-			return [ [ t for t in sentence if t not in self.stop_words and len( t ) > 2 ] for
-			         sentence in self.tokens ]
+			_num = len( tokens )
+			_processed = [ ]
+			_datamap = [ ]
+			for tkns in tokens:
+				_words = [ t for t in tkns if t not in self.stop_words and len( t ) > 4 ]
+				_datamap.append( _words )
+			
+			_processed.append( _datamap )
+			_data = pd.DataFrame( _processed )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -859,44 +952,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def normalize_text( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Normalizes the path pages path.
-			  - Converts pages to lowercase
-			  - Removes accented characters (e.g., é -> e)
-			  - Removes leading/trailing spaces
-			  - Collapses multiple whitespace characters into a single space
-
-			Parameters:
-			-----------
-			- text : str
-				The raw text.
-
-			Returns:
-			--------
-			- str
-				A normalized, cleaned_lines version of the path path.
-
-		"""
-		try:
-			throw_if( 'text', text )
-			self.raw_input = text
-			_normal = ( unicodedata.normalize( 'NFKD', self.raw_input )
-			           .encode( 'ascii', 'ignore' ).decode( 'utf-8' ) )
-			self.normalized = re.sub( r'\s+', ' ', _normal ).strip( ).lower( )
-			return self.normalized
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'normalize_text( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def tokenize_text( self, text: str ) -> List[ List[ str ] ] | None:
+	def tokenize_text( self, text: str ) -> DataFrame:
 		'''
 
 			Purpose:
@@ -914,10 +970,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_tokens = nltk.word_tokenize( text )
-			self.lines = [ t for t in _tokens ]
-			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in self.lines if w.strip( ) ]
-			self.tokens.append( _tokenlist )
-			return self.tokens
+			_words = [ t for t in _tokens ]
+			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in _words if w.strip( ) ]
+			_data = pd.DataFrame( _tokenlist )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -965,7 +1021,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_words( self, sentence: List[ str ] ) -> List[ str ] | None:
+	def tokenize_words( self, text: str ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -986,13 +1042,14 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'tokens', sentence )
-			self.lines = sentence
+			throw_if( 'text', text )
+			self.tokens = text.split( ' ' )
 			_tokens = [ ]
-			for w in self.lines:
+			for w in self.tokens:
 				token = nltk.word_tokenize( w )
 				_tokens.append( token )
-			return _tokens
+			_data = pd.DataFrame( _tokens )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1041,11 +1098,11 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'chunk_text( self, text: str, max: int=256 ) -> DataFrame'
+			exception.method = 'chunk_text( self, text: str, max: int=512 ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, sentence: List[ str ], size: int=512 ) -> List[ List[ str ] ]:
+	def chunk_words( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1073,20 +1130,23 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'sentence', sentence )
-			_chunks = [ ]
-			for s in sentence:
-				if len( s ) > 3:
-					_chunks.append( s )
-					
-			self.chunks = [ _chunks[ i: i + size ] for i in
-				range( 0, len( _chunks ), size ) ]
-			return self.chunks
+			throw_if( 'sentence', tokens )
+			processed = [ ]
+			wordlist = [ ]
+			for s in tokens:
+				if len( s ) > 4:
+					wordlist.append( s )
+			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
+			for i, c in enumerate( self.chunks ):
+				_item =  ' '.join( c )
+				processed.append( _item )
+			_data = pd.DataFrame( processed )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Token'
-			exception.method = ('chunk_words( self, words: list[ str ], size: int=50)')
+			exception.method = ('chunk_words( self, words: list[ str ], size: int=512)')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1124,7 +1184,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, file_path: str, lines_per_page: int=100 ) -> List[ str ] | None:
+	def split_pages( self, filepath: str, num_line: int=100 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1144,10 +1204,10 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'file_path', file_path )
-			if not os.path.exists( file_path ):
-				raise FileNotFoundError( f'File not found: {file_path}' )
-			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
+			throw_if( 'file_path', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as file:
 				content = file.read( )
 			if '\f' in content:
 				return [ page.strip( ) for page in content.split( '\f' ) if page.strip( ) ]
@@ -1155,11 +1215,11 @@ class Text( Processor ):
 			i = 0
 			n = len( self.lines )
 			while i < n:
-				page_lines = self.lines[ i: i + lines_per_page ]
+				page_lines = self.lines[ i: i + num_line ]
 				page_text = '\n'.join( page_lines ).strip( )
 				if page_text:
 					self.pages.append( page_text )
-				i += lines_per_page
+				i += num_line
 			return self.pages
 		except Exception as e:
 			exception = Error( e )
@@ -1202,7 +1262,7 @@ class Text( Processor ):
 					pg.strip( ) ]
 				return self.paragraphs
 	
-	def compute_frequency_distribution( self, lines: List[ str ] ) -> FreqDist:
+	def compute_frequency_distribution( self, tokens: List[ str ] ) -> FreqDist:
 		"""
 
 			Purpose:
@@ -1220,10 +1280,10 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'lines', lines )
-			self.lines = lines
-			all_tokens: list[ str ] = [ ]
-			for _line in lines:
+			throw_if( 'tokens', tokens )
+			self.lines = tokens
+			all_tokens = [ ]
+			for _line in tokens:
 				toks = self.tokenize_text( _line )
 				all_tokens.extend( toks )
 			self.frequency_distribution = dict( Counter( all_tokens ) )
@@ -1318,7 +1378,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_wordbag( self, words: List[ str ] ) -> dict | None:
+	def create_wordbag( self, words: List[ str ] ) -> Dict | None:
 		"""
 
 			Purpose:
@@ -1346,7 +1406,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_word2vec( self, words: List[ List[ str ] ], dims=100, win=5, size=1 ) -> Word2Vec | None:
+	def create_word2vec( self, tokens: List[ List[ str ] ], dims=100, win=5, size=1 ) -> Word2Vec | None:
 		"""
 
 			Purpose:
@@ -1366,8 +1426,8 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'words', words )
-			self.lines = words
+			throw_if( 'words', tokens )
+			self.lines = tokens
 			return Word2Vec( sentences=self.lines, vector_size=dims, window=win, min_count=size )
 		except Exception as e:
 			exception = Error( e )
@@ -1406,20 +1466,15 @@ class Text( Processor ):
 				filename = os.path.basename( f )
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				stops = self.remove_stopwords( text )
-				dirty = self.split_sentences( stops )
-				errors = self.remove_errors( dirty )
-				for d in errors:
-					if d != " ":
-						normal = self.normalize_text( d )
-						slim = self.collapse_whitespace( normal )
-						punctuation = self.remove_punctuation( slim )
-						processed.append( punctuation )
-				
+				spaces = self.collapse_whitespace( text )
+				punctuation = self.remove_punctuation( spaces )
+				special = self.remove_special( punctuation )
+				stops = self.remove_stopwords( special )
+				normal = self.normalize_text( stops )
+				frags = self.remove_fragments( normal )
 				destination = dest_path + '\\' + filename
 				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
-				for p in processed:
-					clean.write( p )
+				clean.write( frags )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1428,12 +1483,12 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_files( self, src: str, dest: str, size: int=512 ) -> None:
+	def chunk_files( self, source: str, destination: str, size: int=512 ) -> None:
 		"""
 
 			Purpose:
 			________
-			Chunks cleaned text files given a source directory and destination directory
+			Chunks cleaned text files given a _source directory and destination directory
 
 			Parameters:
 			----------
@@ -1446,18 +1501,18 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', src )
-			throw_if( 'dest', src )
-			source = src
-			dest_path = dest
-			files = os.listdir( source )
+			throw_if( 'src', source )
+			throw_if( 'dest', source )
+			_source = source
+			dest_path = destination
+			files = os.listdir( _source )
 			for f in files:
 				processed = [ ]
 				filename = os.path.basename( f )
-				source_path = source + '\\' + filename
+				source_path = _source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens = text.split( )
-				_chunks = self.chunk_words( _tokens )
+				_tokens =  text.split( ' ' )
+				_chunks = self.chunk_words( _tokens, size )
 				_datamap = [ ]
 				for i, c in enumerate( _chunks ):
 					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
@@ -1478,7 +1533,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_data( self, src: str, size: int=512 ) -> DataFrame | None:
+	def chunk_data( self, filepath: str ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1495,27 +1550,60 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', src )
-			source = src
-			files = os.listdir( source )
-			for f in files:
-				processed = [ ]
-				filename = os.path.basename( f )
-				text = open( source, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens = text.split( )
-				source_path = source + '\\' + filename
-				_chunks = self.chunk_words( _tokens )
-				_datamap = { }
-				for i, c in enumerate( _chunks ):
-					_item =  ' '.join( c )
-					processed.append( _item )
-				_data = pd.DataFrame( processed )
-				return _data
+			throw_if( 'src', filepath )
+			_source = filepath
+			processed = [ ]
+			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+			_tokens = text.split( ' ' )
+			_chunks = self.chunk_words( _tokens )
+			for i, c in enumerate( _chunks ):
+				_item =  ' '.join( c )
+				processed.append( _item )
+			_data = pd.DataFrame( processed )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_files( self, src: str, dest: str )'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def correct_data( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
+		"""
+
+			Purpose:
+			________
+			Chunks cleaned text files given a source directory and destination directory
+
+			Parameters:
+			----------
+			- src (str): Source directory
+
+			Returns:
+			--------
+			- DataFrame
+
+		"""
+		try:
+			throw_if( 'tokens', tokens )
+			processed = [ ]
+			wordlist = [ ]
+			for s in tokens:
+				if len( s ) > 4:
+					wordlist.append( s )
+			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
+			for i, c in enumerate( self.chunks ):
+				_item =  ' '.join( c )
+				processed.append( _item )
+			_data = pd.DataFrame( processed )
+			_data[ 0 ].apply( lambda x: str( TextBlob( x ).correct( ) ) )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'correct_data( text: str )'
 			error = ErrorDialog( exception )
 			error.show( )
 			
