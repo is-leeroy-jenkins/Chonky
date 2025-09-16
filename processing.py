@@ -429,22 +429,22 @@ class Text( Processor ):
 			'create_word2vec', 'chunk_data', 'remove_errors',
 			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
-	def load_text( self, path: str ) -> str | None:
+	def load_text( self, file_path: str ) -> str | None:
 		"""
 	`
 			Purpose:
 				Loads raw text from a file.
 				
 			Parameters:
-				path (str): Path to the .txt file.
+				file_path (str): Path to the .txt file.
 				
 			Returns:
 				str: Raw file content as string.`
 			
 		"""
 		try:
-			throw_if( 'file_path', path )
-			self.file_path = path
+			throw_if( 'file_path', file_path )
+			self.file_path = file_path
 			raw_input = Path( self.file_path ).read_text( encoding='utf-8', errors='ignore' )
 			return raw_input
 		except Exception as e:
