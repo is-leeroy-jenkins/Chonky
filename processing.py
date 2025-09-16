@@ -445,7 +445,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'file_path', file_path )
 			self.file_path = file_path
-			raw_input = open( self.file_path, encoding='utf-8', errors='ignore' ).read()
+			raw_input = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
 			return raw_input
 		except Exception as e:
 			exception = Error( e )
