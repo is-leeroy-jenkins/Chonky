@@ -20,7 +20,7 @@ python-docx
 pathlib
 pydantic
 pandas
-sentence-transformers
+sentence-transformers==2.6.0
 scipy
 scikit-learn
 spacy

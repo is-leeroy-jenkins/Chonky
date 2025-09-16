@@ -319,7 +319,7 @@ class Processor( ):
 		self.lowercase = None
 		self.raw_html = None
 
-# noinspection PyTypeChecker,PyArgumentList
+# noinspection PyTypeChecker,PyArgumentList,DuplicatedCode
 class Text( Processor ):
 	'''
 
@@ -509,9 +509,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			self.translator = str.maketrans( '', '', string.punctuation )
-			self.cleaned_text = self.raw_input.translate( self.translator )
-			return self.cleaned_text
+			no_punctuation = re.sub(r'[^\w\s]', ' ', self.raw_input )
+			return no_punctuation
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1465,7 +1464,6 @@ class Text( Processor ):
 				
 				destination = dest_path + '\\' + filename
 				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
-				
 				for p in processed:
 					clean.write( p )
 		except Exception as e:
@@ -1499,15 +1497,15 @@ class Text( Processor ):
 			for f in files:
 				processed = [ ]
 				filename = os.path.basename( f )
-				source_path = source + '\\' + filename
-				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
+				text = open( source, 'r', encoding='utf-8', errors='ignore' ).read( )
 				_tokens = text.split( )
+				source_path = source + '\\' + filename
 				_chunks = self.chunk_words( _tokens )
 				_datamap = { }
 				for i, c in enumerate( _chunks ):
-					_datamap[ i ] = '[ ' + ' '.join( c ) + ' ]'
-				
-				_data = pd.DataFrame( data=_datamap  )
+					_item =  ' '.join( c )
+					processed.append( _item )
+				_data = pd.DataFrame( processed )
 				return _data
 		except Exception as e:
 			exception = Error( e )
