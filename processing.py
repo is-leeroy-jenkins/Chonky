@@ -445,7 +445,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'file_path', file_path )
 			self.file_path = file_path
-			raw_input = Path( self.file_path ).read_text( encoding='utf-8', errors='ignore' )
+			raw_input = open( self.file_path, encoding='utf-8', errors='ignore' ).read()
 			return raw_input
 		except Exception as e:
 			exception = Error( e )
@@ -822,7 +822,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			_lines = [ t for t in tokens if t in wordnet.synsets( t ) ]
+			_lines = [ t for t in tokens if t in wordnet.words() ]
 			return _lines
 		except Exception as e:
 			exception = Error( e )
@@ -1408,7 +1408,8 @@ class Text( Processor ):
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
 				stops = self.remove_stopwords( text )
 				dirty = self.split_sentences( stops )
-				for d in dirty:
+				errors = self.remove_errors( dirty )
+				for d in errors:
 					if d != " ":
 						normal = self.normalize_text( d )
 						slim = self.collapse_whitespace( normal )
