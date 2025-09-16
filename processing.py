@@ -477,7 +477,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			self.cleaned_text = re.sub( r'[ \t]+', ' ', self.raw_input )
+			extra_lines = re.sub( r'[\r\n\t]+', ' ', self.raw_input )  # Newlines, tabs
+			extra_spaces = re.sub( r'\s+', ' ', extra_lines )  # Collapse multiple spaces
+			self.cleaned_text = re.sub( r'[ \t]+', ' ', extra_spaces )
 			self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
 			self.lines = [ line for line in self.cleaned_lines if line ]
 			return ' '.join( self.lines )
