@@ -875,6 +875,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+
 	def remove_errors( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
 		"""
 		
@@ -982,7 +983,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> List[ int ] | None:
+	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1012,7 +1013,8 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.encoding = tiktoken.get_encoding( encoding )
 			token_ids = self.encoding.encode( text )
-			return token_ids
+			_data = pd.DataFrame( token_ids )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1253,7 +1255,6 @@ class Text( Processor ):
 				self.raw_input = file.read( )
 				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
 					pg.strip( ) ]
-				
 				return self.paragraphs
 		except UnicodeDecodeError:
 			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as file:
