@@ -113,7 +113,7 @@ except LookupError:
 	nltk.download( 'words' )
 
 def throw_if( name: str, value: object ):
-	if not value:
+	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 class Loader( ):
@@ -1060,7 +1060,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int=512 ) -> Dict[ int, Any ] | None:
+	def chunk_text( self, text: str, size: int=512 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1092,10 +1092,14 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			_tokens = text.split( ' ' )
 			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-			_datamap = {}
+			_datamap = [ ]
+			for s in tokens:
+				if len( s ) > 4:
+					wordlist.append( s )
 			for index, chunk in enumerate( _chunks ):
-				_datamap[ index ] = chunk
-			return _datamap
+				_datamap.append( chunk )
+			_data = pd.DataFrame( _datamap )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1132,17 +1136,21 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'sentence', tokens )
+			throw_if( 'tokens', tokens )
 			processed = [ ]
 			wordlist = [ ]
 			for s in tokens:
 				if len( s ) > 4:
 					wordlist.append( s )
 			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
+			nums = list( range( 0, len( self.chunks ) ) )
 			for i, c in enumerate( self.chunks ):
 				_item =  ' '.join( c )
 				processed.append( _item )
-			_data = pd.DataFrame( processed )
+			_data = pd.DataFrame( processed, columns=[ 'Text' ] )
+			_data.reset_index( )
+			_data[ 'Line' ] = nums
+			_data.set_index( 'Line' )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1231,7 +1239,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 		
-	def split_paragraphs( self, path: str ) -> List[ str ] | None:
+	def split_paragraphs( self, filepath: str ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1249,19 +1257,21 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'path', path )
-			self.file_path = path
+			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			self.file_path = filepath
 			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
-				self.raw_input = file.read( )
-				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-					pg.strip( ) ]
-				return self.paragraphs
+				_input = file.read( )
+				_paragraphs = [ pg.strip( ) for pg in _input.split( ' ' ) if pg.strip( ) ]
+				_data = pd.DataFrame( _paragraphs )
+				return _data
 		except UnicodeDecodeError:
 			with open( self.file_path, 'r', encoding='latin1', errors='ignore' ) as file:
-				self.raw_input = file.read( )
-				self.paragraphs = [ pg.strip( ) for pg in self.raw_input.split( '\n\n' ) if
-					pg.strip( ) ]
-				return self.paragraphs
+				_input = file.read( )
+				_paragraphs = [ pg.strip( ) for pg in _input.split( ' ' ) if pg.strip( ) ]
+				_data = pd.DataFrame( _paragraphs )
+				return _data
 	
 	def compute_frequency_distribution( self, tokens: List[ str ] ) -> FreqDist:
 		"""
@@ -1282,12 +1292,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			self.lines = tokens
-			all_tokens = [ ]
-			for _line in tokens:
-				toks = self.tokenize_text( _line )
-				all_tokens.extend( toks )
-			self.frequency_distribution = dict( Counter( all_tokens ) )
+			processed = [ ]
+			wordlist = [ str ]
+			for t in tokens:
+				if len( t ) > 4:
+					wordlist.append( t )
+			self.frequency_distribution = FreqDist( dict( Counter( wordlist ) ))
 			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
@@ -1367,8 +1377,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'freq_dist', freq_dist )
 			self.frequency_distribution = freq_dist
-			self.lines = [ word for word, freq in freq_dist.items( ) if freq >= size ]
-			self.vocabulary = sorted( self.lines )
+			_vocabulary = [ word for word, freq in freq_dist.items( ) if freq >= size ]
+			self.vocabulary = sorted( _vocabulary )
 			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
@@ -1556,13 +1566,7 @@ class Text( Processor ):
 			processed = [ ]
 			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
 			_tokens = text.split( ' ' )
-			_chunks = self.chunk_words( _tokens )
-			nums = range( 0, len( _chunks ) )
-			cols = [ 'Line', 'Text' ]
-			for i, c in enumerate( _chunks ):
-				_item =  ' '.join( c )
-				processed.append( _item )
-			_data = pd.DataFrame( data=processed, index=nums, columns=cols )
+			_data = self.chunk_words( _tokens )
 			return _data
 		except Exception as e:
 			exception = Error( e )
