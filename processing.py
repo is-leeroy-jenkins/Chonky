@@ -1308,7 +1308,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def compute_conditional_distribution( self, lines: List[ str ], condition=None,
+	def compute_conditional_distribution( self, tokens: List[ str ], condition=None,
 		process: bool=True ) -> ConditionalFreqDist:
 		"""
 
@@ -1335,11 +1335,11 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'lines', lines )
-			self.lines = lines
+			throw_if( 'tokens', tokens )
+			self.tokens = tokens
 			cfd = ConditionalFreqDist( )
-			for idx, line in enumerate( self.lines ):
-				key = condition( line ) if condition else f'Doc_{idx}'
+			for idx, line in enumerate( self.tokens ):
+				key = condition( line ) if condition else f'Line-{idx}'
 				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
 				for t in toks:
 					cfd[ key ][ t ] += 1
@@ -1353,7 +1353,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_vocabulary( self, freq_dist: Dict, size: int=1 ) -> List[ str ] | None:
+	def create_vocabulary( self, freq_dist: Dict, size: int=1 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1377,9 +1377,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'freq_dist', freq_dist )
 			self.frequency_distribution = freq_dist
-			_vocabulary = [ word for word, freq in freq_dist.items( ) if freq >= size ]
-			self.vocabulary = sorted( _vocabulary )
-			return self.vocabulary
+			self.vocabulary = [ word for word, freq in freq_dist.items( ) if freq >= size ]
+			_data = pd.DataFrame( self.vocabulary )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1389,7 +1389,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_wordbag( self, words: List[ str ] ) -> Dict | None:
+	def create_wordbag( self, tokens: List[ str ] ) -> Dict | None:
 		"""
 
 			Purpose:
@@ -1406,8 +1406,8 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'words', words )
-			self.lines = words
+			throw_if( 'tokens', tokens )
+			self.tokens = tokens
 			return dict( Counter( self.lines ) )
 		except Exception as e:
 			exception = Error( e )
