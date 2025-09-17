@@ -1557,10 +1557,12 @@ class Text( Processor ):
 			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
 			_tokens = text.split( ' ' )
 			_chunks = self.chunk_words( _tokens )
+			nums = range( 0, len( _chunks ) )
+			cols = [ 'Line', 'Text' ]
 			for i, c in enumerate( _chunks ):
 				_item =  ' '.join( c )
 				processed.append( _item )
-			_data = pd.DataFrame( processed )
+			_data = pd.DataFrame( data=processed, index=nums, columns=cols )
 			return _data
 		except Exception as e:
 			exception = Error( e )
