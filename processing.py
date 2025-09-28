@@ -90,6 +90,7 @@ import os
 import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
+from pinecone import Pinecone, ServerlessSpec
 import re
 import sqlite3
 from sentence_transformers import SentenceTransformer
@@ -430,7 +431,7 @@ class Text( Processor ):
 			'create_word2vec', 'chunk_data', 'remove_errors',
 			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
 	
-	def load_text( self, file_path: str ) -> str | None:
+	def load_text( self, filepath: str ) -> str | None:
 		"""
 	`
 			Purpose:
@@ -444,8 +445,11 @@ class Text( Processor ):
 			
 		"""
 		try:
-			throw_if( 'file_path', file_path )
-			self.file_path = file_path
+			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			else:
+				self.file_path = filepath
 			raw_input = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
 			return raw_input
 		except Exception as e:
@@ -457,6 +461,39 @@ class Text( Processor ):
 			error.show( )
 	
 	def collapse_whitespace( self, text: str ) -> str | None:
+		"""
+
+			Purpose:
+			-----------
+			Removes extra lines from the string 'text'.
+
+			Parameters:
+			-----------
+			- text : str
+
+			Returns:
+			--------
+			A string with:
+				- Consecutive whitespace reduced to a single space
+				- Leading/trailing spaces removed
+				- Blank words removed
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			extra_lines = re.sub( r'[\t]+', '', self.raw_input )
+			self.cleaned_lines = [ line for line in extra_lines ]
+			return ''.join( self.cleaned_lines )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def compress_whitespace( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -478,12 +515,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			extra_lines = re.sub( r'[\r\n\t]+', ' ', self.raw_input )  # Newlines, tabs
-			extra_spaces = re.sub( r'\s+', ' ', extra_lines )  # Collapse multiple spaces
-			self.cleaned_text = re.sub( r'[ \t]+', ' ', extra_spaces )
-			self.cleaned_lines = [ line.strip( ) for line in self.cleaned_text.splitlines( ) ]
-			self.lines = [ line for line in self.cleaned_lines if line ]
-			return ' '.join( self.lines )
+			extra_spaces = re.sub( r'\r\n\t+', '', self.raw_input )
+			self.cleaned_lines = [ line for line in extra_spaces ]
+			return ''.join( self.cleaned_lines )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -548,11 +582,11 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			lower_cased = [ ]
-			for char in text:
-				if char.isalpha( ) or char.isspace( ):
-					lower = char.lower()
-					lower_cased.append( lower )
-			return ''.join( lower_cased )
+			tokens = text.split( )
+			for char in tokens:
+				lower = char.lower( )
+				lower_cased.append( lower )
+			return ' '.join( lower_cased )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
@@ -585,9 +619,11 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
+			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
-				if len( char ) > 4:
+				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( )
+						or char.isprintable( ) or char in keepers and len( char) > 4):
 					cleaned.append( char )
 			return ' '.join( cleaned )
 		except Exception as e:
@@ -626,11 +662,12 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', '; ', ': ' ]
-			for char in text:
-				if char.isalpha( ) or char.isspace( ):
+			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
+			tokens = text.split( ' ' )
+			for char in tokens:
+				if char.isalpha( ) or char.isnumeric( ) or char.isspace( ) or ( char in keepers ):
 					cleaned.append( char )
-			return ''.join( cleaned )
+			return ' '.join( cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -736,7 +773,7 @@ class Text( Processor ):
 			self.stop_words = set( stopwords.words( 'english' ) )
 			_words = text.split( ' ' )
 			tokens = [ t for t in _words ]
-			self.cleaned_tokens = [ w for w in tokens if w.isalnum( ) and w not in self.stop_words ]
+			self.cleaned_tokens = [ w for w in tokens if w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
@@ -747,43 +784,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_spaces( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			_____________
-			Removes extra spaces and blank words from the path pages.
-
-			Parameters:
-			-----------
-			- pages : str
-				The raw path pages path to be cleaned_lines.
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines pages path with:
-					- Consecutive whitespace reduced to a single space
-					- Leading/trailing spaces removed
-					- Blank words removed
-
-		"""
-		try:
-			throw_if( 'text', text )
-			normalized = text.lower( )
-			tabs = re.sub( r'[ \t]+', '  ', normalized )
-			collapsed = re.sub( r'\s+', '  ', tabs )
-			self.cleaned_text = collapsed
-			return self.cleaned_text
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'remove_errors( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def remove_headers( self, file_path: str, lines_per_page: int=55,
+	def remove_headers( self, filepath: str, lines_per_page: int=55,
 		header_lines: int=3, footer_lines: int=3, ) -> str:
 		"""
 		
@@ -794,7 +795,7 @@ class Text( Processor ):
 	
 			Parameters:
 			-----------
-			file_path (str):
+			filepath (str):
 			Path to the plain-text document to clean.
 			lines_per_page (int, optional):
 			Approximate number of lines per page. Defaults to 50. Tune for your source.
@@ -810,14 +811,14 @@ class Text( Processor ):
 				
 		"""
 		try:
-			throw_if( 'file_path', file_path )
+			throw_if( 'filepath', filepath )
 			if lines_per_page < 6:
 				raise ValueError( "Argument \"lines_per_page\" should be at least 6." )
 			if header_lines < 0 or footer_lines < 0:
 				msg = "Arguments \"header_lines\" and \"footer_lines\" must be non-negative."
 				raise ValueError( msg )
 			
-			with open( file_path, 'r', encoding='utf-8', errors='ignore' ) as fh:
+			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as fh:
 				all_lines: List[ str ] = fh.readlines( )
 			
 			pages = [ all_lines[ i: i + lines_per_page ] for i in
@@ -876,7 +877,7 @@ class Text( Processor ):
 			error.show( )
 	
 
-	def remove_errors( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
+	def remove_errors( self, text: str  ) -> str:
 		"""
 		
 			Removes tokens that are not recognized as valid English words
@@ -898,18 +899,22 @@ class Text( Processor ):
 			
 		"""
 		try:
-			throw_if( 'tokens', tokens )
-			processed = [ ]
+			throw_if( 'text', text )
 			wordlist = [ ]
-			for s in tokens:
-				if len( s ) > 4:
+			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
+			vocab = words.words( 'en' )
+			tokens = text.split( ' ' )
+			for char in tokens:
+				if ( char.isalpha( ) or char.isspace( ) or char.isnumeric( )
+						or char.isprintable( ) and ( char in keepers ) ):
+					wordlist.append( char )
+			for word in tokens:
+				s = word.lower( )
+				if s.isnumeric( ) or s.isalpha( ):
 					wordlist.append( s )
-			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
-			for i, c in enumerate( self.chunks ):
-				_item =  ' '.join( c )
-				processed.append( _item )
-			_data = pd.DataFrame( processed )
-			_data[ 0 ].apply( lambda x: str( TextBlob( x ).correct( ) ) )
+				elif s in vocab:
+					wordlist.append( s )
+			_data = ' '.join( wordlist )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -938,8 +943,8 @@ class Text( Processor ):
 			_num = len( tokens )
 			_processed = [ ]
 			_datamap = [ ]
-			for tkns in tokens:
-				_words = [ t for t in tkns if t not in self.stop_words and len( t ) > 4 ]
+			for _tkns in tokens:
+				_words = [ t for t in _tkns if t not in self.stop_words and len( t ) > 4 ]
 				_datamap.append( _words )
 			
 			_processed.append( _datamap )
@@ -953,7 +958,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_text( self, text: str ) -> DataFrame:
+	def tokenize_text( self, text: str ) -> str:
 		'''
 
 			Purpose:
@@ -973,7 +978,7 @@ class Text( Processor ):
 			_tokens = nltk.word_tokenize( text )
 			_words = [ t for t in _tokens ]
 			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in _words if w.strip( ) ]
-			_data = pd.DataFrame( _tokenlist )
+			_data = ' '.join( _tokenlist )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1059,8 +1064,8 @@ class Text( Processor ):
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
-	
-	def chunk_text( self, text: str, size: int=512 ) -> DataFrame:
+			
+	def chunk_sentences( self, text: str, size: int=512 ) -> str:
 		"""
 
 			Purpose:
@@ -1093,12 +1098,59 @@ class Text( Processor ):
 			_tokens = text.split( ' ' )
 			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_datamap = [ ]
-			for s in tokens:
+			for s in _tokens:
 				if len( s ) > 4:
-					wordlist.append( s )
+					_datamap.append( s )
 			for index, chunk in enumerate( _chunks ):
-				_datamap.append( chunk )
-			_data = pd.DataFrame( _datamap )
+				_map = ' '.join( chunk )
+			_data = ' '.join( _datamap )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'chunk_sentences( self, text: str, max: int=20 ) -> DataFrame'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def chunk_text( self, text: str, size: int=512 ) -> DataFrame:
+		"""
+
+			Purpose:
+			-----------
+			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
+			  - Converts pages to lowercase
+			  - Tokenizes pages using NLTK's word_tokenize
+			  - Breaks words into chunks of a specified size
+			  - Optionally joins words into strings (for transformer models)
+
+			Parameters:
+			-----------
+			- pages : str
+				The cleaned_lines path pages to be tokenized and chunked.
+
+			- size : int, optional (default=50)
+				Number of words per chunk_words.
+
+			- return_as_string : bool, optional (default=True)
+				If True, returns each chunk_words as a path; otherwise, returns a get_list of
+				words.
+
+			Returns:
+			--------
+			- a list
+
+		"""
+		try:
+			throw_if( 'text', text )
+			_tokens = text.split( )
+			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_datamap = [ ]
+			for index, chunk in enumerate( _chunks ):
+				_value = ' '.join( chunk )
+				_item = f'{_value}'
+				_datamap.append( _item )
+			_data = pd.DataFrame( _datamap  )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1214,10 +1266,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'file_path', filepath )
+			throw_if( 'filepath', filepath )
 			if not os.path.exists( filepath ):
 				raise FileNotFoundError( f'File not found: {filepath}' )
-			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as file:
+			else:
+				self.file_path = filepath
+			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
 				content = file.read( )
 			if '\f' in content:
 				return [ page.strip( ) for page in content.split( '\f' ) if page.strip( ) ]
@@ -1260,7 +1314,8 @@ class Text( Processor ):
 			throw_if( 'filepath', filepath )
 			if not os.path.exists( filepath ):
 				raise FileNotFoundError( f'File not found: {filepath}' )
-			self.file_path = filepath
+			else:
+				self.file_path = filepath
 			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as file:
 				_input = file.read( )
 				_paragraphs = [ pg.strip( ) for pg in _input.split( ' ' ) if pg.strip( ) ]
@@ -1297,7 +1352,7 @@ class Text( Processor ):
 			for t in tokens:
 				if len( t ) > 4:
 					wordlist.append( t )
-			self.frequency_distribution = FreqDist( dict( Counter( wordlist ) ))
+			self.frequency_distribution = FreqDist( dict( Counter( wordlist ) ) )
 			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
@@ -1341,7 +1396,7 @@ class Text( Processor ):
 			for idx, line in enumerate( self.tokens ):
 				key = condition( line ) if condition else f'Line-{idx}'
 				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
-				for t in toks:
+				for t in toks.split( ):
 					cfd[ key ][ t ] += 1
 			self.conditional_distribution = cfd
 			return self.conditional_distribution
@@ -1408,7 +1463,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
-			return dict( Counter( self.lines ) )
+			return dict( Counter( self.tokens ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1448,6 +1503,43 @@ class Text( Processor ):
 			                    'size=100, window=5, min=1 ) -> Word2Vec')
 			error = ErrorDialog( exception )
 			error.show( )
+			
+	def clean_file( self, src: str ) -> str:
+		"""
+
+			Purpose:
+			________
+			Cleans text files given a source directory (src) and destination directory (dest)
+
+			Parameters:
+			----------
+			- src (str): Source directory
+
+			Returns:
+			--------
+			- None
+
+		"""
+		try:
+			throw_if( 'src', src )
+			source = src
+			text = open( source, 'r', encoding='utf-8', errors='ignore' ).read( )
+			special = self.remove_special( text )
+			compress = self.compress_whitespace( special )
+			normal = self.normalize_text( compress )
+			stops = self.remove_stopwords( normal )
+			errors = self.remove_errors( stops )
+			fragments = self.remove_fragments( errors )
+			sentences = self.split_sentences( fragments )
+			data = ' '.join( sentences )
+			return data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'clean_file( self, src: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
 	
 	def clean_files( self, src: str, dest: str ) -> None:
 		"""
@@ -1468,7 +1560,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'src', src )
-			throw_if( 'dest', src )
+			throw_if( 'dest', dest )
 			source = src
 			dest_path = dest
 			files = os.listdir( source )
@@ -1477,15 +1569,17 @@ class Text( Processor ):
 				filename = os.path.basename( f )
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				spaces = self.collapse_whitespace( text )
-				punctuation = self.remove_punctuation( spaces )
-				special = self.remove_special( punctuation )
-				stops = self.remove_stopwords( special )
-				normal = self.normalize_text( stops )
-				frags = self.remove_fragments( normal )
+				special = self.remove_special( text )
+				compress = self.compress_whitespace( special )
+				normal = self.normalize_text( compress )
+				stops = self.remove_stopwords( normal )
+				errors = self.remove_errors( stops )
+				fragments = self.remove_fragments( errors )
+				sentences = self.split_sentences( fragments )
 				destination = dest_path + '\\' + filename
 				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
-				clean.write( frags )
+				text = ' '.join( sentences )
+				clean.write( text )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1513,17 +1607,18 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'src', source )
-			throw_if( 'dest', source )
+			throw_if( 'dest', destination )
 			_source = source
 			dest_path = destination
 			files = os.listdir( _source )
+			wordlist = [ ]
 			for f in files:
 				processed = [ ]
 				filename = os.path.basename( f )
 				source_path = _source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
 				_tokens =  text.split( ' ' )
-				_chunks = self.chunk_words( _tokens, size )
+				_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 				_datamap = [ ]
 				for i, c in enumerate( _chunks ):
 					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
@@ -1544,7 +1639,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_data( self, filepath: str ) -> DataFrame:
+	def chunk_data( self, filepath: str, size: int=512  ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1564,57 +1659,28 @@ class Text( Processor ):
 			throw_if( 'src', filepath )
 			_source = filepath
 			processed = [ ]
-			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
-			_tokens = text.split( ' ' )
-			_data = self.chunk_words( _tokens )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'chunk_files( self, src: str, dest: str )'
-			error = ErrorDialog( exception )
-			error.show( )
-
-	def correct_data( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
-		"""
-
-			Purpose:
-			________
-			Chunks cleaned text files given a source directory and destination directory
-
-			Parameters:
-			----------
-			- src (str): Source directory
-
-			Returns:
-			--------
-			- DataFrame
-
-		"""
-		try:
-			throw_if( 'tokens', tokens )
-			processed = [ ]
 			wordlist = [ ]
+			vocab = words.words( 'en' )
+			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+			tokens = text.split( )
 			for s in tokens:
-				if len( s ) > 4:
+				if s.isalpha( ) and s in vocab:
 					wordlist.append( s )
 			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
 			for i, c in enumerate( self.chunks ):
 				_item =  ' '.join( c )
 				processed.append( _item )
 			_data = pd.DataFrame( processed )
-			_data[ 0 ].apply( lambda x: str( TextBlob( x ).correct( ) ) )
 			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'correct_data( text: str )'
+			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
-			
-	def convert_jsonl( self, source: str, desination: str ) -> None:
+
+	def convert_jsonl( self, source: str, destination: str, size: int=512 ) -> None:
 		"""
 
 			Purpose:
@@ -1633,34 +1699,31 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'source', source )
-			throw_if( 'destination', destination )
+			throw_if( 'src', source )
+			throw_if( 'dest', destination )
 			_source = source
-			_destination = desination
-			self.files = os.listdir( _source )
-			_processed = [ ]
-			for _f in self.files:
-				_count = 0
-				_basename = os.path.basename( _f )
-				_sourcepath = _source + f'\\{_basename}'
-				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_stops = self.remove_stopwords( _text )
-				_tokens = self.tokenize_text( _stops )
-				_chunks = self.chunk_text( _text )
-				_filename = _basename.rstrip( '.txt' )
-				_destinationpath = _destination + f'\\{_filename}.jsonl'
-				_clean = open( _destinationpath, 'wt', encoding='utf-8', errors='ignore' )
-				for _i in range( len( _chunks ) ):
-					_list = _chunks[ _i ]
-					_part = ''.join( _list )
-					_row = '{' + f'\"Line-{_i}\":\"{_part}\"' + '}' + '\r'
-					_processed.append( _row )
+			dest_path = destination
+			files = os.listdir( _source )
+			wordlist = [ ]
+			for f in files:
+				processed = [ ]
+				filename = os.path.basename( f )
+				source_path = _source + '\\' + filename
+				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_tokens =  text.split( ' ' )
+				_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+				_datamap = [ ]
+				for i, c in enumerate( _chunks ):
+					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+					_datamap.append( _value )
+					
+				for s in _datamap:
+					processed.append( s )
 				
-				for _t in _processed:
-					_clean.write( _t )
-				
-				_clean.flush( )
-				_clean.close( )
+				destination = dest_path + '\\' + filename.replace( '.txt', '.jsonl' )
+				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
+				for p in processed:
+					clean.write( p )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1669,21 +1732,22 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def embed_sentence( self, sentences: List[ str ], model: Word2Vec ) -> np.ndarray:
+	def embed_sentence( self, tokens: List[ str ], model: Word2Vec ) -> np.ndarray:
 		"""
 
 			Purpose:
 				Converts a tokenized sentence into a single vector by averaging word embeddings.
 			Parameters:
-				sentences (list[str]): Tokenized sentence.
+				tokens (list[str]): Tokenized sentence.
 				model (Word2Vec): Trained embedding model.
 			Returns:
 				np.ndarray: Sentence vector.
 
 		"""
 		try:
-			throw_if( 'sentences', sentences )
-			self.lines = sentences
+			throw_if( 'tokens', tokens )
+			throw_if( 'model', model )
+			self.lines = tokens
 			_embeddings = [ model.wv[ t ] for t in self.lines if t in model.wv ]
 			self.embeddings.append( _embeddings )
 			if not self.embeddings:
@@ -1744,7 +1808,7 @@ class Text( Processor ):
 			throw_if( 'corpus', corpus )
 			throw_if( 'model', model )
 			self.corpus.append( corpus )
-			return np.array( [ embed_sentence( sentence, model ) for sentence in self.corpus ] )
+			return np.array( [ self.embed_sentences( sentence, model ) for sentence in self.corpus ] )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1754,16 +1818,15 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def semantic_search( self, query: str, sentences: List[
-		str ], embeddings: np.ndarray, model: SentenceTransformer, top: int=5 ) -> List[
-		tuple[ str, float ] ]:
+	def semantic_search( self, query: str, tokens: List[ str ], embeddings: np.ndarray,
+			model: SentenceTransformer, top: int=5 ) -> List[ tuple[ str, float ] ]:
 		"""
 			Purpose:
 				Perform semantic search over embedded corpus using query.
 				
 			Parameters:
 				query (str): Natural language input.
-				sentences (list[str]): Corpus sentences.
+				tokens (list[str]): Corpus sentences.
 				embeddings (np.ndarray): Sentence embeddings.
 				model (SentenceTransformer): Same model used for encoding.
 				top (int): Number of matches to return.
@@ -1773,24 +1836,24 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'query', query )
-			throw_if( 'sentence', sentence )
-			throw_if( 'embedding', embedding )
+			throw_if( 'tokens', tokens )
+			throw_if( 'embedding', embeddings )
 			throw_if( 'model', model )
-			query_vec = model.encode( [ clean_text( query ) ] )
+			query_vec = model.encode( [ query ] )
 			sims = cosine_similarity( query_vec, embeddings )[ 0 ]
 			top_indices = sims.argsort( )[ ::-1 ][ : top ]
-			return [ (sentences[ i ], sims[ i ]) for i in top_indices ]
+			return [ (tokens[ i ], sims[ i ]) for i in top_indices ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('semantic_search( self, query: str, sentences: List[ str ], '
+			exception.method = ('semantic_search( self, query: str, tokens: List[ str ], '
 			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
 			                    'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def visualize_embeddings( self, model: Word2Vec, num_words: int=100 ):
+	def visualize_embeddings( self, model: Word2Vec, nums: int=100 ):
 		"""
 
 			Purpose:
@@ -1798,7 +1861,7 @@ class Text( Processor ):
 
 			Parameters:
 				model (Word2Vec): Trained model.
-				num_words (int): Number of top words to visualize.
+				nums (int): Number of top words to visualize.
 
 			Returns:
 				None
@@ -1806,13 +1869,13 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'model', model )
-			words = list( model.wv.index_to_key )[ :num_words ]
-			vectors = [ model.wv[ word ] for word in words ]
+			_words = list( model.wv.index_to_key )[ :nums ]
+			vectors = [ model.wv[ w ] for w in _words ]
 			pca = PCA( n_components=2 )
 			result = pca.fit_transform( vectors )
 			plt.figure( figsize=(10, 6) )
 			plt.scatter( result[ :, 0 ], result[ :, 1 ] )
-			for i, word in enumerate( words ):
+			for i, word in enumerate( _words ):
 				plt.annotate( word, xy=(result[ i, 0 ], result[ i, 1 ]) )
 			plt.title( "Word2Vec Embeddings (PCA)" )
 			plt.grid( True )
@@ -2091,7 +2154,7 @@ class PDF( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'strip_headers', 'minimum_length', 'extract_tables', 'path', 'page', 'pages',
+		return [ 'strip_headers', 'minimum_length', 'extract_tables', 'file_path', 'page', 'pages',
 			'words', 'clean_lines', 'extracted_lines', 'extracted_tables', 'extracted_pages',
 			'extract_lines', 'extract_text', 'export_csv', 'export_text', 'export_excel' ]
 	
@@ -2116,7 +2179,6 @@ class PDF( Processor ):
 		try:
 			throw_if( 'path', path )
 			self.file_path = path
-			self.extracted_lines = [ ]
 			with fitz.open( self.file_path ) as doc:
 				for i, page in enumerate( doc ):
 					if size is not None and i >= size:
@@ -2197,7 +2259,7 @@ class PDF( Processor ):
 					line = line.strip( )
 					if len( line ) < self.minimum_length:
 						continue
-					if self.strip_headers and self._has_repeating_header( line ):
+					if self.strip_headers and self._has_header( line ):
 						continue
 					clean.append( line )
 				return clean
@@ -2209,7 +2271,7 @@ class PDF( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def _has_repeating_header( self, line: str ) -> bool | None:
+	def _has_header( self, line: str ) -> bool | None:
 		"""
 
 			Purpose:
@@ -2417,18 +2479,17 @@ class CSV( Loader ):
 	def __init__( self ) -> None:
 		super( ).__init__( )
 		self.file_path = None
-		self.documents = None
 		self.encoding = None
-		self.csv_args = None
 		self.source_column = None
-		self.pattern = None
-		self.expanded = None
-		self.candidates = None
-		self.resolved = None
+		self.documents = [ ]
+		self.csv_args = { }
+		self.pattern = [ ]
+		self.expanded = [ ]
+		self.candidates = [ ]
+		self.resolved = [ ]
 	
-	def load( self, path: str, encoding: Optional[ str ]=None,
-			csv_args: Optional[ Dict[ str, Any ] ]=None,
-			source_column: Optional[ str ]=None ) -> List[ Document ] | None:
+	def load( self, path: str, encoding: str=None, csv_args: Dict[ str, Any ]=None,
+			source_column: str=None ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2534,7 +2595,7 @@ class Web( Loader ):
 			throw_if( 'urls', urls )
 			self.urls = urls
 			self.loader = WebBaseLoader( web_path=self.urls )
-			self.documents = loader.load( )
+			self.documents = loader.load( path=self.file_path )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
@@ -2564,7 +2625,7 @@ class Web( Loader ):
 		try:
 			throw_if( 'documents', self.documents )
 			self.documents = self._split_documents( self.documents, chunk=chunk, overlap=overlap )
-			return self.docs
+			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
@@ -3585,3 +3646,193 @@ class Chroma( ):
 			exception.method = 'persist( self )'
 			error = ErrorDialog( exception )
 			error.show( )
+
+
+class Cone( ):
+    """
+
+        Purpose:
+        Encapsulates a Pinecone vector database interface that allows embedding
+        storage, search, and index management for semantic applications.
+
+        Parameters:
+        api_key (str):
+            Pinecone API key required for authentication.
+        environment (str):
+            Pinecone environment (e.g., "gcp-starter").
+        index_name (str):
+            The name of the vector index to operate on.
+        dimension (int):
+            Dimensionality of the vector embeddings.
+
+        Attributes:
+        client (Pinecone): Pinecone client instance.
+        index_name (str): Name of the active vector index.
+        dimension (int): Vector size expected by the index.
+
+    """
+
+    client: Pinecone
+    index_name: str
+    dimension: int
+
+    def __init__(self, api_key: str, environment: str, index_name: str, dimension: int):
+        """
+
+            Purpose:
+            ---------
+            Initializes the Pinecone client and ensures the target index exists.
+
+            Parameters:
+            ---------
+            api_key (str): API key for authentication.
+            environment (str): Pinecone environment string.
+            index_name (str): Vector index name.
+            dimension (int): Vector dimensionality.
+
+            Returns:
+            None
+
+        """
+        try:
+            self.index_name = index_name
+            self.dimension = dimension
+            self.client = Pinecone(api_key=api_key)
+            if self.index_name not in self.client.list_indexes().names():
+                self.client.create_index( name=self.index_name, dimension=self.dimension,
+                    metric='cosine', spec=ServerlessSpec(cloud='aws', region=environment) )
+        except Exception as e:
+            exception = Error( e )
+            exception.module = 'chonky'
+            exception.cause = "Cone"
+            exception.method = "__init__(...)"
+            error = ErrorDialog( exception )
+            error.show( )
+
+
+    def upsert(self, ids: List[ str ], vectors: List[ List[ float ] ],
+		    metadata: List[ dict ]=None ) -> None:
+        """
+
+            Purpose:
+            -------
+            Adds or updates vector embeddings in the Pinecone index.
+
+            Parameters:
+            --------
+            ids (List[str]): List of unique vector identifiers.
+            vectors (List[List[float]]): List of vector embeddings.
+            metadata (List[dict], optional): Optional metadata to associate with vectors.
+
+            Returns:
+            None
+
+        """
+        try:
+            throw_if( "ids", ids )
+            throw_if( "vectors", vectors )
+            records = [ ( id_, vec, metadata[ i ] if metadata else None )
+                for i, ( id_, vec ) in enumerate( zip( ids, vectors ) ) ]
+            index = self.client.Index( self.index_name )
+            index.upsert(vectors=records)
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "cone"
+            exception.cause = "Cone"
+            exception.method = "upsert(...)"
+            ErrorDialog(exception).show()
+
+    def query(self, vector: List[float], top_k: int = 5) -> list:
+        """
+
+            Purpose:
+            Performs similarity search on the Pinecone index using a query vector.
+
+            Parameters:
+            vector (List[float]): Query vector.
+            top_k (int): Number of top results to return.
+
+            Returns:
+            list: List of matching vector records with scores and metadata.
+
+        """
+        try:
+            throw_if("vector", vector)
+            index = self.client.Index(self.index_name)
+            response = index.query(vector=vector, top_k=top_k, include_metadata=True)
+            return response.matches
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "cone"
+            exception.cause = "Cone"
+            exception.method = "query(...)"
+            ErrorDialog(exception).show()
+
+    def delete(self, ids: List[str]) -> None:
+        """
+
+            Purpose:
+            Deletes specific vector records by ID from the Pinecone index.
+
+            Parameters:
+            ids (List[str]): List of vector identifiers to remove.
+
+            Returns:
+            None
+
+        """
+        try:
+            throw_if("ids", ids)
+            index = self.client.Index(self.index_name)
+            index.delete(ids=ids)
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "cone"
+            exception.cause = "Cone"
+            exception.method = "delete(...)"
+            ErrorDialog(exception).show()
+
+    def clear_index( self ) -> None:
+        """
+
+            Purpose:
+            Removes all vectors from the index without deleting the index itself.
+
+            Parameters:
+            None
+
+            Returns:
+            None
+
+        """
+        try:
+            index = self.client.Index(self.index_name)
+            index.delete(delete_all=True)
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "cone"
+            exception.cause = "Cone"
+            exception.method = "clear_index()"
+            ErrorDialog(exception).show()
+
+    def drop_index(self) -> None:
+        """
+
+            Purpose:
+            Permanently deletes the entire Pinecone index.
+
+            Parameters:
+            None
+
+            Returns:
+            None
+
+        """
+        try:
+            self.client.delete_index(self.index_name)
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "cone"
+            exception.cause = "Cone"
+            exception.method = "drop_index()"
+            ErrorDialog(exception).show()

@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="AutoImportSettings">
-    <option name="autoReloadType" value="SELECTIVE" />
-  </component>
   <component name="ChangeListManager">
-    <list default="true" id="0cfdcbb3-e807-4f20-b5c8-bb02f338ea62" name="Changes" comment="updates">
+    <list default="true" id="95099c67-6bcb-4621-b851-cdce4af3f778" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/chonky.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copyright/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copyright/python.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/6c684e40-ba6a-479b-a78b-6713c25ca141.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/6c684e40-ba6a-479b-a78b-6713c25ca141/storage_v2/_src_/schema/main.uQUzAA.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/icon.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/sqldialects.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/boogr.py" beforeDir="false" afterPath="$PROJECT_DIR$/boogr.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ipynb/pipes.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/ipynb/pipes.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
     </list>
@@ -14,57 +25,25 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="DatabaseLocalColorSettings">
-    <colors>
-      <entry key="6c684e40-ba6a-479b-a78b-6713c25ca141" value="Green" />
-    </colors>
-  </component>
-  <component name="FlaskConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform)); sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo, NoAppException&#10;for module in [&quot;main.py&quot;, &quot;wsgi.py&quot;, &quot;app.py&quot;]:&#10;    try: locals().update(ScriptInfo(app_import_path=module, create_app=None).load_app().make_shell_context()); print(&quot;\nFlask App: %s&quot; % app.import_name); break&#10;    except NoAppException: pass" module-name="Chonky" sdk-home="$PROJECT_DIR$/venv/Scripts/python.exe">
-    <envs>
-      <env key="FLASK_APP" value="app" />
-    </envs>
-    <option name="sdk">
-      <Sdk />
-    </option>
-    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform)); sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo, NoAppException&#10;for module in [&quot;main.py&quot;, &quot;wsgi.py&quot;, &quot;app.py&quot;]:&#10;    try: locals().update(ScriptInfo(app_import_path=module, create_app=None).load_app().make_shell_context()); print(&quot;\nFlask App: %s&quot; % app.import_name); break&#10;    except NoAppException: pass" />
-    <option name="mySdkHome" value="$PROJECT_DIR$/venv/Scripts/python.exe" />
-    <option name="mySdk">
-      <Sdk />
-    </option>
-    <option name="myModuleName" value="Chonky" />
-    <option name="myEnvs">
-      <map>
-        <entry key="FLASK_APP" value="app" />
-      </map>
-    </option>
-  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory">{
-  &quot;lastFilter&quot;: {
-    &quot;state&quot;: &quot;OPEN&quot;,
-    &quot;assignee&quot;: &quot;is-leeroy-jenkins&quot;
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "is-leeroy-jenkins"
   }
-}</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/is-leeroy-jenkins/Chonky.git&quot;,
-    &quot;accountId&quot;: &quot;78145f30-18cb-443d-a346-237522922b0e&quot;
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/is-leeroy-jenkins/Chonky.git",
+    "accountId": "78145f30-18cb-443d-a346-237522922b0e"
   }
-}</component>
-  <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/ipynb/pipes.ipynb" root0="SKIP_INSPECTION" root1="FORCE_HIGHLIGHTING" root2="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/requirements.txt" root0="SKIP_INSPECTION" />
-  </component>
-  <component name="ProblemsViewState">
-    <option name="selectedTabId" value="DEPENDENCY_CHECKER_PROBLEMS_TAB" />
-  </component>
-  <component name="ProjectColorInfo">{
-  &quot;customColor&quot;: &quot;&quot;,
-  &quot;associatedIndex&quot;: 0
-}</component>
-  <component name="ProjectId" id="32ZesIJG0IyGlW5xSnqpEgskUS0" />
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 3
+}]]></component>
+  <component name="ProjectId" id="33LhuxE9XY4IBnkuGdu1OndW5tU" />
   <component name="ProjectViewState">
     <option name="foldersAlwaysOnTop" value="false" />
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -72,318 +51,53 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.textmate.bundles&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "C:/Users/terry/source/repos/Chonky",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "works.szabope.mypy.configurable",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "sqlite"
+    ]
   }
-}</component>
+}]]></component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
-      <console-settings module-name="Chonky" sdk-home="$PROJECT_DIR$/venv/Scripts/python.exe">
-        <option name="sdk">
-          <Sdk />
-        </option>
-        <option name="mySdkHome" value="$PROJECT_DIR$/venv/Scripts/python.exe" />
-        <option name="mySdk">
-          <Sdk />
-        </option>
-        <option name="myModuleName" value="Chonky" />
+      <console-settings is-module-sdk="true" working-directory="$PROJECT_DIR$/../Boo">
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myWorkingDirectory" value="$PROJECT_DIR$/../Boo" />
       </console-settings>
     </option>
   </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-PY-252.26199.168" />
+        <option value="bundled-python-sdk-b3d66beaba9a-c6efb3732140-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26199.168" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="0cfdcbb3-e807-4f20-b5c8-bb02f338ea62" name="Changes" comment="" />
-      <created>1757632730450</created>
+      <changelist id="95099c67-6bcb-4621-b851-cdce4af3f778" name="Changes" comment="" />
+      <created>1759102485893</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1757632730450</updated>
-      <workItem from="1757632733514" duration="110000" />
-      <workItem from="1757632956238" duration="21400000" />
-      <workItem from="1757717579087" duration="5430000" />
-      <workItem from="1757770709774" duration="638000" />
-      <workItem from="1757801681657" duration="23811000" />
-      <workItem from="1757899707424" duration="1649000" />
-      <workItem from="1757937519084" duration="3234000" />
-      <workItem from="1757941138167" duration="10393000" />
-      <workItem from="1757961698599" duration="35513000" />
-      <workItem from="1758113184173" duration="10573000" />
+      <updated>1759102485893</updated>
+      <workItem from="1759102488042" duration="237000" />
     </task>
-    <task id="LOCAL-00001" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757716328217</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1757716328217</updated>
-    </task>
-    <task id="LOCAL-00002" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757716367786</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1757716367786</updated>
-    </task>
-    <task id="LOCAL-00003" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757717998738</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1757717998738</updated>
-    </task>
-    <task id="LOCAL-00004" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757718020320</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1757718020320</updated>
-    </task>
-    <task id="LOCAL-00005" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757767352276</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1757767352276</updated>
-    </task>
-    <task id="LOCAL-00006" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757874757996</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1757874757996</updated>
-    </task>
-    <task id="LOCAL-00007" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757878358515</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1757878358515</updated>
-    </task>
-    <task id="LOCAL-00008" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757878387222</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1757878387222</updated>
-    </task>
-    <task id="LOCAL-00009" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757878754616</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1757878754616</updated>
-    </task>
-    <task id="LOCAL-00010" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757883222886</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1757883222886</updated>
-    </task>
-    <task id="LOCAL-00011" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757883522904</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1757883522904</updated>
-    </task>
-    <task id="LOCAL-00012" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884211316</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884211316</updated>
-    </task>
-    <task id="LOCAL-00013" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884397063</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884397063</updated>
-    </task>
-    <task id="LOCAL-00014" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884408011</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884408011</updated>
-    </task>
-    <task id="LOCAL-00015" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884573494</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884573494</updated>
-    </task>
-    <task id="LOCAL-00016" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884700447</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884700447</updated>
-    </task>
-    <task id="LOCAL-00017" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884710254</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884710254</updated>
-    </task>
-    <task id="LOCAL-00018" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757884846697</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1757884846697</updated>
-    </task>
-    <task id="LOCAL-00019" summary="updates">
-      <option name="closed" value="true" />
-      <created>1757955904187</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1757955904187</updated>
-    </task>
-    <task id="LOCAL-00020" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758028270964</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
-      <option name="project" value="LOCAL" />
-      <updated>1758028270964</updated>
-    </task>
-    <task id="LOCAL-00021" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758036517357</created>
-      <option name="number" value="00021" />
-      <option name="presentableId" value="LOCAL-00021" />
-      <option name="project" value="LOCAL" />
-      <updated>1758036517357</updated>
-    </task>
-    <task id="LOCAL-00022" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758036924470</created>
-      <option name="number" value="00022" />
-      <option name="presentableId" value="LOCAL-00022" />
-      <option name="project" value="LOCAL" />
-      <updated>1758036924470</updated>
-    </task>
-    <task id="LOCAL-00023" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758037225782</created>
-      <option name="number" value="00023" />
-      <option name="presentableId" value="LOCAL-00023" />
-      <option name="project" value="LOCAL" />
-      <updated>1758037225782</updated>
-    </task>
-    <task id="LOCAL-00024" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758037774018</created>
-      <option name="number" value="00024" />
-      <option name="presentableId" value="LOCAL-00024" />
-      <option name="project" value="LOCAL" />
-      <updated>1758037774018</updated>
-    </task>
-    <task id="LOCAL-00025" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758037889366</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1758037889366</updated>
-    </task>
-    <task id="LOCAL-00026" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758038033074</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1758038033074</updated>
-    </task>
-    <task id="LOCAL-00027" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758038132070</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1758038132070</updated>
-    </task>
-    <task id="LOCAL-00028" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758038366345</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1758038366345</updated>
-    </task>
-    <task id="LOCAL-00029" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758066596538</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1758066596538</updated>
-    </task>
-    <task id="LOCAL-00030" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758109087327</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1758109087327</updated>
-    </task>
-    <task id="LOCAL-00031" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758113416594</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1758113416594</updated>
-    </task>
-    <task id="LOCAL-00032" summary="updates">
-      <option name="closed" value="true" />
-      <created>1758123698542</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1758123698542</updated>
-    </task>
-    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="updates" />
-    <option name="LAST_COMMIT_MESSAGE" value="updates" />
   </component>
 </project>
