@@ -87,7 +87,7 @@ class Dark( BaseModel ):
 		self.button_forecolor = sg.theme_button_color_text( )
 		self.button_color = sg.theme_button_color( )
 		self.icon_path = r'\resources\ico\ninja.ico'
-		self.theme_font = ('Roboto', 11)
+		self.theme_font = ( 'Roboto', 11 )
 		self.scrollbar_color = '#755600'
 		self.form_size = (400, 200)
 		sg.set_global_icon( icon=self.icon_path )
