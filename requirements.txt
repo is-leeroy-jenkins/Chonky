@@ -1,16 +1,9 @@
 jupytext
+jupyterlab
 beautifulsoup4
-chromadb
-docx
-FreeSimpleGUI
-fitz
-gensim
 ipywidgets
 ipython
-isort
-jupyterlab==4.0.2
 matplotlib
-numpy
 nltk
 openai
 langchain
@@ -20,7 +13,8 @@ python-docx
 pathlib
 pydantic
 pandas
-sentence-transformers==2.6.0
+pinecone
+sentence-transformers
 scipy
 scikit-learn
 spacy

@@ -48,7 +48,7 @@ from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
 from collections import Counter
-from gensim.models import Word2Vec, KeyedVectors
+import html
 import glob
 import json
 from langchain.agents import initialize_agent, AgentType, AgentExecutor
@@ -115,7 +115,7 @@ except LookupError:
 
 def throw_if( name: str, value: object ):
 	if value is None:
-		raise ValueError( f'Argument "{name}" cannot be empty!' )
+		raise Exception( f'Argument "{name}" cannot be empty!' )
 
 class Loader( ):
 	'''
@@ -784,6 +784,47 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+	def remove_encodings( self, text: str ) -> str | None:
+		"""
+
+			Cleans text of encoding artifacts by resolving HTML entities,
+			Unicode escape sequences, and over-encoded byte strings.
+
+			Parameters
+			----------
+			text : str
+			Input string potentially containing encoded characters.
+
+			Returns
+			-------
+			str
+			Cleaned Unicode-normalized text.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			# Decode HTML entities (&amp;, &quot;, &#8217;)
+			_html = html.unescape( self.raw_input )
+			# Decode escaped unicode literals (e.g., \\u2019)
+			try:
+				_decoded = bytes( _html, 'utf-8' ).decode( 'unicode_escape' )
+			except UnicodeDecodeError:
+				pass  # Ignore undecodable sequences
+			# Normalize accents and symbols (e.g., é → e, ü → u)
+			_norm = unicodedata.normalize( 'NFKC', _decoded )
+			# Strip out stray control characters
+			_chars = re.sub( r'[\x00-\x1F\x7F]', "", _norm )
+			self.cleaned_text = _chars.strip( )
+			return self.cleaned_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'remove_encodings( self, text: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+	
 	def remove_headers( self, filepath: str, lines_per_page: int=55,
 		header_lines: int=3, footer_lines: int=3, ) -> str:
 		"""
@@ -872,11 +913,10 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ( )
+			exception.method = 'remove_headers( self, filepath: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-
 	def remove_errors( self, text: str  ) -> str:
 		"""
 		

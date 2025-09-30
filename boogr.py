@@ -41,11 +41,15 @@
   ******************************************************************************************
   '''
 from __future__ import annotations
+import pydantic
+from pydantic import BaseModel
 import traceback
 import FreeSimpleGUI as sg
 from sys import exc_info
-from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+import html
+import re
+import unicodedata
 
 
 class Dark( BaseModel ):
@@ -62,8 +66,8 @@ class Dark( BaseModel ):
     '''
 
 	class Config:
-		arbitrary_types_allowed = True
 		extra = 'ignore'
+		arbitrary_types_allowed = True
 
 	def __init__( self ):
 		super( ).__init__( )
@@ -111,8 +115,7 @@ class Dark( BaseModel ):
 		         'theme_textcolor', 'element_backcolor', 'element_forecolor',
 		         'text_forecolor', 'text_backcolor', 'input_backcolor',
 		         'input_forecolor', 'button_color', 'button_backcolor',
-		         'button_forecolor', 'icon_path', 'theme_font',
-		         'scrollbar_color' ]
+		         'button_forecolor', 'icon_path', 'theme_font',  'scrollbar_color' ]
 
 
 class Error( Exception ):
@@ -185,7 +188,6 @@ class Error( Exception ):
 class ErrorDialog( Dark ):
 	'''
 
-		
 	    Construcotr:  ErrorDialog( error )
 
 	    Purpose:  Class that displays excetption target_values that accepts
@@ -194,12 +196,12 @@ class ErrorDialog( Dark ):
     '''
 
 	# Fields
-	error: Exception=None
-	heading: str=None
-	module: str=None
-	info: str=None
-	cause: str=None
-	method: str=None
+	error: Optional[ Exception ]
+	heading: Optional[ str ]
+	module: Optional[ str ]
+	info: Optional[ str ]
+	cause: Optional[ str ]
+	method: Optional[ str ]
 
 	def __init__( self, error: Error ):
 		super( ).__init__( )
@@ -218,12 +220,12 @@ class ErrorDialog( Dark ):
 		self.button_backcolor = sg.theme_button_color_background( )
 		self.button_forecolor = sg.theme_button_color_text( )
 		self.button_color = sg.theme_button_color( )
-		self.icon_path = r'/\resources\ico\ninja.ico'
+		self.icon_path = r'\resources\ico\ninja.ico'
 		self.theme_font = ('Roboto', 11)
 		self.scrollbar_color = '#755600'
 		sg.set_global_icon( icon = self.icon_path )
 		sg.set_options( font = self.theme_font )
-		sg.user_settings_save( 'Mathy', r'/\resources\theme' )
+		sg.user_settings_save( 'Mathy', r'\resources\theme' )
 		self.form_size = (500, 300)
 		self.error = error
 		self.heading = error.heading
@@ -298,16 +300,15 @@ class ErrorDialog( Dark ):
 		_info = f'Module:\t{self.module}\r\nClass:\t{self.cause}\r\n' \
 		        f'Method:\t{self.method}\r\n \r\n{self.info}'
 		_red = '#F70202'
-		_font = ('Roboto', 10)
+		_font = ( 'Roboto', 10 )
 		_padsz = (3, 3)
 		_layout = [ [ sg.Text( ) ],
-		            [ sg.Text( f'{_msg}', size=(100, 1), key='-MSG-', text_color=_red,
-			            font=_font ) ],
-		            [ sg.Text( size=(150, 1) ) ],
+		            [ sg.Text( f'{_msg}', size=(100, 1), key='-MSG-', text_color=_red, font=_font ) ],
+		            [ sg.Text( size=( 150, 1 ) ) ],
 		            [ sg.Multiline( f'{_info}', key='-INFO-', size=(80, 7), pad=_padsz ) ],
 		            [ sg.Text( ) ],
-		            [ sg.Text( size=(20, 1) ), sg.Cancel( size=(15, 1), key='-CANCEL-' ),
-		              sg.Text( size=(10, 1) ), sg.Ok( size=(15, 1), key='-OK-' ) ] ]
+		            [ sg.Text( size=( 20, 1 ) ), sg.Cancel( size=( 15, 1 ), key='-CANCEL-' ),
+		              sg.Text( size=( 10, 1 ) ), sg.Ok( size=( 15, 1 ), key='-OK-' ) ] ]
 
 		_window = sg.Window( r' Mathy', _layout,
 			icon=self.icon_path,
@@ -316,7 +317,7 @@ class ErrorDialog( Dark ):
 
 		while True:
 			_event, _values = _window.read( )
-			if _event in (sg.WIN_CLOSED, sg.WIN_X_EVENT, 'Canel', '-OK-'):
+			if _event in ( sg.WIN_CLOSED, sg.WIN_X_EVENT, 'Canel', '-OK-' ):
 				break
 
 		_window.close( )
