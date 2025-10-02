@@ -1,44 +1,44 @@
 '''
-******************************************************************************************
-  Assembly:                Mathy
-  Filename:                enums.py
-  Author:                  Terry D. Eppler
-  Created:                 05-31-2022
+	******************************************************************************************
+	  Assembly:                Mathy
+	  Filename:                enums.py
+	  Author:                  Terry D. Eppler
+	  Created:                 05-31-2022
+	
+	  Last Modified By:        Terry D. Eppler
+	  Last Modified On:        05-01-2025
+	******************************************************************************************
+	<copyright file="enums.py" company="Terry D. Eppler">
+	
+	     Boo
+	
+	 Permission is hereby granted, free of charge, to any person obtaining a copy
+	 of this software and associated documentation files (the “Software”),
+	 to deal in the Software without restriction,
+	 including without limitation the rights to use,
+	 copy, modify, merge, publish, distribute, sublicense,
+	 and/or sell copies of the Software,
+	 and to permit persons to whom the Software is furnished to do so,
+	 subject to the following conditions:
+	
+	 The above copyright notice and this permission notice shall be included in all
+	 copies or substantial portions of the Software.
+	
+	 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+	 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	 FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+	 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+	 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+	 DEALINGS IN THE SOFTWARE.
+	
+	 You can contact me at:  terryeppler@gmail.com or eppler.terry@epa.gov
 
-  Last Modified By:        Terry D. Eppler
-  Last Modified On:        05-01-2025
-******************************************************************************************
-<copyright file="enums.py" company="Terry D. Eppler">
-
-     Boo
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the “Software”),
- to deal in the Software without restriction,
- including without limitation the rights to use,
- copy, modify, merge, publish, distribute, sublicense,
- and/or sell copies of the Software,
- and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in all
- copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
- IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- DEALINGS IN THE SOFTWARE.
-
- You can contact me at:  terryeppler@gmail.com or eppler.terry@epa.gov
-
-</copyright>
-<summary>
-	enums.py
-</summary>
-******************************************************************************************
+	</copyright>
+	<summary>
+		enums.py
+	</summary>
+	******************************************************************************************
 '''
 from enum import Enum, auto
 
@@ -47,7 +47,8 @@ class Client( Enum ):
 	'''
 
 		Purpose:
-			Enumeration of auxiliary applications
+		--------
+		Enumeration of auxiliary applications
 
 	'''
 	SQLite = auto( )
@@ -78,3 +79,67 @@ class Scaler( Enum ):
 	MinMax = auto( )
 	Ordinal = auto( )
 	Robust = auto( )
+
+
+class Source( Enum ):
+	'''
+
+		Enumeration of scaling algorythms
+
+	'''
+	AgencyAccounts = auto( )
+	Prompts = auto( )
+	Locations = auto( )
+	Files = auto( )
+	Apportionments = auto( )
+
+
+class Provider( Enum ):
+    '''
+    
+	    Constructor:  Provider.Member
+	
+	    Purpose:  Enumeration of data providers
+	    
+    '''
+    SQLite = 0
+    Access = 1
+    SqlServer = 2
+    Excel = 3
+    CSV = 4
+
+
+class ParamStyle( Enum ):
+    '''
+    
+	    Constructor:  ParamStyle( )
+	
+	    Purpose:  Enumeration of parameter styles
+	    
+    '''
+    format = 1
+    number = 2
+    pyformat = 3
+    name = 4
+    qmark = 5
+
+
+class SQL( Enum ):
+    '''
+    
+	    Constructor:  SQL.Member
+	
+	    Purpose:   Enumeration of sqlstatement commands
+	    
+    '''
+    SELECT = 0
+    SELECTALL = 1
+    INSERT = 2
+    UPDATE = 3
+    DELETE = 4
+    DROPTABLE = 5
+    DROPVIEW = 6
+    CREATETABLE = 7
+    CREATEVIEW = 8
+    ALTERTABLE = 9
+    ALTERCOLUMN = 10

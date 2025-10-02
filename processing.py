@@ -92,6 +92,7 @@ from pandas import DataFrame
 from pathlib import Path
 from pinecone import Pinecone, ServerlessSpec
 import re
+import spacy
 import sqlite3
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
@@ -143,7 +144,7 @@ class Loader( ):
 		self.resolved = [ ]
 		self.expanded = [ ]
 	
-	def _ensure_existing_file( self, path: str ) -> str | None:
+	def _verify_exists( self, path: str ) -> str | None:
 		'''
 
 			Purpose:
@@ -263,6 +264,8 @@ class Processor( ):
 	lemmatized: Optional[ str ]
 	tokenized: Optional[ str ]
 	encoding: Optional[ Encoding ]
+	nlp: Optional[ Language ]
+	parts_of_speech: Optional[ List[ Tuple[ str, str ] ] ]
 	embedddings: Optional[ List[ np.ndarray ] ]
 	chunk_size: Optional[ int ]
 	corrected: Optional[ str ]
@@ -526,29 +529,37 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_punctuation( self, text: str ) -> str | None:
+	def remove_punctuation( self, text: str ) -> str:
 		"""
-
+		
 			Purpose:
-			-----------
-			Removes all punctuation characters from the path path path.
-
-			Parameters:
-			-----------
-			- pages : str
-				The path path path to be cleaned_lines.
-
-			Returns:
 			--------
-			- str
-				The string with all punctuation removed.
-
+			Removes all punctuation characters from the input text using NLTK's tokenizer.
+		
+			This function tokenizes the input into words and filters out any tokens that
+			are composed entirely of punctuation characters.
+		
+			Parameters
+			----------
+			text : str
+				The raw input text from which to remove punctuation.
+		
+			Returns
+			-------
+			str
+				A cleaned string with all punctuation removed and original word spacing preserved.
+		
+			Example
+			-------
+			remove_punctuation("Hello, world! How's it going?")
+			'Hello world Hows it going'
+			
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			no_punctuation = re.sub(r'[^\w\s]', '', self.raw_input )
-			return no_punctuation
+			_tokens = text.split( ' ' )
+			self.cleaned_tokens = [ t for t in _tokens if t not in string.punctuation ]
+			return ' '.join( self.cleaned_tokens )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -619,11 +630,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
+			keepers = [ '(', ')', '$', '.', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
-				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( )
-						or char.isprintable( ) or char in keepers and len( char) > 4):
+				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( ) and len( char) > 4):
 					cleaned.append( char )
 			return ' '.join( cleaned )
 		except Exception as e:
@@ -662,10 +672,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
+			keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
 			tokens = text.split( ' ' )
 			for char in tokens:
-				if char.isalpha( ) or char.isnumeric( ) or char.isspace( ) or ( char in keepers ):
+				if char.isalpha( ) or char.isnumeric( ) or char in keepers:
 					cleaned.append( char )
 			return ' '.join( cleaned )
 		except Exception as e:
@@ -787,6 +797,8 @@ class Text( Processor ):
 	def remove_encodings( self, text: str ) -> str | None:
 		"""
 
+			Purpose:
+			---------
 			Cleans text of encoding artifacts by resolving HTML entities,
 			Unicode escape sequences, and over-encoded byte strings.
 
@@ -806,13 +818,8 @@ class Text( Processor ):
 			self.raw_input = text
 			# Decode HTML entities (&amp;, &quot;, &#8217;)
 			_html = html.unescape( self.raw_input )
-			# Decode escaped unicode literals (e.g., \\u2019)
-			try:
-				_decoded = bytes( _html, 'utf-8' ).decode( 'unicode_escape' )
-			except UnicodeDecodeError:
-				pass  # Ignore undecodable sequences
 			# Normalize accents and symbols (e.g., é → e, ü → u)
-			_norm = unicodedata.normalize( 'NFKC', _decoded )
+			_norm = unicodedata.normalize( 'NFKC', _html )
 			# Strip out stray control characters
 			_chars = re.sub( r'[\x00-\x1F\x7F]', "", _norm )
 			self.cleaned_text = _chars.strip( )
@@ -920,6 +927,8 @@ class Text( Processor ):
 	def remove_errors( self, text: str  ) -> str:
 		"""
 		
+			Purpose:
+			----------
 			Removes tokens that are not recognized as valid English words
 			using the NLTK `words` corpus as a reference dictionary.
 	
@@ -928,32 +937,24 @@ class Text( Processor ):
 	
 			Parameters
 			----------
-			lines : List[str]
-			A list of word tokens to filter.
+			text : str
+			The raw input text
 	
 			Returns
 			-------
-			List[str]
-			A list of tokens that are valid English words according to the NLTK corpus.
+			str
+			The raw input text without errors
 	
 			
 		"""
 		try:
 			throw_if( 'text', text )
 			wordlist = [ ]
-			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			vocab = words.words( 'en' )
 			tokens = text.split( ' ' )
-			for char in tokens:
-				if ( char.isalpha( ) or char.isspace( ) or char.isnumeric( )
-						or char.isprintable( ) and ( char in keepers ) ):
-					wordlist.append( char )
 			for word in tokens:
-				s = word.lower( )
-				if s.isnumeric( ) or s.isalpha( ):
-					wordlist.append( s )
-				elif s in vocab:
-					wordlist.append( s )
+				if word.isnumeric( ) or word in vocab:
+					wordlist.append( word )
 			_data = ' '.join( wordlist )
 			return _data
 		except Exception as e:
@@ -963,7 +964,62 @@ class Text( Processor ):
 			exception.method = 'correct_data( text: str )'
 			error = ErrorDialog( exception )
 			error.show( )
+	
+	def lemmatize( self, text: str ) -> List[ str ] | None:
+		"""
+
+			Purpose:
+			--------
+			Tokenizes input text into a list of word tokens.
+
+
+			Parameters:
+			-----------
+			text (str): Input text to tokenize.
+
+
+			Returns:
+			--------
+			List[str]: List of token strings.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.nlp = spacy.load( 'en_core_web_sm' )
+			self.tokens = [ token.text for token in self.nlp( text ) ]
+			return self.tokens
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('tokenize( self, text: str ) -> List[ str ] ')
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def lemmatize_tokens( self, tokens: list[ str ] ) -> list:
+		"""
+			
+			Purpose:
+			---------
+			Lemmatize each token using WordNetLemmatizer.
+	
+			Parameters:
+			tokens (list): List of word tokens.
+	
+			Returns:
+			list: Lemmatized tokens.
 		
+		"""
+		try:
+			throw_if( 'tokens', tokens )
+			return [ self.lemmatizer.lemmatize( token ) for token in tokens ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('tokenize( self, text: str ) -> List[ str ] ')
+			error = ErrorDialog( exception )
+			error.show( )
 	
 	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> DataFrame:
 		"""
@@ -997,7 +1053,7 @@ class Text( Processor ):
 			exception.method = ('filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ [ ]')
 			error = ErrorDialog( exception )
 			error.show( )
-	
+			
 	def tokenize_text( self, text: str ) -> str:
 		'''
 
@@ -1104,8 +1160,84 @@ class Text( Processor ):
 			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
+	
+	def speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
+		"""
+		
+			Purpose:
+			--------
+			Performs part-of-speech tagging.
+		
+		
+			Parameters:
+			-----------
+			text (str): Text to process.
+		
+		
+			Returns:
+			--------
+			List[Tuple[str, str]]: List of (token, POS tag) pairs.
 			
-	def chunk_sentences( self, text: str, size: int=512 ) -> str:
+		"""
+		try:
+			throw_if( 'text', text )
+			self.nlp = spacy.load( 'en_core_web_sm' )
+			self.parts_of_speech = [ ( token.text, token.pos_ ) for token in self.nlp( text ) ]
+			return self.parts_of_speech
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def chunk_text( self, text: str, size: int=25 ) -> str:
+		"""
+
+			Purpose:
+			-----------
+			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
+			  - Converts pages to lowercase
+			  - Tokenizes pages using NLTK's word_tokenize
+			  - Breaks words into chunks of a specified size
+			  - Optionally joins words into strings (for transformer models)
+
+			Parameters:
+			-----------
+			- pages : str
+				The cleaned_lines path pages to be tokenized and chunked.
+
+			- size : int, optional (default=50)
+				Number of words per chunk_words.
+
+			- return_as_string : bool, optional (default=True)
+				If True, returns each chunk_words as a path; otherwise, returns a get_list of
+				words.
+
+			Returns:
+			--------
+			- a list
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.lines = text.split( ' ' )
+			_chunks = [ self.lines[ i: i + size ] for i in range( 0, len( self.lines ), size ) ]
+			_map = [ ]
+			for index, chunk in enumerate( _chunks ):
+				_map = ' '.join( chunk )
+			_data = ' '.join( _map )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'chunk_sentences( self, text: str, max: int=20 ) -> DataFrame'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def chunk_sentences( self, text: str, size: int=25 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1138,54 +1270,6 @@ class Text( Processor ):
 			_tokens = text.split( ' ' )
 			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_datamap = [ ]
-			for s in _tokens:
-				if len( s ) > 4:
-					_datamap.append( s )
-			for index, chunk in enumerate( _chunks ):
-				_map = ' '.join( chunk )
-			_data = ' '.join( _datamap )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'chunk_sentences( self, text: str, max: int=20 ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def chunk_text( self, text: str, size: int=512 ) -> DataFrame:
-		"""
-
-			Purpose:
-			-----------
-			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
-			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's word_tokenize
-			  - Breaks words into chunks of a specified size
-			  - Optionally joins words into strings (for transformer models)
-
-			Parameters:
-			-----------
-			- pages : str
-				The cleaned_lines path pages to be tokenized and chunked.
-
-			- size : int, optional (default=50)
-				Number of words per chunk_words.
-
-			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of
-				words.
-
-			Returns:
-			--------
-			- a list
-
-		"""
-		try:
-			throw_if( 'text', text )
-			_tokens = text.split( )
-			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-			_datamap = [ ]
 			for index, chunk in enumerate( _chunks ):
 				_value = ' '.join( chunk )
 				_item = f'{_value}'
@@ -1200,7 +1284,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, tokens: List[ str ], size: int=512 ) -> DataFrame:
+	def chunk_words( self, tokens: List[ str ], size: int=25 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1286,7 +1370,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, filepath: str, num_line: int=100 ) -> List[ str ] | None:
+	def split_pages( self, filepath: str, num_line: int=120 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1512,35 +1596,53 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_word2vec( self, tokens: List[ List[ str ] ], dims=100, win=5, size=1 ) -> Word2Vec | None:
+	def create_vectors( self, tokens: List[ str ] ) -> Dict[ str, np.ndarray ]:
 		"""
-
+		
 			Purpose:
-			--------
-			Train a Word2Vec embedding small_model from tokenized sentences.
-
-			Parameters:
-			--------
-			- words (list of list of str): Tokenized, filtered text..
-			- dims (int): Embedding dimensions..
-			- win (int): Context window size
-			- size (int): Minimum frequency to include a word.
-
-			Returns:
+			----------
+			Generates word embeddings using TF-IDF vectors from a list of tokens.
+			This function treats each token as its own "document" to simulate a corpus
+			and calculates a TF-IDF vector for each word based on term statistics.
+		
+			Parameters
+			----------
+			tokens : List[str]
+				A list of individual word tokens to be embedded.
+		
+			Returns
 			-------
-			- Word2Vec: Trained Gensim Word2Vec small_model.
-
+			Dict[str, np.ndarray]
+				A dictionary mapping each word to its corresponding TF-IDF vector.
+		
+			Example
+			-------
+			create_tfidf_word_embeddings(["nlp", "text", "nlp", "model"])
+			{
+				'nlp': array([0.7071, 0.0, 0.7071]),
+				'text': array([0.0, 1.0, 0.0]),
+				'model': array([0.0, 0.0, 1.0])
+			}
 		"""
 		try:
-			throw_if( 'words', tokens )
-			self.lines = tokens
-			return Word2Vec( sentences=self.lines, vector_size=dims, window=win, min_count=size )
+			# Each word is treated as a single "document" for TF-IDF
+			fake_docs = [ [ word ] for word in tokens ]
+			joined_docs = [ " ".join( doc ) for doc in fake_docs ]
+			vectorizer = TfidfVectorizer( )
+			X = vectorizer.fit_transform( joined_docs )
+			feature_names = vectorizer.get_feature_names_out( )
+			embeddings = { }
+			for idx, word in enumerate( tokens ):
+				vector = X[ idx ].toarray( ).flatten( )
+				embeddings[ word ] = vector
+			
+			return embeddings
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('create_word2vec( self, words: List[ str ], '
-			                    'size=100, window=5, min=1 ) -> Word2Vec')
+			exception.method = ('create_vectors( self, tokens: List[str]) -> Dict[str, '
+			                    'np.ndarray]')
 			error = ErrorDialog( exception )
 			error.show( )
 			
@@ -1562,17 +1664,14 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'src', src )
-			source = src
-			text = open( source, 'r', encoding='utf-8', errors='ignore' ).read( )
-			special = self.remove_special( text )
-			compress = self.compress_whitespace( special )
-			normal = self.normalize_text( compress )
-			stops = self.remove_stopwords( normal )
-			errors = self.remove_errors( stops )
-			fragments = self.remove_fragments( errors )
-			sentences = self.split_sentences( fragments )
-			data = ' '.join( sentences )
-			return data
+			_source = src
+			_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+			_collapse = self.collapse_whitespace( _text )
+			_compress = self.compress_whitespace( _collapse )
+			_normal = self.normalize_text( _compress )
+			_special = self.remove_special( _normal )
+			_fragments = self.remove_fragments( _special )
+			return _fragments
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1628,7 +1727,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_files( self, source: str, destination: str, size: int=512 ) -> None:
+	def chunk_files( self, source: str, destination: str, size: int=20 ) -> None:
 		"""
 
 			Purpose:
@@ -1679,7 +1778,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_data( self, filepath: str, size: int=512  ) -> DataFrame:
+	def chunk_data( self, filepath: str, size: int=20  ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1720,7 +1819,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def convert_jsonl( self, source: str, destination: str, size: int=512 ) -> None:
+	def convert_jsonl( self, source: str, destination: str, size: int=20 ) -> None:
 		"""
 
 			Purpose:
@@ -1772,36 +1871,6 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def embed_sentence( self, tokens: List[ str ], model: Word2Vec ) -> np.ndarray:
-		"""
-
-			Purpose:
-				Converts a tokenized sentence into a single vector by averaging word embeddings.
-			Parameters:
-				tokens (list[str]): Tokenized sentence.
-				model (Word2Vec): Trained embedding model.
-			Returns:
-				np.ndarray: Sentence vector.
-
-		"""
-		try:
-			throw_if( 'tokens', tokens )
-			throw_if( 'model', model )
-			self.lines = tokens
-			_embeddings = [ model.wv[ t ] for t in self.lines if t in model.wv ]
-			self.embeddings.append( _embeddings )
-			if not self.embeddings:
-				return np.zeros( model.vector_size )
-			return np.mean( self.embeddings, axis=0 )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = ('embed_sentence( self, sentences: List[ str ], model: Word2Vec ) '
-			                    '-> np.ndarray')
-			error = ErrorDialog( exception )
-			error.show( )
-	
 	def encode_sentences( self, sentences: List[ str ], model_name: str='all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
@@ -1819,42 +1888,14 @@ class Text( Processor ):
 		"""
 		try:
 			_transformer = SentenceTransformer( model_name )
-			self.cleaned_tokens = [ clean_text( s ) for s in sentences ]
-			_encoding = _transformer.encode( self.cleaned_tokens, show_progress_bar=True )
+			_tokens = self.lemmatize_tokens( sentences )
+			_encoding = _transformer.encode( _tokens, show_progress_bar=True )
 			return ( self.cleaned_tokens, np.array( _encoding ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def vectorize_corpus( self, corpus: List[ List[ str ] ], model: Word2Vec ) -> np.ndarray:
-		"""
-			
-			Purpose:
-				Converts all tokenized sentences into vector embeddings.
-				
-			Parameters:
-				corpus (list[list[str]]): Tokenized & filtered sentences.
-				model (Word2Vec): Trained model.
-				
-			Returns:
-				np.ndarray: Matrix of shape (n_sentences, embedding_dim)
-			
-		"""
-		try:
-			throw_if( 'corpus', corpus )
-			throw_if( 'model', model )
-			self.corpus.append( corpus )
-			return np.array( [ self.embed_sentences( sentence, model ) for sentence in self.corpus ] )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = ('vectorize_corpus( self, corpus: List[ List[ str ] ], '
-			                    'model: Word2Vec ) -> np.ndarray')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1882,7 +1923,7 @@ class Text( Processor ):
 			query_vec = model.encode( [ query ] )
 			sims = cosine_similarity( query_vec, embeddings )[ 0 ]
 			top_indices = sims.argsort( )[ ::-1 ][ : top ]
-			return [ (tokens[ i ], sims[ i ]) for i in top_indices ]
+			return [ ( tokens[ i ], sims[ i ] ) for i in top_indices ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1893,40 +1934,6 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def visualize_embeddings( self, model: Word2Vec, nums: int=100 ):
-		"""
-
-			Purpose:
-				Visualize word vectors using PCA (2D).
-
-			Parameters:
-				model (Word2Vec): Trained model.
-				nums (int): Number of top words to visualize.
-
-			Returns:
-				None
-
-		"""
-		try:
-			throw_if( 'model', model )
-			_words = list( model.wv.index_to_key )[ :nums ]
-			vectors = [ model.wv[ w ] for w in _words ]
-			pca = PCA( n_components=2 )
-			result = pca.fit_transform( vectors )
-			plt.figure( figsize=(10, 6) )
-			plt.scatter( result[ :, 0 ], result[ :, 1 ] )
-			for i, word in enumerate( _words ):
-				plt.annotate( word, xy=(result[ i, 0 ], result[ i, 1 ]) )
-			plt.title( "Word2Vec Embeddings (PCA)" )
-			plt.grid( True )
-			plt.show( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'visualize_embeddings( self, model: Word2Vec, num_words: int=100 )'
-			error = ErrorDialog( exception )
-			error.show( )
 
 class Word( Processor ):
 	"""
@@ -2549,7 +2556,7 @@ class CSV( Loader ):
 
 		'''
 		try:
-			self.file_path = self._ensure_existing_file( path )
+			self.file_path = self._verify_exists( path )
 			self.encoding = encoding
 			self.csv_args = csv_args
 			self.source_column = source_column
@@ -2709,7 +2716,7 @@ class DOCX( Loader ):
 
 		'''
 		try:
-			self.file_path = self._ensure_existing_file( path )
+			self.file_path = self._verify_exists( path )
 			self.loader = Docx2txtLoader( self.file_path )
 			self.documents = self.loader.load( )
 			return self.documents
@@ -2790,7 +2797,7 @@ class Markdown( Loader ):
 			
 		'''
 		try:
-			self.file_path = self._ensure_existing_file( path )
+			self.file_path = self._verify_exists( path )
 			self.loader = UnstructuredMarkdownLoader( file_path=self.file_path )
 			self.documents = self.loader.load( )
 			return self.documents
@@ -2870,7 +2877,7 @@ class HTML( Loader ):
 
 		'''
 		try:
-			self.file_path = self._ensure_existing_file( path )
+			self.file_path = self._verify_exists( path )
 			self.loader = UnstructuredHTMLLoader( file_path=self.file_path )
 			self.documents = self.loader.load( )
 			return self.documents
@@ -3107,772 +3114,3 @@ class Fetch( ):
 			exception.method = 'query_chat(self, prompt)'
 			error = ErrorDialog( exception )
 			error.show( )
-
-# noinspection SqlResolve,SqlWithoutWhere
-class SQLite( ):
-	"""
-	
-		Purpose:
-		-------
-			Manages storage and retrieval of text chunks and their vector embeddings in a SQLite
-			database. Supports operations for inserting, retrieving, and deleting chunk-level
-			information along with their associated embedding vectors.
-	
-		Methods:
-		--------
-			create(): Initializes the embeddings table.
-			insert(): Inserts a single embedding with metadata.
-			insert_many(): Batch insert of multiple chunks and embeddings.
-			fetch_all(): Retrieves all chunks and vectors from the database.
-			fetch_by_file(): Retrieves chunks and vectors filtered by source file.
-			delete_by_file(): Deletes all records associated with a given source file.
-			close(): Closes the database connection.
-			
-	"""
-	db_path: Optional[ str ]
-	connection: Optional[ Connection ]
-	cursor: Optional[ Cursor ]
-	source_file: Optional[ str ]
-	vector: Optional[ str ]
-	vectors: Optional[ List[ str ] ]
-	embedding: Optional[ np.ndarray ]
-	text: Optional[ str ]
-	index: Optional[ int ]
-	rows: Optional[ List[ Row ] ]
-	texts: Optional[ List[ str ] ]
-	records: Optional[ List[ Tuple[ str, int, str, str ] ] ]
-	
-	def __init__( self, db_path: str='./embeddings.db' ) -> None:
-		"""
-		
-				Purpose:
-				_______
-				Initializes a new SQLite connection and ensures the embeddings table is created.
-		
-				Parameters:
-				----------
-				db_path (str): File path to the SQLite database.
-		
-				Returns:
-					None
-					
-		"""
-		self.db_path = db_path
-		self.connection = sqlite3.connect( self.db_path )
-		self.cursor = self.conn.cursor( )
-		self.embedding = None
-		self.text = None
-		self.index = 0
-		self.rows = [ ]
-		self.texts = [ ]
-		self.records = [ ]
-		self.vectors = [ ]
-		self.create( )
-	
-	def create( self ) -> None:
-		"""
-		
-			Purpose:
-			--------
-			Creates the 'embeddings' table if it does not already exist. Ensures schema integrity
-			for text chunk storage with associated vector embeddings.
-	
-			Parameters:
-			----------
-			None
-	
-			Returns:
-			-----
-			None
-			
-		"""
-		try:
-			sql = \
-			"""
-             CREATE TABLE IF NOT EXISTS embeddings
-             (
-                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 source_file TEXT NOT NULL,
-                 chunk_index INTEGER NOT NULL,
-                 chunk_text TEXT NOT NULL,
-                 embedding TEXT NOT NULL,
-                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
-             );
-		      """
-			self.cursor.execute( sql )
-			self.connection.commit( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'create( self ) -> None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def insert( self, source: str, index: int, text: str, embd: np.ndarray ) -> None:
-		"""
-		
-			Purpose:
-			________
-			Inserts a single cleaned text chunk and its associated vector embedding.
-	
-			Parameters:
-			__________
-			source (str): Name or path of the source document.
-			index (int): Position of the chunk within the document.
-			text (str): Cleaned sentence or paragraph text.
-			embedding (np.ndarray): Numpy array containing the embedding vector.
-	
-			Returns:
-			_______
-			None
-			
-		"""
-		try:
-			self.source_file = source
-			self.index = index
-			self.vector = json.dumps( embd.tolist( ) )
-			sql = \
-				'''
-                INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-                VALUES (?, ?, ?, ?)
-				'''
-			self.cursor.execute( sql, (source, index, text, vector_str) )
-			self.connection.commit( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'insert( self, src: str, indx: int, txt: str, emb: np.ndarray )->None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def insert_many( self, file: str, chunks: List[ str ], vectors: np.ndarray ) -> None:
-		"""
-		
-			Purpose:
-			-------
-			Batch inserts multiple cleaned text chunks and their associated embeddings.
-	
-			Parameters:
-			----------
-			source_file (str): Name or path of the source document.
-			chunks (List[str]): List of cleaned text chunks.
-			vectors (np.ndarray): 2D numpy array of shape (n_chunks, vector_dim).
-	
-			Returns:
-			None
-			
-		"""
-		try:
-			self.records = [ (file, i, chunks[ i ],
-			                  json.dumps( vectors[ i ].tolist( ) )) for i in range( len( chunks )) ]
-			sql = \
-				"""
-                INSERT INTO embeddings (source_file, chunk_index, chunk_text, embedding)
-                VALUES (?, ?, ?, ?)
-				"""
-			self.cursor.executemany( sql, records )
-			self.connection.commit( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'insert_many( self, file: str, chks: List[ str ], vect: np.ndarray )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def fetch_all( self ) -> Tuple[ List[ str ], np.ndarray ]:
-		"""
-		
-			Purpose:
-			--------
-			Retrieves all stored chunk texts and their corresponding embedding vectors.
-	
-			Parameters:
-			----------
-			None
-	
-			Returns:
-			--------
-			Tuple[List[str], np.ndarray]:
-			A list of chunk texts and a numpy matrix of embeddings.
-			
-		"""
-		try:
-			sql = 'SELECT chunk_text, embedding FROM embeddings'
-			self.cursor.execute( sql )
-			self.rows = self.cursor.fetchall( )
-			self.texts, self.vectors = [ ], [ ]
-			for text, emb in rows:
-				self.texts.append( text )
-				self.vectors.append( np.array( json.loads( emb ) ) )
-			return self.texts, np.array( self.vectors )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'fetch_all( self ) -> Tuple[ List[ str ], np.ndarray ] '
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def fetch_by_file( self, file: str ) -> Tuple[ List[ str ], np.ndarray ]:
-		"""
-		
-			Purpose:
-			-------
-			Retrieves all chunk texts and embeddings for a given source file.
-	
-			Parameters:
-			---------
-			file (str): Name of the file to filter results by.
-	
-			Returns:
-			-------
-			Tuple[List[str], np.ndarray]:
-			Filtered chunk texts and corresponding embedding matrix.
-			
-			
-		"""
-		try:
-			sql = \
-				"""
-                SELECT chunk_text, embedding \
-                FROM embeddings
-                WHERE source_file = ?
-				"""
-			self.cursor.execute( sql, ( file, ) )
-			self.rows = self.cursor.fetchall( )
-			self.texts, self.vectors = [ ], [ ]
-			for text, emb in self.rows:
-				self.texts.append( text )
-				self.vectors.append( np.array( json.loads( emb ) ) )
-			return self.texts, np.array( self.vectors )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'fetch_by_file( self, file: str ) -> Tuple[ List[ str ], np.ndarray ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def delete_by_file( self, file: str ) -> None:
-		"""
-		
-			Purpose:
-				Deletes all entries associated with a specific source file.
-	
-			Parameters:
-				file (str): File identifier to target deletion.
-	
-			Returns:
-				None
-				
-		"""
-		try:
-			sql = 'DELETE FROM embeddings WHERE source_file = ?'
-			self.cursor.execute( sql, (file,) )
-			self.connection.commit( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'delete_by_file( self, file: str ) -> None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def close( self ) -> None:
-		"""
-		
-			Purpose:
-			-------
-			Closes the database connection cleanly.
-	
-			Parameters:
-			None
-	
-			Returns:
-			None
-		
-		"""
-		try:
-			self.connection.close( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'close( self ) -> None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def purge_all( self ) -> None:
-		"""
-			Purpose:
-			Deletes all records from the embeddings table without removing the schema.
-		
-			Parameters:
-			None
-		
-			Returns:
-			None
-			
-		"""
-		try:
-			sql = 'DELETE FROM embeddings'
-			self.cursor.execute( sql )
-			self.connection.commit( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'purge_all( self ) -> None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def count_rows( self ) -> int | None:
-		"""
-		
-			Purpose:
-			Returns the total number of rows in the embeddings table.
-		
-			Parameters:
-			None
-		
-			Returns:
-			int: Number of entries in the table.
-			
-		"""
-		try:
-			sql = 'SELECT COUNT(*) FROM embeddings'
-			self.cursor.execute( sql )
-			return self.cursor.fetchone( )[ 0 ]
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = ('count_rows( self ) -> int ')
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def fetch_metadata( self ) -> List[ Tuple[ int, str, int ] ] | None:
-		"""
-		
-			Purpose:
-			Retrieves all row metadata: ID, source file, and chunk index.
-		
-			Parameters:
-			None
-		
-			Returns:
-			list[tuple[int, str, int]]: Metadata for all rows.
-		
-		"""
-		try:
-			sql = 'SELECT id, source_file, chunk_index FROM embeddings'
-			self.cursor.execute( sql )
-			return self.cursor.fetchall( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'SQLite'
-			exception.method = 'fetch_metadata( self ) -> List[ Tuple[ int, str, int ] ]'
-			error = ErrorDialog( exception )
-			error.show( )
-
-class Chroma( ):
-	"""
-	
-		Purpose:
-		---------
-		Provides persistent storage and retrieval of sentence-level embeddings using ChromaDB.
-		Supports adding documents, metadata tagging, semantic querying, and deletion by ID.
-	
-		Methods:
-		--------
-		add(): Adds documents with embeddings and optional metadata.
-		query(): Performs semantic search given a list of query texts.
-		delete(): Deletes embeddings by document ID.
-		count(): Returns the number of stored embeddings.
-		clear(): Removes all documents from the collection.
-		persist(): Commits changes to disk.
-		
-	"""
-	client: Optional[ Client ]
-	db_path: Optional[ str ]
-	ids: Optional[ List[ str ] ]
-	texts: Optional[ List[ str ] ]
-	embeddings: Optional[ List[ List[ float ] ] ]
-	metadata: Optional[ List[ Dict ] ]
-	collection: Optional[ Collection ]
-	collection_name: Optional[ str ]
-	telemetry: Optional[ bool ]
-	where: Optional[ Dict ]
-	n_results: Optional[ int ]
-	
-	def __init__( self, path: str='./chroma', colname: str='embeddings' ) -> None:
-		"""
-			
-			Purpose:
-				Initializes the Chroma client and retrieves or creates the specified collection.
-	
-			Parameters:
-				path (str): Directory path for Chroma persistence.
-				colname (str): Name of the Chroma collection to use.
-	
-			Returns:
-				None
-			
-		"""
-		self.telemetry = False
-		self.db_path = path
-		self.collection_name = colname
-		self.client = chromadb.Client( Settings( persist_directory=self.db_path,
-			anonymized_telemetry=self.telemetry ) )
-		self.collection = self.client.get_or_create_collection( name=self.collection_name )
-		self.ids = [ ]
-		self.texts = [ ]
-		self.embeddings = [ ]
-		self.metadata = [ ]
-		self.collection = None
-		self.telemetry = False
-		self.where = { }
-		self.n_results = None
-	
-	def add( self, ids: List[ str ], texts: List[ str ], embd: List[ List[ float ] ],
-	         metadatas: Optional[ List[ Dict ] ]=None ) -> None:
-		"""
-			
-			Purpose:
-			---------
-			Adds a list of documents, their embeddings, and optional metadata to the collection.
-	
-			Parameters:
-			-----------
-			ids (List[str]): Unique identifiers for each document.
-			texts (List[str]): Raw sentence or paragraph texts.
-			embeddings (List[List[float]]): Corresponding embedding vectors.
-			metadatas (Optional[List[dict]]): Optional metadata dictionaries for filtering.
-			
-		"""
-		try:
-			self.ids = ids
-			self.texts = texts
-			self.embeddings = embd
-			self.metadata = metadatas
-			self.collection.add( documents=self.texts, embeddings=self.embeddings, ids=self.ids, 
-				metadatas=self.metadata )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = 'add( self, ids, texts, embeddings, ids, metadatas )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def query( self, texts: List[ str ], n_results: int=5, where: Optional[ Dict ]=None ) -> \
-	List[ str ] | None:
-		"""
-		
-			Purpose:
-				Performs semantic similarity search over stored embeddings.
-	
-			Parameters:
-				texts (List[str]): List of query strings.
-				n_results (int): Number of top matches to return.
-				where (Optional[dict]): Optional metadata filter.
-	
-			Returns:
-				List[str]: List of matched document texts.
-			
-		"""
-		try:
-			self.texts = texts
-			self.n_results = n_results
-			self.where = where
-			result = self.collection.query( self.texts,
-				n_results=self.n_results, where=self.where )
-			return result.get( 'documents', [ ] )[ 0 ]
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = 'query( self, text: List[ str ], n_results: int, where: Dict )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def delete( self, ids: List[ str ] ) -> None:
-		"""
-		
-			Purpose:
-				Deletes one or more documents from the collection by ID.
-	
-			Parameters:
-				ids (List[str]): Unique identifiers of documents to delete.
-	
-			Returns:
-				None
-				
-		"""
-		try:
-			self.ids = ids
-			self.collection.delete( ids=self.ids )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = ('delete(self, ids: List[ str ] ) -> None')
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def count( self ) -> int | None:
-		"""
-		
-			Purpose:
-				Returns the number of stored embeddings in the collection.
-	
-			Returns:
-				int: Total count of stored documents.
-				
-		"""
-		try:
-			return self.collection.count( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = 'count( self ) -> int'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def clear( self ) -> None:
-		"""
-			
-			Purpose:
-				Clears all embeddings and metadata from the collection.
-	
-			Parameters:
-				None
-	
-			Returns:
-				None
-				
-		"""
-		try:
-			self.collection.delete( where=self.where )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = 'clear( self )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def persist( self ) -> None:
-		"""
-			
-			Purpose:
-				Persists the current collection state to disk.
-	
-			Returns:
-				None
-				
-		"""
-		try:
-			self.client.persist( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Chroma'
-			exception.method = 'persist( self )'
-			error = ErrorDialog( exception )
-			error.show( )
-
-
-class Cone( ):
-    """
-
-        Purpose:
-        Encapsulates a Pinecone vector database interface that allows embedding
-        storage, search, and index management for semantic applications.
-
-        Parameters:
-        api_key (str):
-            Pinecone API key required for authentication.
-        environment (str):
-            Pinecone environment (e.g., "gcp-starter").
-        index_name (str):
-            The name of the vector index to operate on.
-        dimension (int):
-            Dimensionality of the vector embeddings.
-
-        Attributes:
-        client (Pinecone): Pinecone client instance.
-        index_name (str): Name of the active vector index.
-        dimension (int): Vector size expected by the index.
-
-    """
-
-    client: Pinecone
-    index_name: str
-    dimension: int
-
-    def __init__(self, api_key: str, environment: str, index_name: str, dimension: int):
-        """
-
-            Purpose:
-            ---------
-            Initializes the Pinecone client and ensures the target index exists.
-
-            Parameters:
-            ---------
-            api_key (str): API key for authentication.
-            environment (str): Pinecone environment string.
-            index_name (str): Vector index name.
-            dimension (int): Vector dimensionality.
-
-            Returns:
-            None
-
-        """
-        try:
-            self.index_name = index_name
-            self.dimension = dimension
-            self.client = Pinecone(api_key=api_key)
-            if self.index_name not in self.client.list_indexes().names():
-                self.client.create_index( name=self.index_name, dimension=self.dimension,
-                    metric='cosine', spec=ServerlessSpec(cloud='aws', region=environment) )
-        except Exception as e:
-            exception = Error( e )
-            exception.module = 'chonky'
-            exception.cause = "Cone"
-            exception.method = "__init__(...)"
-            error = ErrorDialog( exception )
-            error.show( )
-
-
-    def upsert(self, ids: List[ str ], vectors: List[ List[ float ] ],
-		    metadata: List[ dict ]=None ) -> None:
-        """
-
-            Purpose:
-            -------
-            Adds or updates vector embeddings in the Pinecone index.
-
-            Parameters:
-            --------
-            ids (List[str]): List of unique vector identifiers.
-            vectors (List[List[float]]): List of vector embeddings.
-            metadata (List[dict], optional): Optional metadata to associate with vectors.
-
-            Returns:
-            None
-
-        """
-        try:
-            throw_if( "ids", ids )
-            throw_if( "vectors", vectors )
-            records = [ ( id_, vec, metadata[ i ] if metadata else None )
-                for i, ( id_, vec ) in enumerate( zip( ids, vectors ) ) ]
-            index = self.client.Index( self.index_name )
-            index.upsert(vectors=records)
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "cone"
-            exception.cause = "Cone"
-            exception.method = "upsert(...)"
-            ErrorDialog(exception).show()
-
-    def query(self, vector: List[float], top_k: int = 5) -> list:
-        """
-
-            Purpose:
-            Performs similarity search on the Pinecone index using a query vector.
-
-            Parameters:
-            vector (List[float]): Query vector.
-            top_k (int): Number of top results to return.
-
-            Returns:
-            list: List of matching vector records with scores and metadata.
-
-        """
-        try:
-            throw_if("vector", vector)
-            index = self.client.Index(self.index_name)
-            response = index.query(vector=vector, top_k=top_k, include_metadata=True)
-            return response.matches
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "cone"
-            exception.cause = "Cone"
-            exception.method = "query(...)"
-            ErrorDialog(exception).show()
-
-    def delete(self, ids: List[str]) -> None:
-        """
-
-            Purpose:
-            Deletes specific vector records by ID from the Pinecone index.
-
-            Parameters:
-            ids (List[str]): List of vector identifiers to remove.
-
-            Returns:
-            None
-
-        """
-        try:
-            throw_if("ids", ids)
-            index = self.client.Index(self.index_name)
-            index.delete(ids=ids)
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "cone"
-            exception.cause = "Cone"
-            exception.method = "delete(...)"
-            ErrorDialog(exception).show()
-
-    def clear_index( self ) -> None:
-        """
-
-            Purpose:
-            Removes all vectors from the index without deleting the index itself.
-
-            Parameters:
-            None
-
-            Returns:
-            None
-
-        """
-        try:
-            index = self.client.Index(self.index_name)
-            index.delete(delete_all=True)
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "cone"
-            exception.cause = "Cone"
-            exception.method = "clear_index()"
-            ErrorDialog(exception).show()
-
-    def drop_index(self) -> None:
-        """
-
-            Purpose:
-            Permanently deletes the entire Pinecone index.
-
-            Parameters:
-            None
-
-            Returns:
-            None
-
-        """
-        try:
-            self.client.delete_index(self.index_name)
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "cone"
-            exception.cause = "Cone"
-            exception.method = "drop_index()"
-            ErrorDialog(exception).show()

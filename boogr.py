@@ -52,7 +52,7 @@ import re
 import unicodedata
 
 
-class Dark( BaseModel ):
+class Dark( ):
 	'''
 
         Constructor:
@@ -64,13 +64,22 @@ class Dark( BaseModel ):
 		Class representing the theme
 
     '''
-
-	class Config:
-		extra = 'ignore'
-		arbitrary_types_allowed = True
+	theme_background: Optional[ str ]
+	theme_textcolor: Optional[ str ]
+	element_forecolor: Optional[ str ]
+	text_backcolor: Optional[ str ]
+	text_forecolor: Optional[ str ]
+	input_forecolor: Optional[ str ]
+	input_backcolor: Optional[ str ]
+	button_backcolor: Optional[ str ]
+	button_forecolor: Optional[ str ]
+	button_color: Optional[ Tuple[ str, str ] ]
+	icon_path: Optional[ str ]
+	theme_font: Optional[ Tuple[ str, int ] ]
+	scrollbar_color: Optional[ str ]
+	form_size: Optional[ Tuple[ int, int ] ]
 
 	def __init__( self ):
-		super( ).__init__( )
 		sg.theme( 'DarkGrey15' )
 		sg.theme_input_text_color( '#FFFFFF' )
 		sg.theme_element_text_color( '#69B1EF' )
