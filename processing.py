@@ -1192,7 +1192,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int=25 ) -> str:
+	def chunk_text( self, text: str, size: int=15 ) -> str:
 		"""
 
 			Purpose:
@@ -1284,7 +1284,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, tokens: List[ str ], size: int=25 ) -> DataFrame:
+	def chunk_words( self, tokens: List[ str ], size: int=15 ) -> DataFrame:
 		"""
 
 			Purpose:

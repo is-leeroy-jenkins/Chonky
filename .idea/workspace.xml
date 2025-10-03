@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="95099c67-6bcb-4621-b851-cdce4af3f778" name="Changes" comment="updates;">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ipynb/pipes.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/ipynb/pipes.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
     </list>
@@ -105,7 +106,7 @@
       <workItem from="1759354218630" duration="6859000" />
       <workItem from="1759414353726" duration="3569000" />
       <workItem from="1759428767775" duration="587000" />
-      <workItem from="1759435870545" duration="5577000" />
+      <workItem from="1759435870545" duration="6212000" />
     </task>
     <task id="LOCAL-00001" summary="updates;">
       <option name="closed" value="true" />
@@ -203,7 +204,23 @@
       <option name="project" value="LOCAL" />
       <updated>1759492663358</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1759492990406</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1759492990406</updated>
+    </task>
+    <task id="LOCAL-00014" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1759493000106</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1759493000106</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TerminalProjectNonSharedOptionsProvider">
