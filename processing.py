@@ -633,7 +633,7 @@ class Text( Processor ):
 			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
-				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( ) or len( char) > 3):
+				if len( char) > 2:
 					cleaned.append( char )
 			return ' '.join( cleaned )
 		except Exception as e:
