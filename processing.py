@@ -1072,7 +1072,7 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			_tokens = nltk.word_tokenize( text )
 			_words = [ t for t in _tokens ]
-			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in _words if w.strip( ) ]
+			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in _words ]
 			_data = ' '.join( _tokenlist )
 			return _data
 		except Exception as e:
