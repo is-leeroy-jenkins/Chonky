@@ -1748,7 +1748,7 @@ class Text( Processor ):
 			throw_if( 'src', source )
 			throw_if( 'dest', destination )
 			_source = source
-			dest_path = destination
+			_destination = destination
 			files = os.listdir( _source )
 			wordlist = [ ]
 			for f in files:
@@ -1766,8 +1766,8 @@ class Text( Processor ):
 				for s in _datamap:
 					processed.append( s )
 				
-				destination = dest_path + '\\' + filename
-				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
+				_final = _destination + '\\' + filename
+				clean = open( _final, 'wt', encoding='utf-8', errors='ignore' )
 				for p in processed:
 					clean.write( p )
 		except Exception as e:
