@@ -630,7 +630,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '.', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
+			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
 				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( ) and len( char) > 4):
