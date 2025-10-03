@@ -1531,7 +1531,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_vocabulary( self, freq_dist: Dict, size: int=1 ) -> DataFrame:
+	def create_vocabulary( self, freq: Dict, size: int=1 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1553,9 +1553,9 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'freq_dist', freq_dist )
-			self.frequency_distribution = freq_dist
-			self.vocabulary = [ word for word, freq in freq_dist.items( ) if freq >= size ]
+			throw_if( 'freq', freq )
+			self.frequency_distribution = freq
+			self.vocabulary = [ word for word, freq in freq.items( ) if freq >= size ]
 			_data = pd.DataFrame( self.vocabulary )
 			return _data
 		except Exception as e:
@@ -1626,7 +1626,7 @@ class Text( Processor ):
 		try:
 			# Each word is treated as a single "document" for TF-IDF
 			fake_docs = [ [ word ] for word in tokens ]
-			joined_docs = [ " ".join( doc ) for doc in fake_docs ]
+			joined_docs = [ ' '.join( doc ) for doc in fake_docs ]
 			vectorizer = TfidfVectorizer( )
 			X = vectorizer.fit_transform( joined_docs )
 			feature_names = vectorizer.get_feature_names_out( )
@@ -1707,13 +1707,13 @@ class Text( Processor ):
 				filename = os.path.basename( f )
 				source_path = source + '\\' + filename
 				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				special = self.remove_special( text )
-				compress = self.compress_whitespace( special )
-				normal = self.normalize_text( compress )
-				stops = self.remove_stopwords( normal )
-				errors = self.remove_errors( stops )
-				fragments = self.remove_fragments( errors )
-				sentences = self.split_sentences( fragments )
+				collapse = self.collapse_whitespace( text )
+				compress = self.compress_whitespace( collapse )
+				tokens = self.tokenize_text( compress )
+				normal = self.normalize_text( tokens )
+				special = self.remove_special( normal )
+				fragments = self.remove_fragments( special )
+				sentences = self.chunk_sentences( fragments )
 				destination = dest_path + '\\' + filename
 				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
 				text = ' '.join( sentences )
@@ -1870,7 +1870,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def encode_sentences( self, sentences: List[ str ], model_name: str='all-MiniLM-L6-v2' ) -> \
+	def encode_sentences( self, sentences: List[ str ], model: str= 'all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
 		
@@ -1886,7 +1886,9 @@ class Text( Processor ):
 			
 		"""
 		try:
-			_transformer = SentenceTransformer( model_name )
+			throw_if( 'sentences', sentences )
+			throw_if( 'model', model )
+			_transformer = SentenceTransformer( model )
 			_tokens = self.lemmatize_tokens( sentences )
 			_encoding = _transformer.encode( _tokens, show_progress_bar=True )
 			return ( self.cleaned_tokens, np.array( _encoding ) )
