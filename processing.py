@@ -629,12 +629,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			cleaned = [ ]
-			fragments = text.split( ' ' )
-			for char in fragments:
+			_cleaned = [ ]
+			_fragments = text.split( ' ' )
+			for char in _fragments:
 				if len( char) > 2:
-					cleaned.append( char )
-			return ' '.join( cleaned )
+					_cleaned.append( char )
+			return ' '.join( _cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -670,13 +670,13 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', '-',  ]
-			tokens = text.split( ' ' )
-			for char in tokens:
-				if char.isalpha( ) or char.isnumeric( ) or char in keepers:
-					cleaned.append( char )
-			return ' '.join( cleaned )
+			_cleaned = [ ]
+			_keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', '-',  ]
+			_tokens = text.split( ' ' )
+			for char in _tokens:
+				if char.isalpha( ) or char.isnumeric( ) or char in _keepers:
+					_cleaned.append( char )
+			return ' '.join( _cleaned )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -781,8 +781,8 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.stop_words = set( stopwords.words( 'english' ) )
 			_words = text.split( ' ' )
-			tokens = [ t for t in _words ]
-			self.cleaned_tokens = [ w for w in tokens if w not in self.stop_words ]
+			_tokens = [ t for t in _words ]
+			self.cleaned_tokens = [ w for w in _tokens if w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
 			return self.cleaned_text
 		except Exception as e:
@@ -948,13 +948,13 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			wordlist = [ ]
-			vocab = words.words( 'en' )
-			tokens = text.split( ' ' )
-			for word in tokens:
-				if word.isnumeric( ) or word in vocab:
-					wordlist.append( word )
-			_data = ' '.join( wordlist )
+			_wordlist = [ ]
+			_vocab = words.words( 'en' )
+			_tokens = text.split( ' ' )
+			for word in _tokens:
+				if word.isnumeric( ) or word in _vocab:
+					_wordlist.append( word )
+			_data = ' '.join( _wordlist )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1148,8 +1148,8 @@ class Text( Processor ):
 			self.tokens = text.split( ' ' )
 			_tokens = [ ]
 			for w in self.tokens:
-				token = nltk.word_tokenize( w )
-				_tokens.append( token )
+				_tkn = nltk.word_tokenize( w )
+				_tokens.append( _tkn )
 			_data = pd.DataFrame( _tokens )
 			return _data
 		except Exception as e:
@@ -1311,19 +1311,19 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			processed = [ ]
-			wordlist = [ ]
+			_processed = [ ]
+			_wordlist = [ ]
 			for s in tokens:
 				if len( s ) > 4:
-					wordlist.append( s )
-			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
-			nums = list( range( 0, len( self.chunks ) ) )
+					_wordlist.append( s )
+			self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
+			_nums = list( range( 0, len( self.chunks ) ) )
 			for i, c in enumerate( self.chunks ):
 				_item =  ' '.join( c )
-				processed.append( _item )
-			_data = pd.DataFrame( processed, columns=[ 'Text' ] )
+				_processed.append( _item )
+			_data = pd.DataFrame( _processed, columns=[ 'Text' ] )
 			_data.reset_index( )
-			_data[ 'Line' ] = nums
+			_data[ 'Line' ] = _nums
 			_data.set_index( 'Line' )
 			return _data
 		except Exception as e:
@@ -1469,12 +1469,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			processed = [ ]
-			wordlist = [ str ]
+			_processed = [ ]
+			_wordlist = [ str ]
 			for t in tokens:
 				if len( t ) > 4:
-					wordlist.append( t )
-			self.frequency_distribution = FreqDist( dict( Counter( wordlist ) ) )
+					_wordlist.append( t )
+			self.frequency_distribution = FreqDist( dict( Counter( _wordlist ) ) )
 			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
@@ -1644,7 +1644,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 			
-	def clean_file( self, src: str ) -> str:
+	def clean_file( self, source: str ) -> str:
 		"""
 
 			Purpose:
@@ -1661,12 +1661,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', src )
-			if not os.path.exists( src ):
-				raise FileNotFoundError( f'File not found: {src}' )
+			throw_if( 'src', source )
+			if not os.path.exists( source ):
+				raise FileNotFoundError( f'File not found: {source}' )
 			else:
-				_source = src
-				_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_sourcepath = source
+				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 				_collapse = self.collapse_whitespace( _text )
 				_normal = self.normalize_text( _collapse )
 				_special = self.remove_special( _normal )
@@ -1681,7 +1681,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def clean_files( self, src: str, dest: str ) -> None:
+	def clean_files( self, source: str, destination: str ) -> None:
 		"""
 
 			Purpose:
@@ -1699,15 +1699,15 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', src )
-			throw_if( 'dest', dest )
-			if not os.path.exists( src ):
-				raise FileNotFoundError( f'File not found: {src}' )
-			elif not os.path.exists( dest ):
-				raise FileNotFoundError( f'File not found: {dest}' )
+			throw_if( 'src', source )
+			throw_if( 'dest', destination )
+			if not os.path.exists( source ):
+				raise FileNotFoundError( f'File not found: {source}' )
+			elif not os.path.exists( destination ):
+				raise FileNotFoundError( f'File not found: {destination}' )
 			else:
-				_source = src
-				_destpath = dest
+				_source = source
+				_destpath = destination
 				_files = os.listdir( _source )
 				for f in _files:
 					_processed = [ ]
@@ -1753,29 +1753,34 @@ class Text( Processor ):
 		try:
 			throw_if( 'src', source )
 			throw_if( 'dest', destination )
-			_source = source
-			_destination = destination
-			_files = os.listdir( _source )
-			_words = [ ]
-			for f in _files:
-				_processed = [ ]
-				_filename = os.path.basename( f )
-				_sourcepath = _source + '\\' + _filename
-				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens =  _text.split( ' ' )
-				_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-				_datamap = [ ]
-				for i, c in enumerate( _chunks ):
-					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
-					_datamap.append( _value )
+			if not os.path.exists( source ):
+				raise FileNotFoundError( f'File not found: {source}' )
+			elif not os.path.exists( destination ):
+				raise FileNotFoundError( f'File not found: {destination}' )
+			else:
+				_source = source
+				_destination = destination
+				_files = os.listdir( _source )
+				_words = [ ]
+				for f in _files:
+					_processed = [ ]
+					_filename = os.path.basename( f )
+					_sourcepath = _source + '\\' + _filename
+					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+					_tokens =  _text.split( ' ' )
+					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+					_datamap = [ ]
+					for i, c in enumerate( _chunks ):
+						_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+						_datamap.append( _value )
+						
+					for s in _datamap:
+						_processed.append( s )
 					
-				for s in _datamap:
-					_processed.append( s )
-				
-				_final = _destination + '\\' + _filename
-				_clean = open( _final, 'wt', encoding='utf-8', errors='ignore' )
-				for p in _processed:
-					_clean.write( p )
+					_final = _destination + '\\' + _filename
+					_clean = open( _final, 'wt', encoding='utf-8', errors='ignore' )
+					for p in _processed:
+						_clean.write( p )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1801,22 +1806,25 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', filepath )
-			_source = filepath
-			processed = [ ]
-			wordlist = [ ]
-			vocab = words.words( 'en' )
-			text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
-			tokens = text.split( )
-			for s in tokens:
-				if s.isalpha( ) and s in vocab:
-					wordlist.append( s )
-			self.chunks = [ wordlist[ i: i + size ] for i in range( 0, len( wordlist ), size ) ]
-			for i, c in enumerate( self.chunks ):
-				_item =  ' '.join( c )
-				processed.append( _item )
-			_data = pd.DataFrame( processed )
-			return _data
+			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			else:
+				_source = filepath
+				_processed = [ ]
+				_wordlist = [ ]
+				_vocab = words.words( 'en' )
+				_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_tokens = _text.split( )
+				for s in _tokens:
+					if s.isalpha( ) and s in _vocab:
+						_wordlist.append( s )
+				self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
+				for i, c in enumerate( self.chunks ):
+					_item =  ' '.join( c )
+					_processed.append( _item )
+				_data = pd.DataFrame( _processed )
+				return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1846,29 +1854,34 @@ class Text( Processor ):
 		try:
 			throw_if( 'src', source )
 			throw_if( 'dest', destination )
-			_source = source
-			dest_path = destination
-			files = os.listdir( _source )
-			wordlist = [ ]
-			for f in files:
-				processed = [ ]
-				filename = os.path.basename( f )
-				source_path = _source + '\\' + filename
-				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens =  text.split( ' ' )
-				_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-				_datamap = [ ]
-				for i, c in enumerate( _chunks ):
-					_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
-					_datamap.append( _value )
+			if not os.path.exists( source ):
+				raise FileNotFoundError( f'File not found: {source}' )
+			elif not os.path.exists( destination ):
+				raise FileNotFoundError( f'File not found: {destination}' )
+			else:
+				_source = source
+				_destpath = destination
+				_files = os.listdir( _source )
+				_wordlist = [ ]
+				for f in _files:
+					_processed = [ ]
+					_filename = os.path.basename( f )
+					_sourcepath = _source + '\\' + _filename
+					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+					_tokens =  _text.split( ' ' )
+					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+					_datamap = [ ]
+					for i, c in enumerate( _chunks ):
+						_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+						_datamap.append( _value )
+						
+					for s in _datamap:
+						_processed.append( s )
 					
-				for s in _datamap:
-					processed.append( s )
-				
-				destination = dest_path + '\\' + filename.replace( '.txt', '.jsonl' )
-				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
-				for p in processed:
-					clean.write( p )
+					_destination = _destpath + '\\' + _filename.replace( '.txt', '.jsonl' )
+					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
+					for p in _processed:
+						_clean.write( p )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
