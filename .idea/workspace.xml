@@ -106,7 +106,7 @@
       <workItem from="1759354218630" duration="6859000" />
       <workItem from="1759414353726" duration="3569000" />
       <workItem from="1759428767775" duration="587000" />
-      <workItem from="1759435870545" duration="8804000" />
+      <workItem from="1759435870545" duration="11896000" />
     </task>
     <task id="LOCAL-00001" summary="updates;">
       <option name="closed" value="true" />
@@ -276,7 +276,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759495950156</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1759497029352</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1759497029352</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TerminalProjectNonSharedOptionsProvider">

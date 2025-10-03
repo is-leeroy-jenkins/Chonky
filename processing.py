@@ -1236,7 +1236,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_sentences( self, text: str, size: int=20 ) -> DataFrame:
+	def chunk_sentences( self, text: str, size: int=20 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1273,8 +1273,7 @@ class Text( Processor ):
 				_value = ' '.join( chunk )
 				_item = f'{_value}'
 				_datamap.append( _item )
-			_data = pd.DataFrame( _datamap  )
-			return _data
+			return _datamap
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1663,14 +1662,17 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'src', src )
-			_source = src
-			_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
-			_collapse = self.collapse_whitespace( _text )
-			_normal = self.normalize_text( _collapse )
-			_special = self.remove_special( _normal )
-			_fragments = self.remove_fragments( _special )
-			_compress = self.compress_whitespace( _fragments )
-			return _compress
+			if not os.path.exists( src ):
+				raise FileNotFoundError( f'File not found: {src}' )
+			else:
+				_source = src
+				_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_collapse = self.collapse_whitespace( _text )
+				_normal = self.normalize_text( _collapse )
+				_special = self.remove_special( _normal )
+				_fragments = self.remove_fragments( _special )
+				_compress = self.compress_whitespace( _fragments )
+				return _compress
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1699,25 +1701,30 @@ class Text( Processor ):
 		try:
 			throw_if( 'src', src )
 			throw_if( 'dest', dest )
-			source = src
-			dest_path = dest
-			files = os.listdir( source )
-			for f in files:
-				processed = [ ]
-				filename = os.path.basename( f )
-				source_path = source + '\\' + filename
-				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				collapse = self.collapse_whitespace( text )
-				compress = self.compress_whitespace( collapse )
-				tokens = self.tokenize_text( compress )
-				normal = self.normalize_text( tokens )
-				special = self.remove_special( normal )
-				fragments = self.remove_fragments( special )
-				sentences = self.chunk_sentences( fragments )
-				destination = dest_path + '\\' + filename
-				clean = open( destination, 'wt', encoding='utf-8', errors='ignore' )
-				text = ' '.join( sentences )
-				clean.write( text )
+			if not os.path.exists( src ):
+				raise FileNotFoundError( f'File not found: {src}' )
+			elif not os.path.exists( dest ):
+				raise FileNotFoundError( f'File not found: {dest}' )
+			else:
+				_source = src
+				_destpath = dest
+				_files = os.listdir( _source )
+				for f in _files:
+					_processed = [ ]
+					_filename = os.path.basename( f )
+					_sourcepath = _source + '\\' + _filename
+					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+					_collapse = self.collapse_whitespace( _text )
+					_compress = self.compress_whitespace( _collapse )
+					_tokens = self.tokenize_text( _compress )
+					_normal = self.normalize_text( _tokens )
+					_special = self.remove_special( _normal )
+					_fragments = self.remove_fragments( _special )
+					_sentences = self.chunk_sentences( _fragments )
+					_destination = _destpath + '\\' + _filename
+					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
+					_lines = ' '.join( _sentences )
+					_clean.write( _lines )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1748,14 +1755,14 @@ class Text( Processor ):
 			throw_if( 'dest', destination )
 			_source = source
 			_destination = destination
-			files = os.listdir( _source )
-			wordlist = [ ]
-			for f in files:
-				processed = [ ]
-				filename = os.path.basename( f )
-				source_path = _source + '\\' + filename
-				text = open( source_path, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens =  text.split( ' ' )
+			_files = os.listdir( _source )
+			_words = [ ]
+			for f in _files:
+				_processed = [ ]
+				_filename = os.path.basename( f )
+				_sourcepath = _source + '\\' + _filename
+				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+				_tokens =  _text.split( ' ' )
 				_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 				_datamap = [ ]
 				for i, c in enumerate( _chunks ):
@@ -1763,12 +1770,12 @@ class Text( Processor ):
 					_datamap.append( _value )
 					
 				for s in _datamap:
-					processed.append( s )
+					_processed.append( s )
 				
-				_final = _destination + '\\' + filename
-				clean = open( _final, 'wt', encoding='utf-8', errors='ignore' )
-				for p in processed:
-					clean.write( p )
+				_final = _destination + '\\' + _filename
+				_clean = open( _final, 'wt', encoding='utf-8', errors='ignore' )
+				for p in _processed:
+					_clean.write( p )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
