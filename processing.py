@@ -633,7 +633,7 @@ class Text( Processor ):
 			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
-				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( ) and len( char) > 4):
+				if (char.isalpha( ) or char.isspace( ) or char.isnumeric( ) or len( char) > 3):
 					cleaned.append( char )
 			return ' '.join( cleaned )
 		except Exception as e:
@@ -672,7 +672,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
+			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', '-',  ]
 			tokens = text.split( ' ' )
 			for char in tokens:
 				if char.isalpha( ) or char.isnumeric( ) or char in keepers:
