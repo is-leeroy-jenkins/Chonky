@@ -1237,7 +1237,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_sentences( self, text: str, size: int=25 ) -> DataFrame:
+	def chunk_sentences( self, text: str, size: int=15 ) -> DataFrame:
 		"""
 
 			Purpose:
