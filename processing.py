@@ -1667,9 +1667,10 @@ class Text( Processor ):
 			_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
 			_collapse = self.collapse_whitespace( _text )
 			_normal = self.normalize_text( _collapse )
-			_compress = self.compress_whitespace( _normal )
-			_fragments = self.remove_fragments( _compress )
-			return _fragments
+			_special = self.remove_special( _normal )
+			_fragments = self.remove_fragments( _special )
+			_compress = self.compress_whitespace( _fragments )
+			return _compress
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
