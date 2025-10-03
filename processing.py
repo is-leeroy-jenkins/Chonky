@@ -630,7 +630,6 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			cleaned = [ ]
-			keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', ':', '-', " \',", ",\' " ]
 			fragments = text.split( ' ' )
 			for char in fragments:
 				if len( char) > 2:
@@ -1237,7 +1236,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_sentences( self, text: str, size: int=15 ) -> DataFrame:
+	def chunk_sentences( self, text: str, size: int=25 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1669,8 +1668,7 @@ class Text( Processor ):
 			_collapse = self.collapse_whitespace( _text )
 			_compress = self.compress_whitespace( _collapse )
 			_normal = self.normalize_text( _compress )
-			_special = self.remove_special( _normal )
-			_fragments = self.remove_fragments( _special )
+			_fragments = self.remove_fragments( _normal )
 			return _fragments
 		except Exception as e:
 			exception = Error( e )
