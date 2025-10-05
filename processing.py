@@ -671,11 +671,11 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_text = re.sub( r'\..{2,}', '', text )
-			_keepers = [ '(', ')', '$', '! ', '? ', ': ', '; ', '-',  ]
+			_text = re.sub( r'\.{2,}', '', text )
+			_keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
 			_tokens = _text.split( ' ' )
 			for char in _tokens:
-				if char.isalpha( ) or char.isnumeric( ) or char in _keepers:
+				if char.isalnum( ) or char.isprintable() or char.isdigit() or char in _keepers:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
