@@ -1717,11 +1717,9 @@ class Text( Processor ):
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 					_collapse = self.collapse_whitespace( _text )
 					_compress = self.compress_whitespace( _collapse )
-					_tokens = self.tokenize_text( _compress )
-					_normal = self.normalize_text( _tokens )
+					_normal = self.normalize_text( _compress )
 					_special = self.remove_special( _normal )
-					_fragments = self.remove_fragments( _special )
-					_sentences = self.chunk_sentences( _fragments )
+					_sentences = self.chunk_sentences( _special )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
