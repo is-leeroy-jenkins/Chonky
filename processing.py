@@ -671,8 +671,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
+			_text = re.sub( r'..{2,}', '', text )
 			_keepers = [ '(', ')', '$', '. ', '! ', '? ', ': ', '; ', '-',  ]
-			_tokens = text.split( ' ' )
+			_tokens = _text.split( ' ' )
 			for char in _tokens:
 				if char.isalpha( ) or char.isnumeric( ) or char in _keepers:
 					_cleaned.append( char )
@@ -1450,7 +1451,7 @@ class Text( Processor ):
 				_data = pd.DataFrame( _paragraphs )
 				return _data
 	
-	def compute_frequency_distribution( self, tokens: List[ str ] ) -> FreqDist:
+	def calculate_frequency_distribution( self, tokens: List[ str ] ) -> FreqDist:
 		"""
 
 			Purpose:
@@ -1480,12 +1481,12 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('compute_frequency_distribution( self, documents: list, process: '
+			exception.method = ('calculate_frequency_distribution( self, documents: list, process: '
 			                    'bool=True) -> FreqDist')
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def compute_conditional_distribution( self, tokens: List[ str ], condition=None,
+	def calculate_conditional_distribution( self, tokens: List[ str ], condition=None,
 		process: bool=True ) -> ConditionalFreqDist:
 		"""
 
