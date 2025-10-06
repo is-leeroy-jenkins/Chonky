@@ -1831,6 +1831,59 @@ class Text( Processor ):
 			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
+	
+	def chunk_datasets( self, source: str, destination: str, size: int=20 ) -> DataFrame:
+		"""
+
+			Purpose:
+			________
+			Chunks cleaned text files given a source directory and destination directory
+
+			Parameters:
+			----------
+			- src (str): Source directory
+
+			Returns:
+			--------
+			- DataFrame
+
+		"""
+		try:
+			throw_if( 'filepath', source )
+			throw_if( 'dest', destination )
+			if not os.path.exists( source ):
+				raise FileNotFoundError( f'File not found: {source}' )
+			elif not os.path.exists( destination ):
+				raise FileNotFoundError( f'File not found: {destination}' )
+			else:
+				_src = source
+				_destination = destination
+				_files = os.listdir( _src )
+				_words = [ ]
+				for f in _files:
+					_processed = [ ]
+					_filename = os.path.basename( f )
+					_sourcepath = _src+ '\\' + _filename
+					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
+					_tokens =  _text.split( ' ' )
+					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+					_datamap = [ ]
+					for i, c in enumerate( _chunks ):
+						_datamap.append( c )
+						
+					for s in _datamap:
+						_processed.append( s )
+					
+					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
+					_data = pd.DataFrame( _processed )
+					_data.to_excel( _savepath )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
+			error = ErrorDialog( exception )
+			error.show( )
 
 	def convert_jsonl( self, source: str, destination: str, size: int=20 ) -> None:
 		"""

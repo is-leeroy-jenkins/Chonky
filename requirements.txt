@@ -8,6 +8,7 @@ nltk
 openai
 langchain
 langchain-community
+openpyxl
 PyMuPDF
 python-docx
 pathlib
