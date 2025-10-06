@@ -671,9 +671,16 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_text = re.sub( r'\.{2,}', '', text )
+			_periods = re.sub( r'\.{2,}', '', text )
+			_underscore = re.sub( r'\_{2,}', '', _periods )
+			_dashes = re.sub( r'\-{2,}', ' ', _underscore )
+			_asterick = re.sub( r'\*{2,}', '', _dashes )
+			_leftbrace = re.sub( r'\[{2,}', '', _asterick )
+			_rightbrace = re.sub( r'\]{2,}', '', _leftbrace )
+			_lessthan = re.sub( r'\<{2,}', '', _rightbrace )
+			_greaterthan = re.sub( r'\>{2,}', '', _lessthan)
 			_keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
-			_tokens = _text.split( ' ' )
+			_tokens = _greaterthan.split( ' ' )
 			for char in _tokens:
 				if char.isalnum( ) or char.isprintable() or char.isdigit() or char in _keepers:
 					_cleaned.append( char )
@@ -1267,8 +1274,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = text.split( ' ' )
-			_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_sentences = sent_tokenize( text )
+			_chunks = [ _sentences[ i: i + size ] for i in range( 0, len( _sentences ), size ) ]
 			_datamap = [ ]
 			for index, chunk in enumerate( _chunks ):
 				_value = ' '.join( chunk )
@@ -1876,7 +1883,7 @@ class Text( Processor ):
 					
 					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
 					_data = pd.DataFrame( _processed )
-					_data.to_excel( _savepath )
+					_data.to_excel( _savepath, sheet_name='Dataset' )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
