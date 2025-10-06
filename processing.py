@@ -681,7 +681,7 @@ class Text( Processor ):
 			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
 			_number = re.sub( r'\#{1,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
-			_chars = re.sub( r'\/\'\'\"\`', ' ', _equalto )
+			_chars = re.sub( r'\/\'\'{1,}\"{1,}\`{1,}', ' ', _equalto )
 			_keepers = [ '(', ')', '$', '.', '. ', '!', '?', ':', ';', '-',  ]
 			_tokens = _chars.split( ' ' )
 			for char in _tokens:
