@@ -675,12 +675,16 @@ class Text( Processor ):
 			_underscore = re.sub( r'\_{2,}', '', _periods )
 			_dashes = re.sub( r'\-{2,}', ' ', _underscore )
 			_asterick = re.sub( r'\*{2,}', '', _dashes )
-			_leftbrace = re.sub( r'\[{2,}', '', _asterick )
-			_rightbrace = re.sub( r'\]{2,}', '', _leftbrace )
-			_lessthan = re.sub( r'\<{2,}', '', _rightbrace )
-			_greaterthan = re.sub( r'\>{2,}', '', _lessthan)
+			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
+			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
+			_lessthan = re.sub( r'\<{1,}', '', _rightbrace )
+			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
+			_number = re.sub( r'\#{1,}', '', _greaterthan )
+			_equalto = re.sub( r'\={2,}', '', _number )
+			_forward = re.sub( r'\/', '', _equalto )
+			_back = re.sub( r'\\', '', _forward )
 			_keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
-			_tokens = _greaterthan.split( ' ' )
+			_tokens = _back.split( ' ' )
 			for char in _tokens:
 				if char.isalnum( ) or char.isprintable() or char.isdigit() or char in _keepers:
 					_cleaned.append( char )
