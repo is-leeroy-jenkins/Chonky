@@ -681,10 +681,9 @@ class Text( Processor ):
 			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
 			_number = re.sub( r'\#{1,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
-			_forward = re.sub( r'\/', '', _equalto )
-			_back = re.sub( r'\\', '', _forward )
-			_keepers = [ '(', ')', '$', '.', '!', '?', ':', ';', '-',  ]
-			_tokens = _back.split( ' ' )
+			_chars = re.sub( r'\/\'\'\"\`', ' ', _equalto )
+			_keepers = [ '(', ')', '$', '.', '. ', '!', '?', ':', ';', '-',  ]
+			_tokens = _chars.split( ' ' )
 			for char in _tokens:
 				if char.isalnum( ) or char.isprintable() or char.isdigit() or char in _keepers:
 					_cleaned.append( char )
