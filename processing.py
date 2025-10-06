@@ -672,20 +672,21 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			_cleaned = [ ]
 			_periods = re.sub( r'\.{2,}', '', text )
-			_underscore = re.sub( r'\_{2,}', '', _periods )
-			_dashes = re.sub( r'\-{2,}', ' ', _underscore )
+			_bullets = re.sub( r'\•{1,}', '', _periods )
+			_underscore = re.sub( r'\_{2,}', '', _bullets )
+			_dashes = re.sub( r'\-{1,}', '', _underscore )
 			_asterick = re.sub( r'\*{2,}', '', _dashes )
 			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
 			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
 			_lessthan = re.sub( r'\<{1,}', '', _rightbrace )
 			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
-			_number = re.sub( r'\#{1,}', '', _greaterthan )
+			_number = re.sub( r'\#{2,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
-			_chars = re.sub( r'\/\'\'{1,}\"{1,}\`{1,}', ' ', _equalto )
-			_keepers = [ '(', ')', '$', '.', '. ', '!', '?', ':', ';', '-',  ]
-			_tokens = _chars.split( ' ' )
+			_chars = re.sub( r'[\/\'\"\`]', '', _equalto )
+			_keepers = re.sub( r'[^()<>$.,!?:;-]', '', _chars )
+			_tokens = _keepers.split( ' ' )
 			for char in _tokens:
-				if char.isalnum( ) or char.isprintable() or char.isdigit() or char in _keepers:
+				if char.isalpha( ) or char.isdigit() or char.isprintable( ):
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
