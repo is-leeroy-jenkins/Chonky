@@ -682,8 +682,8 @@ class Text( Processor ):
 			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
 			_number = re.sub( r'\#{1,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
-			_chars = re.sub( r'[\/\'\"\`\~]', '', _equalto )
-			_keepers = re.sub( r'[\(\)\- \[\]\<\>]', '', _chars )
+			_chars = re.sub( r'[`_*#~><-]', '', _equalto )
+			_keepers = re.sub( r'[()\[\]<>]', '', _chars )
 			_tokens = _keepers.split( ' ' )
 			for char in _tokens:
 				if char.isalpha( ) or char.isdigit() or char.isprintable( ):
@@ -755,7 +755,7 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			self.raw_input = text
 			self.cleaned_text = re.sub( r'\[.*?]\(.*?\)', '', text )
-			self.corrected = re.sub( r'[`_*#~>-]', '', self.cleaned_text )
+			self.corrected = re.sub( r'[`_*#~><-]', '', self.cleaned_text )
 			_retval = re.sub( r'!\[.*?]\(.*?\)', '', self.corrected )
 			return _retval
 		except Exception as e:
@@ -1861,7 +1861,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'filepath', source )
-			throw_if( 'dest', destination )
+			throw_if( 'destination', destination )
 			if not os.path.exists( source ):
 				raise FileNotFoundError( f'File not found: {source}' )
 			elif not os.path.exists( destination ):
@@ -1880,14 +1880,15 @@ class Text( Processor ):
 					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 					_datamap = [ ]
 					for i, c in enumerate( _chunks ):
-						_datamap.append( c )
+						_row = ' '.join( c )
+						_datamap.append( _row )
 						
 					for s in _datamap:
 						_processed.append( s )
 					
 					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
 					_data = pd.DataFrame( _processed )
-					_data.to_excel( _savepath, sheet_name='Dataset' )
+					_data.to_excel( _savepath, sheet_name='Dataset', index=False, startrow=0 )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
