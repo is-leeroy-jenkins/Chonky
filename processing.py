@@ -671,7 +671,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_periods = re.sub( r'\.{2,}', '', text )
+			_periods = re.sub( r'\.{1,}', ' ', text )
 			_double = re.sub( r'[\"]', '', _periods )
 			_single = re.sub( r"[\']", '', _double )
 			_bullets = re.sub( r'•', '', _single )
