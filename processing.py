@@ -632,7 +632,7 @@ class Text( Processor ):
 			_cleaned = [ ]
 			_fragments = text.split( ' ' )
 			for char in _fragments:
-				if len( char) > 2:
+				if len( char) > 3:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
@@ -672,21 +672,22 @@ class Text( Processor ):
 			throw_if( 'text', text )
 			_cleaned = [ ]
 			_periods = re.sub( r'\.{2,}', '', text )
-			_bullets = re.sub( r'\•{1,}', '', _periods )
-			_underscore = re.sub( r'\_{2,}', '', _bullets )
-			_dashes = re.sub( r'\-{2,}', '', _underscore )
+			_double = re.sub( r'[\"]', '', _periods )
+			_single = re.sub( r"[\']", '', _double )
+			_bullets = re.sub( r'•', '', _single )
+			_underscore = re.sub( r'_{2,}', '', _bullets )
+			_dashes = re.sub( r'-{2,}', '', _underscore )
 			_asterick = re.sub( r'\*{2,}', '', _dashes )
 			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
 			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
-			_lessthan = re.sub( r'\<{1,}', '', _rightbrace )
-			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
-			_number = re.sub( r'\#{1,}', '', _greaterthan )
-			_equalto = re.sub( r'\={2,}', '', _number )
-			_chars = re.sub( r'[`_*#~><-]', '', _equalto )
-			_keepers = re.sub( r'[()\[\]<>]', '', _chars )
-			_tokens = _keepers.split( ' ' )
+			_lessthan = re.sub( r'<{1,}', '', _rightbrace )
+			_greaterthan = re.sub( r'>{1,}', '', _lessthan)
+			_number = re.sub( r'#{1,}', '', _greaterthan )
+			_equalto = re.sub( r'={2,}', '', _number )
+			_chars = re.sub( r'[`_*#~><\-\)\(]', '', _equalto )
+			_tokens = _chars.split( ' ' )
 			for char in _tokens:
-				if char.isalpha( ) or char.isdigit() or char.isprintable( ):
+				if char.isalpha( ) or char.isnumeric( ):
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
@@ -1730,7 +1731,8 @@ class Text( Processor ):
 					_compress = self.compress_whitespace( _collapse )
 					_normal = self.normalize_text( _compress )
 					_special = self.remove_special( _normal )
-					_sentences = self.chunk_sentences( _special )
+					_fragments = self.remove_fragments( _special )
+					_sentences = self.chunk_sentences( _fragments )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
@@ -1888,7 +1890,7 @@ class Text( Processor ):
 					
 					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
 					_data = pd.DataFrame( _processed )
-					_data.to_excel( _savepath, sheet_name='Dataset', index=False, startrow=0 )
+					_data.to_excel( _savepath, sheet_name='Dataset', index=False, header=['Data',] )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
