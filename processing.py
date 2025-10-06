@@ -680,10 +680,10 @@ class Text( Processor ):
 			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
 			_lessthan = re.sub( r'\<{1,}', '', _rightbrace )
 			_greaterthan = re.sub( r'\>{1,}', '', _lessthan)
-			_number = re.sub( r'\#{2,}', '', _greaterthan )
+			_number = re.sub( r'\#{1,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
-			_chars = re.sub( r'[\/\'\"\`]', '', _equalto )
-			_keepers = re.sub( r'[\(\)<>\-]', '', _chars )
+			_chars = re.sub( r'[\/\'\"\`\~]', '', _equalto )
+			_keepers = re.sub( r'[\(\)\- \[\]\<\>]', '', _chars )
 			_tokens = _keepers.split( ' ' )
 			for char in _tokens:
 				if char.isalpha( ) or char.isdigit() or char.isprintable( ):
