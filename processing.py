@@ -674,7 +674,7 @@ class Text( Processor ):
 			_periods = re.sub( r'\.{2,}', '', text )
 			_bullets = re.sub( r'\•{1,}', '', _periods )
 			_underscore = re.sub( r'\_{2,}', '', _bullets )
-			_dashes = re.sub( r'\-{1,}', '', _underscore )
+			_dashes = re.sub( r'\-{2,}', '', _underscore )
 			_asterick = re.sub( r'\*{2,}', '', _dashes )
 			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
 			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
@@ -683,7 +683,7 @@ class Text( Processor ):
 			_number = re.sub( r'\#{2,}', '', _greaterthan )
 			_equalto = re.sub( r'\={2,}', '', _number )
 			_chars = re.sub( r'[\/\'\"\`]', '', _equalto )
-			_keepers = re.sub( r'[^()<>$.,!?:;-]', '', _chars )
+			_keepers = re.sub( r'[\(\)<>\-]', '', _chars )
 			_tokens = _keepers.split( ' ' )
 			for char in _tokens:
 				if char.isalpha( ) or char.isdigit() or char.isprintable( ):
