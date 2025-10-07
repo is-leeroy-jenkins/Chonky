@@ -427,12 +427,16 @@ class Text( Processor ):
 			'corrected', 'cleaned_text', 'words', 'paragraphs', 'words', 'pages', 'chunks',
 			'chunk_size', 'cleaned_pages', 'stop_words', 'cleaned_lines', 'removed', 'lowercase',
 			'encoding', 'vocabulary', 'translator', 'lemmatizer', 'stemmer', 'tokenizer',
-			'vectorizer', 'split_lines', 'split_pages', 'collapse_whitespace', 'remove_punctuation',
+			'vectorizer', 'split_sentences', 'split_pages', 'collapse_whitespace', 'remove_punctuation',
 			'remove_special', 'remove_html', 'remove_markdown', 'remove_stopwords',
 			'remove_headers', 'tiktokenize', 'normalize_text', 'tokenize_text', 'tokenize_words',
-			'tokenize_sentences', 'chunk_text', 'chunk_words', 'chunk_files', 'create_wordbag',
+			'chunk_sentences', 'chunk_text', 'chunk_words', 'chunk_files', 'create_wordbag',
 			'create_word2vec', 'chunk_data', 'remove_errors',
-			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution' ]
+			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution',
+			'compress_whitespace', 'speech_tagging', 'chunk_datasets', 'split_paragraphs',
+		    'calculate_frequency_distribution', 'calculate_conditional_distribution',
+		    'chunk_file', 'create_vocabulary', 'create_wordbag', 'create_vectors',
+		    'encode_sentence', 'semantic_search' ]
 	
 	def load_text( self, filepath: str ) -> str | None:
 		"""
@@ -671,25 +675,19 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_periods = re.sub( r'\.{1,}', ' ', text )
+			_periods = re.sub( r'\.{2,}', ' ', text )
 			_double = re.sub( r'[\"]', '', _periods )
 			_single = re.sub( r"[\']", '', _double )
 			_bullets = re.sub( r'•', '', _single )
 			_underscore = re.sub( r'_{2,}', '', _bullets )
-			_dashes = re.sub( r'-{2,}', '', _underscore )
+			_dashes = re.sub( r'-{2,}', ' ', _underscore )
 			_asterick = re.sub( r'\*{2,}', '', _dashes )
 			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
 			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
-			_lessthan = re.sub( r'<{1,}', '', _rightbrace )
-			_greaterthan = re.sub( r'>{1,}', '', _lessthan)
-			_number = re.sub( r'#{1,}', '', _greaterthan )
+			_number = re.sub( r'#{2,}', '', _rightbrace )
 			_equalto = re.sub( r'={2,}', '', _number )
-			_chars = re.sub( r'[`_*#~><\-\)\(]', '', _equalto )
-			_tokens = _chars.split( ' ' )
-			for char in _tokens:
-				if char.isalpha( ) or char.isnumeric( ):
-					_cleaned.append( char )
-			return ' '.join( _cleaned )
+			_chars = re.sub( r'[`_*#~><\-\)\(]', ' ', _equalto )
+			return _chars
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -998,8 +996,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.nlp = spacy.load( 'en_core_web_sm' )
-			self.tokens = [ token.text for token in self.nlp( text ) ]
-			return self.tokens
+			_datamap = [ ]
+			_tokens = [ token.text for token in self.nlp( text ) ]
+			_text = ' '.join( _tokens )
+			return _text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1024,7 +1024,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			return [ self.lemmatizer.lemmatize( token ) for token in tokens ]
+			return [ self.lemmatizer.lemmatize( t ) for t in tokens ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1234,7 +1234,8 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.lines = text.split( ' ' )
+			_lines = word_tokenize( text )
+			self.lines = _lines.split( )
 			_chunks = [ self.lines[ i: i + size ] for i in range( 0, len( self.lines ), size ) ]
 			_map = [ ]
 			for index, chunk in enumerate( _chunks ):
@@ -1295,7 +1296,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, tokens: List[ str ], size: int=15 ) -> DataFrame:
+	def chunk_words( self, text: str, size: int=15 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1323,21 +1324,15 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'tokens', tokens )
-			_processed = [ ]
-			_wordlist = [ ]
-			for s in tokens:
-				if len( s ) > 4:
-					_wordlist.append( s )
-			self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
-			_nums = list( range( 0, len( self.chunks ) ) )
-			for i, c in enumerate( self.chunks ):
-				_item =  ' '.join( c )
-				_processed.append( _item )
-			_data = pd.DataFrame( _processed, columns=[ 'Text' ] )
-			_data.reset_index( )
-			_data[ 'Line' ] = _nums
-			_data.set_index( 'Line' )
+			throw_if( 'text', text )
+			_sentences = word_tokenize( text )
+			_chunks = [ _sentences[ i: i + size ] for i in range( 0, len( _sentences ), size ) ]
+			_datamap = [ ]
+			for index, chunk in enumerate( _chunks ):
+				_value = ' '.join( chunk )
+				_item = f'{_value}'
+				_datamap.append( _item )
+			_data = pd.DataFrame( _datamap )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1728,11 +1723,10 @@ class Text( Processor ):
 					_sourcepath = _source + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 					_collapse = self.collapse_whitespace( _text )
-					_compress = self.compress_whitespace( _collapse )
-					_normal = self.normalize_text( _compress )
-					_special = self.remove_special( _normal )
-					_fragments = self.remove_fragments( _special )
-					_sentences = self.chunk_sentences( _fragments )
+					_special = self.remove_special( _collapse )
+					_normal= self.normalize_text( _special )
+					_compress = self.compress_whitespace( _normal )
+					_sentences = self.chunk_sentences( _compress )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
@@ -1783,7 +1777,7 @@ class Text( Processor ):
 					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 					_datamap = [ ]
 					for i, c in enumerate( _chunks ):
-						_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+						_value = r"'" + ' '.join( c ) + '\',\n'
 						_datamap.append( _value )
 						
 					for s in _datamap:
@@ -1890,7 +1884,7 @@ class Text( Processor ):
 					
 					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
 					_data = pd.DataFrame( _processed )
-					_data.to_excel( _savepath, sheet_name='Dataset', index=False, header=['Data',] )
+					_data.to_excel( _savepath, sheet_name='Dataset', index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
