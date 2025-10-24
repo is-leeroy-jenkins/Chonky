@@ -1580,8 +1580,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
-			                    'str]')
+			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
 			error = ErrorDialog( exception )
 			error.show( )
 	
