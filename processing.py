@@ -44,7 +44,15 @@
   '''
 from __future__ import annotations
 import string
+
+import docx
+import fitz
+from langchain_classic.agents import AgentExecutor, initialize_agent, AgentType
+from langchain_classic.memory import ConversationBufferMemory
+from langchain_core.tools import Tool
+from langchain_openai import ChatOpenAI
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
+from pymupdf import Page
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from boogr import Error, ErrorDialog
@@ -77,6 +85,7 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from pinecone import Pinecone, ServerlessSpec
+import docx
 import re
 import spacy
 import sqlite3
@@ -84,7 +93,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 import tiktoken
 from tiktoken.core import Encoding
 import unicodedata
@@ -269,7 +278,7 @@ class Processor( ):
 	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
 	vocabulary: Optional[ set ]
-	corpus: Optional[ List[ List[ str ] ] ]
+	corpus: Optional[ pd.DataFrame ]
 	removed: Optional[ List[ str ] ]
 	frequency_distribution: Optional[ Dict ]
 	conditional_distribution: Optional[ Dict ]
@@ -299,6 +308,7 @@ class Processor( ):
 		self.corrected = None
 		self.lowercase = None
 		self.raw_html = None
+		self.corpus = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
@@ -366,16 +376,16 @@ class Text( Processor ):
 	pages: Optional[ List[ str ] ]
 	paragraphs: Optional[ List[ str ] ]
 	ids: Optional[ List[ int ] ]
+	cleaned_text: Optional[ str ]
 	cleaned_lines: Optional[ List[ str ] ]
 	cleaned_tokens: Optional[ List[ str ] ]
 	cleaned_pages: Optional[ List[ str ] ]
 	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
 	vocabulary: Optional[ set ]
-	corpus: Optional[ List[ List[ str ] ] ]
-	removed: Optional[ List[ str ] ]
-	frequency_distribution: Optional[ Dict ]
-	conditional_distribution: Optional[ Dict ]
+	corpus: Optional[ DataFrame ]
+	frequency_distribution: Optional[ DataFrame ]
+	conditional_distribution: Optional[ DataFrame ]
 	
 	def __init__( self ):
 		'''
@@ -399,7 +409,6 @@ class Text( Processor ):
 		self.cleaned_lines = [ ]
 		self.cleaned_tokens = [ ]
 		self.cleaned_pages = [ ]
-		self.removed = [ ]
 		self.raw_pages = [ ]
 		self.stop_words = set( )
 		self.vocabulary = [ ]
@@ -437,22 +446,67 @@ class Text( Processor ):
 
 		'''
 		return [ # Attributes
-			    'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized', 'tokenized',
-				'corrected', 'cleaned_text', 'words', 'paragraphs', 'words', 'pages', 'chunks',
-				'chunk_size', 'cleaned_pages', 'stop_words', 'cleaned_lines', 'removed', 'lowercase',
-				'encoding', 'vocabulary', 'translator', 'lemmatizer', 'stemmer', 'tokenizer',
+				'file_path',
+				'raw_input',
+				'raw_pages',
+				'normalized',
+				'lemmatized',
+				'tokenized',
+				'corrected',
+				'cleaned_text',
+				'words',
+				'paragraphs',
+				'words',
+				'pages',
+				'chunks',
+				'chunk_size',
+				'cleaned_pages',
+				'stop_words',
+				'cleaned_lines',
+				'removed',
+				'lowercase',
+				'encoding',
+				'vocabulary',
+				'translator',
+				'lemmatizer',
+				'stemmer',
+				'tokenizer',
 				'vectorizer',
+				'conditional_distribution',
 				# Methods
-				'split_sentences', 'split_pages', 'collapse_whitespace', 'compress_whitespace',
-				'remove_punctuation', 'remove_numbers', 'remove_special', 'remove_html',
-				'remove_markdown', 'remove_stopwords', 'remove_formatting', 'remove_headers',
-				'tiktokenize', 'normalize_text', 'tokenize_text', 'remove_errors', 'chunk_sentences',
-				'chunk_text', 'chunk_files', 'create_wordbag', 'chunk_data',  'clean_files',
-				'convert_jsonl', 'conditional_distribution', 'chunk_datasets',
-				'compress_whitespace', 'speech_tagging', 'chunk_datasets', 'split_paragraphs',
-		        'calculate_frequency_distribution', 'calculate_conditional_distribution',
-		        'chunk_file', 'create_vocabulary', 'create_wordbag', 'create_vectors',
-		        'encode_sentences', 'semantic_search' ]
+				'split_sentences',
+				'split_pages',
+				'collapse_whitespace',
+				'compress_whitespace',
+				'remove_punctuation',
+				'remove_numbers',
+				'remove_special',
+				'remove_html',
+				'remove_markdown',
+				'remove_stopwords',
+				'remove_formatting',
+				'remove_headers',
+				'tiktokenize',
+				'normalize_text',
+				'tokenize_text',
+				'chunk_text',
+				'chunk_sentences',
+				'chunk_files',
+				'chunk_data',
+				'chunk_datasets',
+				'create_wordbag',
+				'clean_file',
+				'clean_files',
+				'convert_jsonl',
+				'speech_tagging',
+				'split_paragraphs',
+				'calculate_frequency_distribution',
+				'calculate_conditional_distribution',
+				'create_vocabulary',
+				'create_wordbag',
+				'create_vectors',
+				'encode_sentences',
+				'semantic_search' ]
 	
 	def load_text( self, filepath: str ) -> str | None:
 		"""
@@ -954,48 +1008,7 @@ class Text( Processor ):
 			exception.method = 'remove_headers( self, filepath: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-	
-	def remove_errors( self, text: str  ) -> str:
-		"""
-		
-			Purpose:
-			----------
-			Removes tokens that are not recognized as valid English words
-			using the NLTK `words` corpus as a reference dictionary.
-	
-			This function is useful for cleaning text from OCR output, web-scraped data,
-			or noisy documents by removing pseudo-words, typos, and out-of-vocabulary items.
-	
-			Parameters
-			----------
-			text : str
-			The raw input text
-	
-			Returns
-			-------
-			str
-			The raw input text without errors
-	
-			
-		"""
-		try:
-			throw_if( 'text', text )
-			_wordlist = [ ]
-			_vocab = words.words( 'en' )
-			_tokens = text.split( ' ' )
-			for word in _tokens:
-				if word.isnumeric( ) or word in _vocab:
-					_wordlist.append( word )
-			_data = ' '.join( _wordlist )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'correct_data( text: str )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+
 	def remove_numbers( self, text: str ) -> str | None:
 		"""
 
@@ -1455,7 +1468,7 @@ class Text( Processor ):
 				_data = pd.DataFrame( _paragraphs )
 				return _data
 	
-	def calculate_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame:
+	def create_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1475,8 +1488,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
-			self.frequency_distribution = FreqDist( dict( Counter( self.tokens ) ) )
-			_words = self.frequency_distribution.items( )
+			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
+			_words = _freqdist.items( )
 			_data = pd.DataFrame( _words, columns=[ 'Word', 'Frequency' ] )
 			_data.index.name = 'ID'
 			return _data
@@ -1489,7 +1502,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def calculate_conditional_distribution( self, tokens: List[ str ], condition=None,
+	def create_conditional_distribution( self, tokens: List[ str ], condition=None,
 			process: bool=True ) -> ConditionalFreqDist:
 		"""
 
@@ -1534,7 +1547,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 			
-	def create_vocabulary( self, freq: Dict, size: int=1 ) -> DataFrame:
+	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1556,11 +1569,12 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'freq', freq )
-			self.frequency_distribution = freq
-			self.vocabulary = [ word for word, freq in freq.items( ) if freq >= size ]
-			_data = pd.DataFrame( self.vocabulary )
-			return _data
+			throw_if( 'freq', tokens )
+			self.tokens = tokens
+			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
+			_words = _freqdist.items( )
+			self.vocabulary = [ word for word, freq in _freqdist.items( ) if freq >= size ]
+			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -2037,12 +2051,12 @@ class Word( Processor ):
 	"""
 	sentences: Optional[ List[ str ] ]
 	cleaned_sentences: Optional[ List[ str ] ]
-	document: Optional[ Docx ]
+	document: Optional[ Document ]
 	raw_text: Optional[ str ]
 	paragraphs: Optional[ List[ str ] ]
 	file_path: Optional[ str ]
 	vocabulary: Optional[ set ]
-	document: Optional[ Docx ]
+	document: Optional[ Document ]
 	
 	def __init__( self, filepath: str ) -> None:
 		"""
@@ -2094,7 +2108,7 @@ class Word( Processor ):
 
 		"""
 		try:
-			self.document = Docx( self.file_path )
+			self.document = Document( self.file_path )
 			self.paragraphs = [ para.text.strip( ) for para in self.document.paragraphs if
 				para.text.strip( ) ]
 			self.raw_text = '\n'.join( self.paragraphs )
@@ -2285,9 +2299,22 @@ class PDF( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'strip_headers', 'minimum_length', 'extract_tables', 'file_path', 'page', 'pages',
-			'words', 'clean_lines', 'extracted_lines', 'extracted_tables', 'extracted_pages',
-			'extract_lines', 'extract_text', 'export_csv', 'export_text', 'export_excel' ]
+		return [ 'strip_headers',
+		         'minimum_length',
+		         'extract_tables',
+		         'file_path',
+		         'page',
+		         'pages',
+		         'words',
+		         'clean_lines',
+		         'extracted_lines',
+		         'extracted_tables',
+		         'extracted_pages',
+		         'extract_lines',
+		         'extract_text',
+		         'export_csv',
+		         'export_text',
+		         'export_excel' ]
 	
 	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
@@ -2674,7 +2701,7 @@ class CSV( Loader ):
 
 		'''
 		try:
-			throw_if( 'documenys', self.documents )
+			throw_if( 'documents', self.documents )
 			self.documents = self._split_documents( self.documents, chunk=size, overlap=amount )
 			return self.documents
 		except Exception as e:
@@ -2726,7 +2753,7 @@ class Web( Loader ):
 			throw_if( 'urls', urls )
 			self.urls = urls
 			self.loader = WebBaseLoader( web_path=self.urls )
-			self.documents = loader.load( path=self.file_path )
+			self.documents = self.loader.load( path=self.file_path )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
@@ -2807,8 +2834,8 @@ class DOCX( Loader ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'DOCX'
+			exception.method = 'load'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -2968,8 +2995,8 @@ class HTML( Loader ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'HTML'
+			exception.method = 'load'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -3000,8 +3027,8 @@ class HTML( Loader ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'HTML'
+			exception.method = 'split'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -3054,7 +3081,7 @@ class Fetch( ):
 	doc_tool: Optional[ Tool ]
 	api_tools: List[ Tool ]
 	agent: Optional[ AgentExecutor ]
-	__tools: List[ Tool ]
+	belt: List[ Tool ]
 	documents: List[ str ]
 	db_toolkit: Optional[ object ]
 	database: Optional[ object ]
@@ -3100,9 +3127,8 @@ class Fetch( ):
 		self.tool = None
 		self.extension = None
 		self.answer = { }
-		self.__tools = [ t for t in [ self.sql_tool, self.doc_tool ] + self.api_tools if
-		                 t is not None ]
-		self.agent = initialize_agent( tools=self.__tools, llm=self.llm, memory=self.memory,
+		self.belt = [ t for t in [ self.sql_tool, self.doc_tool ] + self.api_tools if t is not None ]
+		self.agent = initialize_agent( tools=self.belt, llm=self.llm, memory=self.memory,
 			agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True )
 	
 	def query_sql( self, question: str ) -> str | None:
@@ -3123,7 +3149,7 @@ class Fetch( ):
 			return self.sql_tool.func( question )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'sketchy'
+			exception.module = 'chonky'
 			exception.cause = 'Fetch'
 			exception.method = 'query_sql(self, question)'
 			error = ErrorDialog( exception )
@@ -3159,16 +3185,14 @@ class Fetch( ):
 				
 				answer = result[ 'answer' ]
 				sources = result[ 'sources' ]
-				
 				if sources:
 					return f"{answer}\n\nSOURCES:\n{sources}"
 				return answer
 			else:
 				return self.doc_tool.func( question )
-		
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'sketchy'
+			exception.module = 'chonky'
 			exception.cause = 'Fetch'
 			exception.method = 'query_docs(self, question, with_sources)'
 			error = ErrorDialog( exception )
@@ -3193,7 +3217,7 @@ class Fetch( ):
 			return self.llm.invoke( prompt ).content
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'sketchy'
+			exception.module = 'chonky'
 			exception.cause = 'Fetch'
 			exception.method = 'query_chat(self, prompt)'
 			error = ErrorDialog( exception )
