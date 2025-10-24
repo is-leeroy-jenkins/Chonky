@@ -1,6 +1,7 @@
 beautifulsoup4
 chromadb
 freesimplegui
+gensim
 ipywidgets
 ipython
 jupytext
