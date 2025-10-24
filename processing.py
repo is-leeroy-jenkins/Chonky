@@ -1110,7 +1110,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('lemmatize( self, text: str ) -> List[ str ] ')
+			exception.method = 'lemmatize( self, text: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
 	
