@@ -578,7 +578,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = text.split( ' ' )
+			_tokens = text.split( None )
 			self.cleaned_tokens = [ t for t in _tokens if t not in string.punctuation ]
 			return ' '.join( self.cleaned_tokens )
 		except Exception as e:
