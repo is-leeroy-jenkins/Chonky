@@ -388,6 +388,7 @@ class Text( Processor ):
 		super( ).__init__( )
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
+		self.encoding = tiktoken.get_encoding( 'cl100k_base' )
 		self.lines = [ ]
 		self.tokens = [ ]
 		self.pages = [ ]
@@ -404,7 +405,6 @@ class Text( Processor ):
 		self.vocabulary = [ ]
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
-		self.encoding = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
@@ -436,20 +436,23 @@ class Text( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized', 'tokenized',
-			'corrected', 'cleaned_text', 'words', 'paragraphs', 'words', 'pages', 'chunks',
-			'chunk_size', 'cleaned_pages', 'stop_words', 'cleaned_lines', 'removed', 'lowercase',
-			'encoding', 'vocabulary', 'translator', 'lemmatizer', 'stemmer', 'tokenizer',
-			'vectorizer', 'split_sentences', 'split_pages', 'collapse_whitespace', 'remove_punctuation',
-			'remove_special', 'remove_html', 'remove_markdown', 'remove_stopwords',
-			'remove_headers', 'tiktokenize', 'normalize_text', 'tokenize_text', 'tokenize_words',
-			'chunk_sentences', 'chunk_text', 'chunk_words', 'chunk_files', 'create_wordbag',
-			'create_word2vec', 'chunk_data', 'remove_errors',
-			'create_tfidf', 'clean_files', 'convert_jsonl', 'conditional_distribution',
-			'compress_whitespace', 'speech_tagging', 'chunk_datasets', 'split_paragraphs',
-		    'calculate_frequency_distribution', 'calculate_conditional_distribution',
-		    'chunk_file', 'create_vocabulary', 'create_wordbag', 'create_vectors',
-		    'encode_sentence', 'semantic_search' ]
+		return [ # Attributes
+			    'file_path', 'raw_input', 'raw_pages', 'normalized', 'lemmatized', 'tokenized',
+				'corrected', 'cleaned_text', 'words', 'paragraphs', 'words', 'pages', 'chunks',
+				'chunk_size', 'cleaned_pages', 'stop_words', 'cleaned_lines', 'removed', 'lowercase',
+				'encoding', 'vocabulary', 'translator', 'lemmatizer', 'stemmer', 'tokenizer',
+				'vectorizer',
+				# Methods
+				'split_sentences', 'split_pages', 'collapse_whitespace', 'compress_whitespace',
+				'remove_punctuation', 'remove_numbers', 'remove_special', 'remove_html',
+				'remove_markdown', 'remove_stopwords', 'remove_formatting', 'remove_headers',
+				'tiktokenize', 'normalize_text', 'tokenize_text', 'remove_errors', 'chunk_sentences',
+				'chunk_text', 'chunk_files', 'create_wordbag', 'chunk_data',  'clean_files',
+				'convert_jsonl', 'conditional_distribution', 'chunk_datasets',
+				'compress_whitespace', 'speech_tagging', 'chunk_datasets', 'split_paragraphs',
+		        'calculate_frequency_distribution', 'calculate_conditional_distribution',
+		        'chunk_file', 'create_vocabulary', 'create_wordbag', 'create_vectors',
+		        'encode_sentences', 'semantic_search' ]
 	
 	def load_text( self, filepath: str ) -> str | None:
 		"""
@@ -699,7 +702,8 @@ class Text( Processor ):
 			_chars = re.sub( r'[`_*\'#/\\~>\"=<+)\-(]', ' ', _symbol )
 			_tab = re.sub( r'\t', ' ', _chars )
 			_period = re.sub( r' \. ', '. ', _tab )
-			_quest = re.sub( r' \? ', '? ', _period )
+			_control = re.sub( r'[\x00-\x1F\x7F]', ' ', _period )
+			_quest = re.sub( r' \? ', '? ', _control )
 			_comma = re.sub( r' \, ', ', ',  _quest )
 			_number = re.sub( r' no. ', ' number ', _comma )
 			_section = re.sub( r'sec./ex.', 'section example', _number )
@@ -808,7 +812,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.stop_words = set( stopwords.words( 'english' ) )
-			_words = text.split( ' ' )
+			_words = text.split( None )
 			_tokens = [ t for t in _words ]
 			self.cleaned_tokens = [ w for w in _tokens if w not in self.stop_words ]
 			self.cleaned_text = ' '.join( self.cleaned_tokens )
@@ -992,7 +996,80 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def lemmatize( self, text: str ) -> str | None:
+	def remove_numbers( self, text: str ) -> str | None:
+		"""
+
+			Purpose:
+			---------
+			Removes the numbers 0 through 9 from the input text.
+
+			Parameters
+			----------
+			text : str
+			Input string potentially containing encoded characters.
+
+			Returns
+			-------
+			str
+			Cleaned Unicode-normalized text.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			_numbers = re.sub( r'[0-9]', ' ', text )
+			self.cleaned_text = _numbers.strip( )
+			return self.cleaned_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'remove_encodings( self, text: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def remove_formatting( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			---------
+	        Removes formatting artifacts (Markdown, HTML, control characters) from pages.
+
+	        This function:
+	          - Strips HTML tags
+	          - Removes Markdown syntax (e.g., *, #, [], etc.)
+	          - Removes special characters for clean unformatted pages
+	          - Removes images
+	          - Collapses whitespace (newlines, tabs)
+
+	        Parameters:
+	        -----------
+	        pages : str
+	            The formatted path pages.
+
+	        Returns:
+	        --------
+	        str
+	            A cleaned_lines version of the pages with formatting removed.
+
+	    """
+		try:
+			throw_if( 'text', text )
+			_html = BeautifulSoup( text, "raw_html.parser" ).get_text( separator=' ', strip=True )
+			_markdown = re.sub( r'\[.*?\]\(.*?\)', '', _html )
+			_special = re.sub( r'[`_*#~>-]', '', _markdown )
+			_images = re.sub( r'!\[.*?\]\(.*?\)', '', _special )
+			_lines = re.sub( r'[\r\n\t]+', ' ', _images )
+			_spaces = re.sub( r'\s+', ' ', _lines ).strip( )
+			return _spaces
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = ('remove_formatting( self, text: str ) -> str')
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def lemmatize_text( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -1012,41 +1089,15 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.nlp = spacy.load( 'en_core_web_sm' )
-			_datamap = [ ]
-			_tokens = [ t.text for t in self.nlp( text ) ]
-			_text = ' '.join( _tokens )
-			return _text
+			_tokens = word_tokenize( text )
+			_cleaned = [ self.lemmatizer.lemmatize( t ) for t in _tokens ]
+			_lemmmatized = ' '.join( _cleaned )
+			return _lemmmatized
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('lemmatize( self, text: str ) -> List[ str ] ')
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def lemmatize_tokens( self, tokens: list[ str ] ) -> list:
-		"""
-			
-			Purpose:
-			---------
-			Lemmatize each token using WordNetLemmatizer.
-	
-			Parameters:
-			tokens (list): List of word tokens.
-	
-			Returns:
-			list: Lemmatized tokens.
-		
-		"""
-		try:
-			throw_if( 'tokens', tokens )
-			return [ self.lemmatizer.lemmatize( t ) for t in tokens ]
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = ('tokenize( self, text: str ) -> List[ str ] ')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1100,10 +1151,15 @@ class Text( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			_tokens = nltk.word_tokenize( text )
-			_words = [ t for t in _tokens ]
-			_tokenlist = [ re.sub( r'[^\w"-]', '', w ) for w in _words ]
-			_data = ' '.join( _tokenlist )
+			_collapsed = self.collapse_whitespace( text )
+			_compressed = self.compress_whitespace( _collapsed )
+			_normalized = self.normalize_text( _compressed )
+			_encoded = self.remove_encodings( _normalized )
+			_special = self.remove_special( _encoded )
+			_cleaned = self.remove_fragments( _special )
+			_recompress = self.compress_whitespace( _cleaned )
+			_tokens = nltk.word_tokenize( _recompress )
+			_data = ' '.join( _tokens )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1153,43 +1209,6 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def tokenize_words( self, text: str ) -> DataFrame:
-		"""
-
-			Purpose:
-			-----------
-			  - Tokenizes the path pages path into individual word words.
-			  - Converts pages to lowercase
-			  - Uses NLTK's word_tokenize to split
-			  the pages into words and punctuation words
-
-			Parameters:
-			-----------
-			- words : List[ str ]
-				A list of strings to be tokenized.
-
-			Returns:
-			--------
-			- A list of token strings (words and punctuation) extracted from the pages.
-
-		"""
-		try:
-			throw_if( 'text', text )
-			self.tokens = text.split( )
-			_tokens = [ ]
-			for w in self.tokens:
-				_tkn = nltk.word_tokenize( w )
-				_tokens.append( _tkn )
-			_data = pd.DataFrame( _tokens )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'tokenize_words( self, path: str ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
 	def speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
 		"""
 		
@@ -1221,7 +1240,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_text( self, text: str, size: int=15 ) -> str:
+	def chunk_text( self, text: str, size: int=10 ) -> str:
 		"""
 
 			Purpose:
@@ -1251,23 +1270,24 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_lines = word_tokenize( text )
-			self.lines = _lines.split( )
-			_chunks = [ self.lines[ i: i + size ] for i in range( 0, len( self.lines ), size ) ]
-			_map = [ ]
-			for index, chunk in enumerate( _chunks ):
-				_map = ''.join( chunk )
-			_data = ' '.join( _map )
+			_tokens = nltk.word_tokenize( text )
+			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_datamap = [ ]
+			for index, chunk in enumerate( _sentences ):
+				_value =  ' '.join( chunk )
+				_datamap.append( _value )
+				
+			_data = ' '.join( _datamap )
 			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'chunk_sentences( self, text: str, max: int=20 ) -> DataFrame'
+			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_sentences( self, text: str, size: int=15 ) -> List[ str ] | None:
+	def chunk_sentences( self, text: str, size: int=10 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1297,14 +1317,15 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_sentences = sent_tokenize( text )
-			_chunks = [ _sentences[ i: i + size ] for i in range( 0, len( _sentences ), size ) ]
+			_tokens = nltk.word_tokenize( text )
+			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_datamap = [ ]
-			for index, chunk in enumerate( _chunks ):
-				_value = ' '.join( chunk )
-				_item = f'{_value}'
+			for index, chunk in enumerate( _sentences ):
+				_item = ' '.join( chunk )
 				_datamap.append( _item )
-			return _datamap
+				
+			_data = pd.DataFrame( _datamap )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1313,50 +1334,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_words( self, text: str, size: int=15 ) -> DataFrame:
-		"""
-
-			Purpose:
-			-----------
-			Breaks a list of words/tokens into a List[ List[ str ] ] or a string.
-
-			This function:
-			- Groups words into chunks of min `size`
-			- Returns a datframe
-
-			Parameters:
-			-----------
-			- words : a list of tokenizd words
-
-			- size : int, optional (default=50)
-			Number of words per chunk_words.
-
-			Returns:
-			--------
-			- List[ List[ str ] ]
-			A list of a list of token chunks. Each chunk is a list of words.
-
-		"""
-		try:
-			throw_if( 'text', text )
-			_sentences = word_tokenize( text )
-			_chunks = [ _sentences[ i: i + size ] for i in range( 0, len( _sentences ), size ) ]
-			_datamap = [ ]
-			for index, chunk in enumerate( _chunks ):
-				_value = ' '.join( chunk )
-				_item = f'{_value}'
-				_datamap.append( _item )
-			_data = pd.DataFrame( _datamap )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Token'
-			exception.method = ('chunk_words( self, words: list[ str ], size: int=512)')
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def split_sentences( self, text: str, size: int=15 ) -> DataFrame:
+	def split_sentences( self, text: str, size: int=10 ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -1378,16 +1356,14 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_sentences = sent_tokenize( text )
-			_words = [ w for w in _sentences ]
-			_chunks = [ _words[ i: i + size ] for i in range( 0, len( _words ), size ) ]
-			_datamap = [ ]
-			for index, chunk in enumerate( _chunks ):
-				_value = ' '.join( chunk )
-				_item = f'{_value}'
-				_datamap.append( _item )
-			_data = pd.DataFrame( _datamap )
-			_data.index.name = 'ID'
+			_tokens = nltk.word_tokenize( text )
+			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_data = [ ]
+			for index, chunk in enumerate( _sentences ):
+				_item = ' '.join( chunk )
+				_data.append( _item )
+				
+			_data
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1397,7 +1373,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, filepath: str, num_line: int=120 ) -> List[ str ] | None:
+	def split_pages( self, filepath: str, num_line: int=50 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1479,7 +1455,7 @@ class Text( Processor ):
 				_data = pd.DataFrame( _paragraphs )
 				return _data
 	
-	def calculate_frequency_distribution( self, tokens: List[ str ] ) -> FreqDist:
+	def calculate_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1498,14 +1474,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'tokens', tokens )
-			_processed = [ ]
-			_words = [ str ]
 			self.tokens = tokens
-			for t in tokens:
-				if len( t ) > 4 and t.isalpha( ):
-					_words.append( t )
-			self.frequency_distribution = FreqDist( dict( Counter( _words ) ) )
-			return self.frequency_distribution
+			self.frequency_distribution = FreqDist( dict( Counter( self.tokens ) ) )
+			_words = self.frequency_distribution.items( )
+			_data = pd.DataFrame( _words, columns=[ 'Word', 'Frequency' ] )
+			_data.index.name = 'ID'
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1548,7 +1522,7 @@ class Text( Processor ):
 			for idx, line in enumerate( self.tokens ):
 				key = condition( line ) if condition else f'Line-{idx}'
 				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
-				for t in toks.split( ):
+				for t in toks.split( None ):
 					cfd[ key ][ t ] += 1
 			self.conditional_distribution = cfd
 			return self.conditional_distribution
@@ -1704,7 +1678,9 @@ class Text( Processor ):
 				_special = self.remove_special( _encoded )
 				_cleaned = self.remove_fragments( _special )
 				_recompress = self.compress_whitespace( _cleaned )
-				return _recompress
+				_lemmatized = self.lemmatize_text( _recompress )
+				_stops = self.remove_stopwords( _lemmatized )
+				return _stops
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1753,7 +1729,9 @@ class Text( Processor ):
 					_special = self.remove_special( _encoded )
 					_cleaned = self.remove_fragments( _special )
 					_recompress = self.compress_whitespace( _cleaned )
-					_sentences = self.chunk_sentences( _recompress )
+					_lemmatized = self.lemmatize_text( _recompress )
+					_stops = self.remove_stopwords( _lemmatized )
+					_sentences = self.chunk_sentences( _stops )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
@@ -1802,9 +1780,8 @@ class Text( Processor ):
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 					_sentences =  self.split_sentences( _text )
 					_datamap = [ ]
-					for s in _sentences:
-						_value = '[' + s + '],\n'
-						_datamap.append( _value )
+					for v in _sentences:
+						_datamap.append( v )
 						
 					for s in _datamap:
 						_processed.append( s )
@@ -1853,7 +1830,7 @@ class Text( Processor ):
 						_wordlist.append( s )
 				self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
 				for i, c in enumerate( self.chunks ):
-					_item =  ' '.join( c )
+					_item =  '[\'' + ' '.join( c ) + '\'],'
 					_processed.append( _item )
 				_data = pd.DataFrame( _processed )
 				return _data
@@ -1898,11 +1875,11 @@ class Text( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _src+ '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_tokens =  _text.split( ' ' )
+					_tokens =  _text.split( None )
 					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 					_datamap = [ ]
 					for i, c in enumerate( _chunks ):
-						_row = ' '.join( c )
+						_row = '[\'' + ' '.join( c ) + '\'],'
 						_datamap.append( _row )
 						
 					for s in _datamap:
@@ -1976,7 +1953,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def encode_sentences( self, sentences: List[ str ], model: str= 'all-MiniLM-L6-v2' ) -> \
+	def encode_sentences( self, tokens: List[ str ], model: str= 'all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
 		
@@ -1992,10 +1969,10 @@ class Text( Processor ):
 			
 		"""
 		try:
-			throw_if( 'sentences', sentences )
+			throw_if( 'tokens', tokens )
 			throw_if( 'model', model )
 			_transformer = SentenceTransformer( model )
-			_tokens = [ self.lemmatizer.lemmatize( t ) for t in sentences ]
+			_tokens = [ self.lemmatizer.lemmatize( t ) for t in tokens ]
 			_encoding = _transformer.encode( _tokens, show_progress_bar=True )
 			return ( self.cleaned_tokens, np.array( _encoding ) )
 		except Exception as e:
