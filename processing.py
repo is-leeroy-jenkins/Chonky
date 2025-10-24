@@ -1573,11 +1573,13 @@ class Text( Processor ):
 			self.tokens = tokens
 			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
 			_words = _freqdist.items( )
-			self.vocabulary = [ word for word, freq in _freqdist.items( ) if freq >= size ]
-			return self.vocabulary
+			_vocab = [ word for word, freq in _freqdist.items( ) if freq >= size ]
+			_vocabulary = pd.DataFrame( _vocab, columns=[ 'Word', 'Frequency' ] )
+			return _vocabulary
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
+			
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
 			                    'str]')
