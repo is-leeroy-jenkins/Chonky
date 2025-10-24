@@ -82,7 +82,7 @@ from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
 import os
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from pathlib import Path
 from pinecone import Pinecone, ServerlessSpec
 import docx
@@ -1547,7 +1547,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 			
-	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> DataFrame:
+	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> Series:
 		"""
 
 			Purpose:
@@ -1572,14 +1572,13 @@ class Text( Processor ):
 			throw_if( 'freq', tokens )
 			self.tokens = tokens
 			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
-			_words = _freqdist.items( )
-			_vocab = [ word for word, freq in _freqdist.items( ) if freq >= size ]
+			_vocab = _freqdist.items( )
 			_vocabulary = pd.DataFrame( _vocab, columns=[ 'Word', 'Frequency' ] )
-			return _vocabulary
+			_words = _vocabulary.iloc[ :, 0 ]
+			return _words
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
-			
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary( self, freq_dist: dict, min: int=1 ) -> List['
 			                    'str]')
