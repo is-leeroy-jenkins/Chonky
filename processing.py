@@ -43,6 +43,10 @@
   ******************************************************************************************
   '''
 from __future__ import annotations
+import string
+from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
 import chromadb
@@ -51,25 +55,9 @@ from collections import Counter
 import html
 import glob
 import json
-from langchain.agents import initialize_agent, AgentType, AgentExecutor
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.tools.base import Tool
-from langchain.chains import RetrievalQAWithSourcesChain
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.tools.base import Tool
-from langchain.chains import RetrievalQAWithSourcesChain
-from langchain_community.document_loaders import UnstructuredHTMLLoader
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
-
-try:
-    from langchain_core.documents import Document
-except Exception:
-    from langchain.schema import Document
-
+from langchain_core.documents import Document
 from langchain_community.document_loaders import (
     CSVLoader,
     Docx2txtLoader,
@@ -77,8 +65,6 @@ from langchain_community.document_loaders import (
     UnstructuredExcelLoader,
     WebBaseLoader,
 )
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
 import matplotlib.pyplot as plt
 import numpy as np
 import nltk
@@ -98,11 +84,10 @@ from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 import tiktoken
 from tiktoken.core import Encoding
 import unicodedata
-
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
@@ -136,7 +121,6 @@ class Loader( ):
 	splitter: Optional[ RecursiveCharacterTextSplitter ]
 	chunk_size: Optional[ int ]
 	overlap_amount: Optional[ int ]
-	
 	
 	def __init__( self ) -> None:
 		self.documents = [ ]
@@ -295,36 +279,33 @@ class Processor( ):
 		self.stemmer = PorterStemmer( )
 		self.files = [ ]
 		self.lines = [ ]
-		self.tokens = List[ List[ str ] ]
+		self.tokens = [ ]
 		self.lines = [ ]
 		self.pages = [ ]
 		self.ids = [ ]
-		self.paragraphs = List[ List[ str ] ]
-		self.chunks = List[ List[ str ] ]
+		self.chunks = [ ]
 		self.chunk_size = 0
 		self.cleaned_lines = [ ]
-		self.cleaned_tokens = List[ List[ str ] ]
-		self.cleaned_pages = List[ List[ str ] ]
-		self.removed = [ ]
-		self.raw_pages = List[ List[ str ] ]
+		self.cleaned_tokens = [ ]
+		self.paragraphs = [ ]
+		self.embedddings = [ ]
 		self.stop_words = set( )
 		self.vocabulary = set( )
 		self.frequency_distribution = { }
 		self.conditional_distribution = { }
 		self.encoding = None
-		self.embedddings = None
+		self.cleaned_pages = None
+		self.cleaned_html = None
+		self.corrected = None
+		self.lowercase = None
+		self.raw_html = None
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
 		self.lemmatized = ''
 		self.tokenized = ''
 		self.cleaned_text = ''
-		self.cleaned_html = None
-		self.corrected = None
-		self.lowercase = None
-		self.raw_html = None
 
-# noinspection PyTypeChecker,PyArgumentList,DuplicatedCode
 class Text( Processor ):
 	'''
 
@@ -362,6 +343,39 @@ class Text( Processor ):
 		create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
 
 	'''
+	lemmatizer: Optional[ WordNetLemmatizer ]
+	stemmer: Optional[ PorterStemmer ]
+	file_path: Optional[ str ]
+	lowercase: Optional[ str ]
+	normalized: Optional[ str ]
+	lemmatized: Optional[ str ]
+	tokenized: Optional[ str ]
+	encoding: Optional[ Encoding ]
+	nlp: Optional[ Language ]
+	parts_of_speech: Optional[ List[ Tuple[ str, str ] ] ]
+	embedddings: Optional[ List[ np.ndarray ] ]
+	chunk_size: Optional[ int ]
+	corrected: Optional[ str ]
+	raw_input: Optional[ str ]
+	raw_html: Optional[ str ]
+	raw_pages: Optional[ List[ str ] ]
+	lines: Optional[ List[ str ] ]
+	tokens: Optional[ List[ str ] ]
+	lines: Optional[ List[ str ] ]
+	files: Optional[ List[ str ] ]
+	pages: Optional[ List[ str ] ]
+	paragraphs: Optional[ List[ str ] ]
+	ids: Optional[ List[ int ] ]
+	cleaned_lines: Optional[ List[ str ] ]
+	cleaned_tokens: Optional[ List[ str ] ]
+	cleaned_pages: Optional[ List[ str ] ]
+	cleaned_html: Optional[ str ]
+	stop_words: Optional[ set ]
+	vocabulary: Optional[ set ]
+	corpus: Optional[ List[ List[ str ] ] ]
+	removed: Optional[ List[ str ] ]
+	frequency_distribution: Optional[ Dict ]
+	conditional_distribution: Optional[ Dict ]
 	
 	def __init__( self ):
 		'''
@@ -375,16 +389,15 @@ class Text( Processor ):
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.lines = [ ]
-		self.tokens = List[ List[ str ] ]
-		self.lines = [ ]
-		self.pages = List[ List[ str ] ]
+		self.tokens = [ ]
+		self.pages = [ ]
 		self.ids = [ ]
-		self.paragraphs = List[ List[ str ] ]
-		self.chunks = List[ List[ str ] ]
+		self.paragraphs = [ ]
+		self.chunks = [ ]
 		self.chunk_size = 0
 		self.cleaned_lines = [ ]
-		self.cleaned_tokens = List[ List[ str ] ]
-		self.cleaned_pages = List[ List[ str ] ]
+		self.cleaned_tokens = [ ]
+		self.cleaned_pages = [ ]
 		self.removed = [ ]
 		self.raw_pages = [ ]
 		self.stop_words = set( )
@@ -457,8 +470,8 @@ class Text( Processor ):
 				raise FileNotFoundError( f'File not found: {filepath}' )
 			else:
 				self.file_path = filepath
-			raw_input = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
-			return raw_input
+			raw_text = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
+			return raw_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -489,7 +502,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			extra_lines = re.sub( r'[\t]+', '', self.raw_input )
+			extra_lines = re.sub( r'[\r\n]+', ' ', self.raw_input )
 			self.cleaned_lines = [ line for line in extra_lines ]
 			return ''.join( self.cleaned_lines )
 		except Exception as e:
@@ -522,9 +535,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			extra_spaces = re.sub( r'\r\n\t+', '', self.raw_input )
-			self.cleaned_lines = [ line for line in extra_spaces ]
-			return ''.join( self.cleaned_lines )
+			_compressed = re.sub( r'\t\s{2,}', ' ', self.raw_input )
+			self.cleaned_lines = [ line for line in _compressed ]
+			compressed_text = ''.join( self.cleaned_lines )
+			return compressed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -597,7 +611,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			lower_cased = [ ]
-			tokens = text.split( )
+			tokens = text.split( ' ' )
 			for char in tokens:
 				lower = char.lower( )
 				lower_cased.append( lower )
@@ -634,9 +648,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_fragments = text.split( ' ' )
+			_fragments = text.split( None )
 			for char in _fragments:
-				if len( char) > 3:
+				if char.isalpha( ) and len( char) > 3:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
@@ -674,20 +688,23 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_cleaned = [ ]
-			_periods = re.sub( r'\.{2,}', ' ', text )
-			_double = re.sub( r'[\"]', '', _periods )
-			_single = re.sub( r"[\']", '', _double )
-			_bullets = re.sub( r'•', '', _single )
-			_underscore = re.sub( r'_{2,}', '', _bullets )
-			_dashes = re.sub( r'-{2,}', ' ', _underscore )
-			_asterick = re.sub( r'\*{2,}', '', _dashes )
-			_leftbrace = re.sub( r'\[{1,}', '', _asterick )
-			_rightbrace = re.sub( r'\]{1,}', '', _leftbrace )
-			_number = re.sub( r'#{2,}', '', _rightbrace )
-			_equalto = re.sub( r'={2,}', '', _number )
-			_chars = re.sub( r'[`_*#~><\-\)\(]', ' ', _equalto )
-			return _chars
+			_dots = re.sub( r'\.{2,}', ' ', text )
+			_bullets = re.sub( r'•{2,}', ' ', _dots )
+			_dashes = re.sub( r'--{2,}', ' ', _bullets )
+			_leftbracket = re.sub( r'\[{1,}', ' ', _dashes )
+			_rightbrakcet = re.sub( r'\]{1,}', ' ', _leftbracket )
+			_leftbrace = re.sub( r'\{{1,}', '', _rightbrakcet )
+			_rightbrace = re.sub( r'\}{1,}', '', _leftbrace )
+			_symbol = re.sub( r'\x0c{1,}', ' ', _rightbrace )
+			_chars = re.sub( r'[`_*\'#/\\~>\"=<+)\-(]', ' ', _symbol )
+			_tab = re.sub( r'\t', ' ', _chars )
+			_period = re.sub( r' \. ', '. ', _tab )
+			_quest = re.sub( r' \? ', '? ', _period )
+			_comma = re.sub( r' \, ', ', ',  _quest )
+			_number = re.sub( r' no. ', ' number ', _comma )
+			_section = re.sub( r'sec./ex.', 'section example', _number )
+			_space = re.sub( r'\s+', ' ', _section )
+			return _section
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -831,7 +848,7 @@ class Text( Processor ):
 			# Normalize accents and symbols (e.g., é → e, ü → u)
 			_norm = unicodedata.normalize( 'NFKC', _html )
 			# Strip out stray control characters
-			_chars = re.sub( r'[\x00-\x1F\x7F]', "", _norm )
+			_chars = re.sub( r'[\x00-\x1F\x7F]', '', _norm )
 			self.cleaned_text = _chars.strip( )
 			return self.cleaned_text
 		except Exception as e:
@@ -871,9 +888,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'filepath', filepath )
 			if lines_per_page < 6:
-				raise ValueError( "Argument \"lines_per_page\" should be at least 6." )
+				raise ValueError( 'Argument \"lines_per_page\" should be at least 6.' )
 			if header_lines < 0 or footer_lines < 0:
-				msg = "Arguments \"header_lines\" and \"footer_lines\" must be non-negative."
+				msg = 'Arguments \"header_lines\" and \"footer_lines\" must be non-negative.'
 				raise ValueError( msg )
 			
 			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as fh:
@@ -975,7 +992,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def lemmatize( self, text: str ) -> List[ str ] | None:
+	def lemmatize( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -990,21 +1007,21 @@ class Text( Processor ):
 
 			Returns:
 			--------
-			List[str]: List of token strings.
+			List[str]: List of t strings.
 
 		"""
 		try:
 			throw_if( 'text', text )
 			self.nlp = spacy.load( 'en_core_web_sm' )
 			_datamap = [ ]
-			_tokens = [ token.text for token in self.nlp( text ) ]
+			_tokens = [ t.text for t in self.nlp( text ) ]
 			_text = ' '.join( _tokens )
 			return _text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('tokenize( self, text: str ) -> List[ str ] ')
+			exception.method = ('lemmatize( self, text: str ) -> List[ str ] ')
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1158,7 +1175,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.tokens = text.split( ' ' )
+			self.tokens = text.split( )
 			_tokens = [ ]
 			for w in self.tokens:
 				_tkn = nltk.word_tokenize( w )
@@ -1239,7 +1256,7 @@ class Text( Processor ):
 			_chunks = [ self.lines[ i: i + size ] for i in range( 0, len( self.lines ), size ) ]
 			_map = [ ]
 			for index, chunk in enumerate( _chunks ):
-				_map = ' '.join( chunk )
+				_map = ''.join( chunk )
 			_data = ' '.join( _map )
 			return _data
 		except Exception as e:
@@ -1250,14 +1267,14 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_sentences( self, text: str, size: int=20 ) -> List[ str ] | None:
+	def chunk_sentences( self, text: str, size: int=15 ) -> List[ str ] | None:
 		"""
 
 			Purpose:
 			-----------
 			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
 			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's word_tokenize
+			  - Tokenizes pages using NLTK's sent_tokenize
 			  - Breaks words into chunks of a specified size
 			  - Optionally joins words into strings (for transformer models)
 
@@ -1305,7 +1322,7 @@ class Text( Processor ):
 
 			This function:
 			- Groups words into chunks of min `size`
-			- Returns a a List[ List[ str ] or string
+			- Returns a datframe
 
 			Parameters:
 			-----------
@@ -1313,9 +1330,6 @@ class Text( Processor ):
 
 			- size : int, optional (default=50)
 			Number of words per chunk_words.
-
-			- as_string : bool, optional (default=True)
-			Returns a string if True, else a List[ List[ str ] ] if False.
 
 			Returns:
 			--------
@@ -1342,7 +1356,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_sentences( self, text: str ) -> List[ str ] | None:
+	def split_sentences( self, text: str, size: int=15 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1359,20 +1373,27 @@ class Text( Processor ):
 
 			Returns
 			-------
-			- List[ str ]
-			A list of sentence strings, each corresponding to a single sentence detected
-			in the text text.
+			- DataFrame of strings
 
 		"""
 		try:
 			throw_if( 'text', text )
-			self.lines = nltk.sent_tokenize( text )
-			return self.lines
+			_sentences = sent_tokenize( text )
+			_words = [ w for w in _sentences ]
+			_chunks = [ _words[ i: i + size ] for i in range( 0, len( _words ), size ) ]
+			_datamap = [ ]
+			for index, chunk in enumerate( _chunks ):
+				_value = ' '.join( chunk )
+				_item = f'{_value}'
+				_datamap.append( _item )
+			_data = pd.DataFrame( _datamap )
+			_data.index.name = 'ID'
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'split_sentences( self, text: str ) -> List[ str ]'
+			exception.method = 'split_sentences( self, text: str ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1478,11 +1499,12 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			_processed = [ ]
-			_wordlist = [ str ]
+			_words = [ str ]
+			self.tokens = tokens
 			for t in tokens:
-				if len( t ) > 4:
-					_wordlist.append( t )
-			self.frequency_distribution = FreqDist( dict( Counter( _wordlist ) ) )
+				if len( t ) > 4 and t.isalpha( ):
+					_words.append( t )
+			self.frequency_distribution = FreqDist( dict( Counter( _words ) ) )
 			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
@@ -1494,7 +1516,7 @@ class Text( Processor ):
 			error.show( )
 	
 	def calculate_conditional_distribution( self, tokens: List[ str ], condition=None,
-		process: bool=True ) -> ConditionalFreqDist:
+			process: bool=True ) -> ConditionalFreqDist:
 		"""
 
 			Purpose:
@@ -1537,7 +1559,7 @@ class Text( Processor ):
 			exception.method = 'compute_conditional_distribution( self, words, cond, proc  )'
 			error = ErrorDialog( exception )
 			error.show( )
-	
+			
 	def create_vocabulary( self, freq: Dict, size: int=1 ) -> DataFrame:
 		"""
 
@@ -1652,7 +1674,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 			
-	def clean_file( self, source: str ) -> str:
+	def clean_file( self, filepath: str ) -> str:
 		"""
 
 			Purpose:
@@ -1669,18 +1691,20 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', source )
-			if not os.path.exists( source ):
-				raise FileNotFoundError( f'File not found: {source}' )
+			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
 			else:
-				_sourcepath = source
+				_sourcepath = filepath
 				_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_collapse = self.collapse_whitespace( _text )
-				_compress = self.compress_whitespace( _collapse )
-				_normal = self.normalize_text( _compress )
-				_special = self.remove_special( _normal )
-				_sentences = self.chunk_sentences( _special )
-				return _sentences
+				_collapsed = self.collapse_whitespace( _text )
+				_compressed = self.compress_whitespace( _collapsed )
+				_normalized = self.normalize_text( _compressed )
+				_encoded = self.remove_encodings( _normalized )
+				_special = self.remove_special( _encoded )
+				_cleaned = self.remove_fragments( _special )
+				_recompress = self.compress_whitespace( _cleaned )
+				return _recompress
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1722,11 +1746,14 @@ class Text( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _source + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_collapse = self.collapse_whitespace( _text )
-					_special = self.remove_special( _collapse )
-					_normal= self.normalize_text( _special )
-					_compress = self.compress_whitespace( _normal )
-					_sentences = self.chunk_sentences( _compress )
+					_collapsed = self.collapse_whitespace( _text )
+					_compressed = self.compress_whitespace( _collapsed )
+					_normalized = self.normalize_text( _compressed )
+					_encoded = self.remove_encodings( _normalized )
+					_special = self.remove_special( _encoded )
+					_cleaned = self.remove_fragments( _special )
+					_recompress = self.compress_whitespace( _cleaned )
+					_sentences = self.chunk_sentences( _recompress )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
@@ -1739,7 +1766,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_files( self, source: str, destination: str, size: int=20 ) -> None:
+	def chunk_files( self, source: str, destination: str ) -> None:
 		"""
 
 			Purpose:
@@ -1773,11 +1800,10 @@ class Text( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _source + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_tokens =  _text.split( ' ' )
-					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+					_sentences =  self.split_sentences( _text )
 					_datamap = [ ]
-					for i, c in enumerate( _chunks ):
-						_value = r"'" + ' '.join( c ) + '\',\n'
+					for s in _sentences:
+						_value = '[' + s + '],\n'
 						_datamap.append( _value )
 						
 					for s in _datamap:
@@ -1795,7 +1821,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_data( self, filepath: str, size: int=20  ) -> DataFrame:
+	def chunk_data( self, filepath: str, size: int=15  ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1839,7 +1865,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_datasets( self, source: str, destination: str, size: int=20 ) -> DataFrame:
+	def chunk_datasets( self, source: str, destination: str, size: int=15 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1889,11 +1915,11 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
+			exception.method = 'chunk_data( self, filepath: str, size: int=15  ) -> DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def convert_jsonl( self, source: str, destination: str, size: int=20 ) -> None:
+	def convert_jsonl( self, source: str, destination: str, size: int=15 ) -> None:
 		"""
 
 			Purpose:
@@ -1969,7 +1995,7 @@ class Text( Processor ):
 			throw_if( 'sentences', sentences )
 			throw_if( 'model', model )
 			_transformer = SentenceTransformer( model )
-			_tokens = self.lemmatize_tokens( sentences )
+			_tokens = [ self.lemmatizer.lemmatize( t ) for t in sentences ]
 			_encoding = _transformer.encode( _tokens, show_progress_bar=True )
 			return ( self.cleaned_tokens, np.array( _encoding ) )
 		except Exception as e:
