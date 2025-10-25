@@ -252,7 +252,6 @@ class Processor( ):
 	lemmatizer: Optional[ WordNetLemmatizer ]
 	stemmer: Optional[ PorterStemmer ]
 	file_path: Optional[ str ]
-	lowercase: Optional[ str ]
 	normalized: Optional[ str ]
 	lemmatized: Optional[ str ]
 	tokenized: Optional[ str ]
@@ -272,16 +271,11 @@ class Processor( ):
 	pages: Optional[ List[ str ] ]
 	paragraphs: Optional[ List[ str ] ]
 	ids: Optional[ List[ int ] ]
-	cleaned_lines: Optional[ List[ str ] ]
-	cleaned_tokens: Optional[ List[ str ] ]
-	cleaned_pages: Optional[ List[ str ] ]
-	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
 	vocabulary: Optional[ set ]
-	corpus: Optional[ pd.DataFrame ]
+	corpus: Optional[ DataFrame ]
 	removed: Optional[ List[ str ] ]
-	frequency_distribution: Optional[ Dict ]
-	conditional_distribution: Optional[ Dict ]
+	frequency_distribution: Optional[ DataFrame ]
 	
 	def __init__( self ):
 		self.lemmatizer = WordNetLemmatizer( )
@@ -294,17 +288,12 @@ class Processor( ):
 		self.ids = [ ]
 		self.chunks = [ ]
 		self.chunk_size = 0
-		self.cleaned_lines = [ ]
-		self.cleaned_tokens = [ ]
 		self.paragraphs = [ ]
 		self.embedddings = [ ]
 		self.stop_words = set( )
 		self.vocabulary = set( )
 		self.frequency_distribution = { }
-		self.conditional_distribution = { }
 		self.encoding = None
-		self.cleaned_pages = None
-		self.cleaned_html = None
 		self.corrected = None
 		self.lowercase = None
 		self.raw_html = None
@@ -382,7 +371,7 @@ class Text( Processor ):
 	cleaned_pages: Optional[ List[ str ] ]
 	cleaned_html: Optional[ str ]
 	stop_words: Optional[ set ]
-	vocabulary: Optional[ set ]
+	vocabulary: Optional[ Series ]
 	corpus: Optional[ DataFrame ]
 	frequency_distribution: Optional[ DataFrame ]
 	conditional_distribution: Optional[ DataFrame ]
@@ -405,22 +394,17 @@ class Text( Processor ):
 		self.ids = [ ]
 		self.paragraphs = [ ]
 		self.chunks = [ ]
-		self.chunk_size = 0
-		self.cleaned_lines = [ ]
-		self.cleaned_tokens = [ ]
-		self.cleaned_pages = [ ]
+		self.chunk_size = 10
 		self.raw_pages = [ ]
 		self.stop_words = set( )
-		self.vocabulary = [ ]
 		self.frequency_distribution = { }
-		self.conditional_distribution = { }
 		self.file_path = ''
 		self.raw_input = ''
 		self.normalized = ''
 		self.lemmatized = ''
 		self.tokenized = ''
 		self.cleaned_text = ''
-		self.cleaned_html = None
+		self.vocabulary = None
 		self.corrected = None
 		self.lowercase = None
 		self.raw_html = None
@@ -460,9 +444,7 @@ class Text( Processor ):
 				'pages',
 				'chunks',
 				'chunk_size',
-				'cleaned_pages',
 				'stop_words',
-				'cleaned_lines',
 				'removed',
 				'lowercase',
 				'encoding',
@@ -486,9 +468,10 @@ class Text( Processor ):
 				'remove_stopwords',
 				'remove_formatting',
 				'remove_headers',
+				'remove_encodings',
 				'tiktokenize',
+				'lemmatize_text',
 				'normalize_text',
-				'tokenize_text',
 				'chunk_text',
 				'chunk_sentences',
 				'chunk_files',
@@ -501,7 +484,6 @@ class Text( Processor ):
 				'speech_tagging',
 				'split_paragraphs',
 				'calculate_frequency_distribution',
-				'calculate_conditional_distribution',
 				'create_vocabulary',
 				'create_wordbag',
 				'create_vectors',
@@ -796,8 +778,8 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_html = text
-			self.cleaned_html = BeautifulSoup( self.raw_html, 'html.parser' ).get_text( )
-			return self.cleaned_html
+			cleaned_html = BeautifulSoup( self.raw_html, 'html.parser' ).get_text( )
+			return cleaned_html
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -828,10 +810,10 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			self.cleaned_text = re.sub( r'\[.*?]\(.*?\)', '', text )
-			self.corrected = re.sub( r'[`_*#~><-]', '', self.cleaned_text )
-			_retval = re.sub( r'!\[.*?]\(.*?\)', '', self.corrected )
-			return _retval
+			_text = re.sub( r'\[.*?]\(.*?\)', ' ', text )
+			_unmarked = re.sub( r'[`_*#~><-]', ' ', _text )
+			_cleaned = re.sub( r'!\[.*?]\(.*?\)', ' ', _unmarked )
+			return _cleaned
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -868,9 +850,9 @@ class Text( Processor ):
 			self.stop_words = set( stopwords.words( 'english' ) )
 			_words = text.split( None )
 			_tokens = [ t for t in _words ]
-			self.cleaned_tokens = [ w for w in _tokens if w not in self.stop_words ]
-			self.cleaned_text = ' '.join( self.cleaned_tokens )
-			return self.cleaned_text
+			cleaned_tokens = [ w for w in _tokens if w not in self.stop_words ]
+			cleaned_text = ' '.join( cleaned_tokens )
+			return cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -907,8 +889,8 @@ class Text( Processor ):
 			_norm = unicodedata.normalize( 'NFKC', _html )
 			# Strip out stray control characters
 			_chars = re.sub( r'[\x00-\x1F\x7F]', '', _norm )
-			self.cleaned_text = _chars.strip( )
-			return self.cleaned_text
+			cleaned_text = _chars.strip( )
+			return cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -917,8 +899,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_headers( self, filepath: str, lines_per_page: int=55,
-		header_lines: int=3, footer_lines: int=3, ) -> str:
+	def remove_headers( self, filepath: str, lines: int=50, headers: int=3, footers: int=3, ) -> str:
 		"""
 		
 			Purpose:
@@ -945,35 +926,34 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'filepath', filepath )
-			if lines_per_page < 6:
+			if lines < 6:
 				raise ValueError( 'Argument \"lines_per_page\" should be at least 6.' )
-			if header_lines < 0 or footer_lines < 0:
+			if headers < 0 or footers < 0:
 				msg = 'Arguments \"header_lines\" and \"footer_lines\" must be non-negative.'
 				raise ValueError( msg )
 			
 			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as fh:
 				all_lines: List[ str ] = fh.readlines( )
 			
-			pages = [ all_lines[ i: i + lines_per_page ] for i in
-				range( 0, len( all_lines ), lines_per_page ) ]
+			pages = [ all_lines[ i: i + lines ] for i in
+			          range( 0, len( all_lines ), lines ) ]
 			
 			header_counts = { }
 			footer_counts = { }
-			
 			for page in pages:
 				n = len( page )
 				if n == 0:
 					continue
 				
-				if header_lines > 0 and n >= header_lines:
-					hdr = tuple( page[ :header_lines ] )
+				if headers > 0 and n >= headers:
+					hdr = tuple( page[ :headers ] )
 					if hdr in header_counts:
 						header_counts[ hdr ] += 1
 					else:
 						header_counts[ hdr ] = 1
 				
-				if footer_lines > 0 and n >= footer_lines:
-					ftr = tuple( page[ -footer_lines: ] )
+				if footers > 0 and n >= footers:
+					ftr = tuple( page[ -footers: ] )
 					if ftr in footer_counts:
 						footer_counts[ ftr ] += 1
 					else:
@@ -1029,9 +1009,9 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_numbers = re.sub( r'[0-9]', ' ', text )
-			self.cleaned_text = _numbers.strip( )
-			return self.cleaned_text
+			_numbers = re.sub( r'[^0-9]', ' ', text )
+			cleaned_text = _numbers.strip( )
+			return cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1101,7 +1081,8 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'text', text )
+			throw
+			_if( 'text', text )
 			_tokens = word_tokenize( text )
 			_cleaned = [ self.lemmatizer.lemmatize( t ) for t in _tokens ]
 			_lemmmatized = ' '.join( _cleaned )
@@ -1111,74 +1092,6 @@ class Text( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'lemmatize( self, text: str ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def filter_tokens( self, tokens: List[ List[ str ] ] ) -> DataFrame:
-		"""
-		
-			Purpose:
-			Removes stopwords and short tokens.
-			
-			Parameters:
-			tokenized_sentences (list[list[str]]): Tokenized text.
-			
-			Returns:
-			list[list[str]]: Filtered sentences.
-			
-		"""
-		try:
-			throw_if( 'tokens', tokens )
-			_num = len( tokens )
-			_processed = [ ]
-			_datamap = [ ]
-			for _tkns in tokens:
-				_words = [ t for t in _tkns if t not in self.stop_words and len( t ) > 4 ]
-				_datamap.append( _words )
-			
-			_processed.append( _datamap )
-			_data = pd.DataFrame( _processed )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = ('filter_tokens( self, tokens: List[ List[ str ] ] ) -> List[ [ ]')
-			error = ErrorDialog( exception )
-			error.show( )
-			
-	def tokenize_text( self, text: str ) -> str:
-		'''
-
-			Purpose:
-			---------
-			Splits the raw path removes non-words and returns words
-
-			Parameters:
-			-----------
-			- cleaned_line: (str) - clean documents.
-
-			Returns:
-			- list: Cleaned and normalized documents.
-
-		'''
-		try:
-			throw_if( 'text', text )
-			_collapsed = self.collapse_whitespace( text )
-			_compressed = self.compress_whitespace( _collapsed )
-			_normalized = self.normalize_text( _compressed )
-			_encoded = self.remove_encodings( _normalized )
-			_special = self.remove_special( _encoded )
-			_cleaned = self.remove_fragments( _special )
-			_recompress = self.compress_whitespace( _cleaned )
-			_tokens = nltk.word_tokenize( _recompress )
-			_data = ' '.join( _tokens )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'tokenize_text( self, path: str ) -> List[ str ]'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -1333,8 +1246,8 @@ class Text( Processor ):
 			_tokens = nltk.word_tokenize( text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_datamap = [ ]
-			for index, chunk in enumerate( _sentences ):
-				_item = ' '.join( chunk )
+			for i, c in enumerate( _sentences ):
+				_item = ' '.join( c )
 				_datamap.append( _item )
 				
 			_data = pd.DataFrame( _datamap )
@@ -1386,7 +1299,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split_pages( self, filepath: str, num_line: int=50 ) -> List[ str ] | None:
+	def split_pages( self, filepath: str, num: int=50 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1419,11 +1332,11 @@ class Text( Processor ):
 			i = 0
 			n = len( self.lines )
 			while i < n:
-				page_lines = self.lines[ i: i + num_line ]
+				page_lines = self.lines[ i: i + num ]
 				page_text = '\n'.join( page_lines ).strip( )
 				if page_text:
 					self.pages.append( page_text )
-				i += num_line
+				i += num
 			return self.pages
 		except Exception as e:
 			exception = Error( e )
@@ -1497,56 +1410,10 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('calculate_frequency_distribution( self, documents: list, process: '
-			                    'bool=True) -> FreqDist')
+			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_conditional_distribution( self, tokens: List[ str ], condition=None,
-			process: bool=True ) -> ConditionalFreqDist:
-		"""
-
-			Purpose:
-			--------
-			Computes a Conditional Frequency Distribution (CFD)
-			 over a collection of documents.
-
-			Parameters:
-			-----------
-			- documents (list):
-				A list of path sections (pages, paragraphs, etc.).
-
-			- condition (function):
-				A function to determine the condition/grouping. If None, uses document index.
-
-			- process (bool):
-				If True, applies normalization, tokenization,
-				stopword removal, and lemmatization.
-
-			Returns:
-			- ConditionalFreqDist:
-				An NLTK ConditionalFreqDist object mapping conditions to word frequencies.
-
-		"""
-		try:
-			throw_if( 'tokens', tokens )
-			self.tokens = tokens
-			cfd = ConditionalFreqDist( )
-			for idx, line in enumerate( self.tokens ):
-				key = condition( line ) if condition else f'Line-{idx}'
-				toks = self.tokenize_text( self.normalize_text( line ) if process else line )
-				for t in toks.split( None ):
-					cfd[ key ][ t ] += 1
-			self.conditional_distribution = cfd
-			return self.conditional_distribution
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
-			exception.method = 'compute_conditional_distribution( self, words, cond, proc  )'
-			error = ErrorDialog( exception )
-			error.show( )
-			
 	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> Series:
 		"""
 
@@ -1584,7 +1451,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_wordbag( self, tokens: List[ str ] ) -> Dict | None:
+	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1603,7 +1470,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
-			return dict( Counter( self.tokens ) )
+			_vocab = dict( Counter( self.tokens ) )
+			_data = pd.DataFrame( _vocab )
+			return _data
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1657,8 +1526,7 @@ class Text( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'Text'
-			exception.method = ('create_vectors( self, tokens: List[str]) -> Dict[str, '
-			                    'np.ndarray]')
+			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
 			error = ErrorDialog( exception )
 			error.show( )
 			
@@ -1812,7 +1680,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_data( self, filepath: str, size: int=15  ) -> DataFrame:
+	def chunk_data( self, filepath: str, size: int=10  ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1856,7 +1724,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def chunk_datasets( self, source: str, destination: str, size: int=15 ) -> DataFrame:
+	def chunk_datasets( self, source: str, destination: str, size: int=10 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1967,7 +1835,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def encode_sentences( self, tokens: List[ str ], model: str= 'all-MiniLM-L6-v2' ) -> \
+	def encode_sentences( self, tokens: List[ str ], model: str='all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
 		
