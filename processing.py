@@ -541,7 +541,7 @@ class Text( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			extra_lines = re.sub( r'[\r\n]+', ' ', self.raw_input )
+			extra_lines = re.sub( r'[\r\n\t]+', ' ', self.raw_input )
 			self.cleaned_lines = [ line for line in extra_lines ]
 			return ''.join( self.cleaned_lines )
 		except Exception as e:
@@ -660,6 +660,47 @@ class Text( Processor ):
 			exception.module = 'chonky'
 			exception.cause = 'Text'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def remove_errors( self, text: str  ) -> str:
+		"""
+		
+			Purpose:
+			----------
+			Removes tokens that are not recognized as valid English words
+			using the NLTK `words` corpus as a reference dictionary.
+	
+			This function is useful for cleaning text from OCR output, web-scraped data,
+			or noisy documents by removing pseudo-words, typos, and out-of-vocabulary items.
+	
+			Parameters
+			----------
+			text : str
+			The raw input text
+	
+			Returns
+			-------
+			str
+			The raw input text without errors
+	
+			
+		"""
+		try:
+			throw_if( 'text', text )
+			_wordlist = [ ]
+			_vocab = words.words( 'en' )
+			_tokens = text.split( ' ' )
+			for word in _tokens:
+				if word.isnumeric( ) or word in _vocab:
+					_wordlist.append( word )
+			_data = ' '.join( _wordlist )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'remove_errors( self, text: str  ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 	
@@ -882,6 +923,12 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
+			# Decode escaped unicode literals (e.g., \\u2019)
+			try:
+				text = bytes( text, 'utf-8' ).decode( 'unicode_escape' )
+			except UnicodeDecodeError:
+				pass  # Ignore undecodable sequences
+
 			self.raw_input = text
 			# Decode HTML entities (&amp;, &quot;, &#8217;)
 			_html = html.unescape( self.raw_input )
