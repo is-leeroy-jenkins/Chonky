@@ -1778,7 +1778,7 @@ class Text( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def convert_jsonl( self, source: str, destination: str, size: int=15 ) -> None:
+	def convert_jsonl( self, source: str, destination: str, size: int=10 ) -> None:
 		"""
 
 			Purpose:
