@@ -46,7 +46,6 @@ from __future__ import annotations
 import string
 
 import docx
-import fitz
 from langchain_classic.agents import AgentExecutor, initialize_agent, AgentType
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_core.tools import Tool
@@ -62,6 +61,7 @@ from chromadb.config import Settings
 from collections import Counter
 import html
 import glob
+from gensim.models import Word2Vec
 import json
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
@@ -688,13 +688,10 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_wordlist = [ ]
 			_vocab = words.words( 'en' )
-			_tokens = text.split( ' ' )
-			for word in _tokens:
-				if word.isnumeric( ) or word in _vocab:
-					_wordlist.append( word )
-			_data = ' '.join( _wordlist )
+			_tokens = text.split( None )
+			_words = [ w for w in _tokens if w in _vocab ]
+			_data = ' '.join( _words )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1128,8 +1125,7 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw
-			_if( 'text', text )
+			throw_if( 'text', text )
 			_tokens = word_tokenize( text )
 			_cleaned = [ self.lemmatizer.lemmatize( t ) for t in _tokens ]
 			_lemmmatized = ' '.join( _cleaned )
@@ -1312,8 +1308,7 @@ class Text( Processor ):
 
 			Purpose:
 			________
-			Splits the text string into a list of
-			strings using NLTK's Punkt sentence tokenizer.
+			Splits the text string into a list of strings using NLTK's Punkt sentence tokenizer.
 			This function is useful for preparing text for further processing,
 			such as tokenization, parsing, or named entity recognition.
 
@@ -1321,10 +1316,13 @@ class Text( Processor ):
 			----------
 			- text : str
 			The raw text string to be segmented into sentences.
+			
+			- size : int
+			THe chunk size
 
 			Returns
 			-------
-			- DataFrame of strings
+			- List of strings
 
 		"""
 		try:
@@ -1336,7 +1334,6 @@ class Text( Processor ):
 				_item = ' '.join( chunk )
 				_data.append( _item )
 				
-			_data
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1483,7 +1480,7 @@ class Text( Processor ):
 
 		"""
 		try:
-			throw_if( 'freq', tokens )
+			throw_if( 'tokens', tokens )
 			self.tokens = tokens
 			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
 			_vocab = _freqdist.items( )
@@ -1517,8 +1514,9 @@ class Text( Processor ):
 		try:
 			throw_if( 'tokens', tokens )
 			self.tokens = tokens
-			_vocab = dict( Counter( self.tokens ) )
-			_data = pd.DataFrame( _vocab )
+			_freqdist = FreqDist( dict( Counter( self.tokens ) ) )
+			_words = _freqdist.keys( )
+			_data = pd.DataFrame( _words )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -1660,7 +1658,7 @@ class Text( Processor ):
 					_recompress = self.compress_whitespace( _cleaned )
 					_lemmatized = self.lemmatize_text( _recompress )
 					_stops = self.remove_stopwords( _lemmatized )
-					_sentences = self.chunk_sentences( _stops )
+					_sentences = self.split_sentences( _stops )
 					_destination = _destpath + '\\' + _filename
 					_clean = open( _destination, 'wt', encoding='utf-8', errors='ignore' )
 					_lines = ' '.join( _sentences )
@@ -1759,7 +1757,7 @@ class Text( Processor ):
 						_wordlist.append( s )
 				self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
 				for i, c in enumerate( self.chunks ):
-					_item =  '[\'' + ' '.join( c ) + '\'],'
+					_item =  '[' + ' '.join( c ) + '],'
 					_processed.append( _item )
 				_data = pd.DataFrame( _processed )
 				return _data
@@ -1804,17 +1802,27 @@ class Text( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _src+ '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_tokens =  _text.split( None )
+					_collapsed = self.collapse_whitespace( _text )
+					_compressed = self.compress_whitespace( _collapsed )
+					_normalized = self.normalize_text( _compressed )
+					_encoded = self.remove_encodings( _normalized )
+					_special = self.remove_special( _encoded )
+					_cleaned = self.remove_fragments( _special )
+					_recompress = self.compress_whitespace( _cleaned )
+					_lemmatized = self.lemmatize_text( _recompress )
+					_stops = self.remove_stopwords( _lemmatized )
+					_tokens = _stops.split( None )
 					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 					_datamap = [ ]
 					for i, c in enumerate( _chunks ):
-						_row = '[\'' + ' '.join( c ) + '\'],'
+						_row = ' '.join( c )
 						_datamap.append( _row )
 						
 					for s in _datamap:
 						_processed.append( s )
 					
-					_savepath = _destination + '\\' + _filename.replace( '.txt', '.xlsx' )
+					_name = _filename.replace( '.txt', '.xlsx' )
+					_savepath = ( _destination + f'\\' + _name )
 					_data = pd.DataFrame( _processed )
 					_data.to_excel( _savepath, sheet_name='Dataset', index=False )
 		except Exception as e:

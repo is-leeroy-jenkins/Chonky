@@ -3,6 +3,7 @@ chromadb
 docx
 freesimplegui
 fitz
+frontend
 gensim
 ipywidgets
 ipython
