@@ -1823,8 +1823,8 @@ class Text( Processor ):
 					
 					_name = _filename.replace( '.txt', '.xlsx' )
 					_savepath = ( _destination + f'\\' + _name )
-					_data = pd.DataFrame( _processed )
-					_data.to_excel( _savepath, sheet_name='Dataset', index=False )
+					_data = pd.DataFrame( _processed, columns=[ 'Data', ] )
+					_data.to_excel( _savepath, sheet_name='Dataset', index=False, columns=[ 'Data', ] )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
