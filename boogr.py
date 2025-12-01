@@ -41,6 +41,9 @@
   ******************************************************************************************
   '''
 from __future__ import annotations
+
+import os
+
 import pydantic
 from pydantic import BaseModel
 import traceback
@@ -78,6 +81,10 @@ class Dark( ):
 	theme_font: Optional[ Tuple[ str, int ] ]
 	scrollbar_color: Optional[ str ]
 	form_size: Optional[ Tuple[ int, int ] ]
+	keep_on_top: Optional[ bool ]
+	top_level: Optional[ bool ]
+	resizeable: Optional[ bool ]
+	context_menu: Optional[ List[ List[ str ] ] ]
 
 	def __init__( self ):
 		sg.theme( 'DarkGrey15' )
@@ -95,13 +102,17 @@ class Dark( ):
 		self.button_backcolor = sg.theme_button_color_background( )
 		self.button_forecolor = sg.theme_button_color_text( )
 		self.button_color = sg.theme_button_color( )
-		self.icon_path = r'C:\Users\terry\source\repos\Chonky\resources\images\chonky.ico'
+		self.icon_path = os.curdir + r'\resources\images\chonky.ico'
 		self.theme_font = ( 'Roboto', 11 )
 		self.scrollbar_color = '#755600'
 		self.form_size = (400, 200)
+		self.keep_on_top = True
+		self.top_level = True
+		self.resizable = True,
+		self.context_menu = sg.MENU_RIGHT_CLICK_EDITME_VER_SETTINGS_EXIT
 		sg.set_global_icon( icon=self.icon_path )
 		sg.set_options( font=self.theme_font )
-		sg.user_settings_save( 'Boo', r'\resources\theme' )
+		sg.user_settings_save( 'Chonky', os.curdir + r'\resources\theme' )
 
 
 	def __dir__( self ) -> List[ str ] | None:
@@ -319,7 +330,7 @@ class ErrorDialog( Dark ):
 		            [ sg.Text( size=( 20, 1 ) ), sg.Cancel( size=( 15, 1 ), key='-CANCEL-' ),
 		              sg.Text( size=( 10, 1 ) ), sg.Ok( size=( 15, 1 ), key='-OK-' ) ] ]
 
-		_window = sg.Window( r' Mathy', _layout,
+		_window = sg.Window( r'Chonky', _layout,
 			icon=self.icon_path,
 			font=self.theme_font,
 			size=self.form_size )
