@@ -1,5 +1,7 @@
 ###### Chonky-Py
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/github/chonky_project.png)
+___
+
 
 A modular text-processing framework baseed in python tailored for analysts, data scientists,
 and machine learning practitioners working with unstructured text. It unifies high-performance NLP
@@ -7,6 +9,7 @@ utilities and machine learning-ready pipelines to support text ingestion, cleani
 feature extraction, and document analysis.
 
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
 ## 🧠 Features
 
