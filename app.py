@@ -95,7 +95,7 @@ for key in STATE_KEYS:
 # ==========================================================================================
 # Logo
 # ==========================================================================================
-logo = Image.open("resources/images/chonky_logo.png")
+logo = Image.open("resources/images/chonky.png")
 
 # Sidebar: centered image at top
 with st.sidebar:
@@ -105,7 +105,7 @@ with st.sidebar:
         """,
         unsafe_allow_html=True )
     
-    st.image( logo, width=55, height=45 )
+    st.image( logo, width=55 )
     st.markdown("</div>", unsafe_allow_html=True )
     
 # ==========================================================================================
