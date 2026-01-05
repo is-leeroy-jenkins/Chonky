@@ -11,6 +11,8 @@ feature extraction, and document analysis.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
+[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://chonky-py.streamlit.app/)
+
 ## 🧠 Features
 
 - **Text Preprocessing**: Clean and normalize text by removing HTML, punctuation, special
