@@ -46,8 +46,6 @@ from __future__ import annotations
 import string
 
 import docx
-from langchain_classic.agents import AgentExecutor, initialize_agent, AgentType
-from langchain_classic.memory import ConversationBufferMemory
 from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter

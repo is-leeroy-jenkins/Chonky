@@ -10,7 +10,7 @@
   ******************************************************************************************
   <copyright file="guro.py" company="Terry D. Eppler">
 
-	     name.py
+	     app.py
 	     Copyright ©  2022  Terry Eppler
 
      Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,17 +37,10 @@
 
   </copyright>
   <summary>
-    name.py
+    app.py
   </summary>
   ******************************************************************************************
 '''
-# ******************************************************************************************
-# Assembly:                Chonky
-# Filename:                app.py
-# Author:                  Terry D. Eppler (integration)
-# Created:                 01-04-2026
-# ******************************************************************************************
-
 from __future__ import annotations
 
 import streamlit as st
@@ -55,20 +48,30 @@ import tempfile
 import os
 from typing import List
 
+import pandas as pd
+from langchain_core.documents import Document
+
 from processing import (
-    TXT, DOCX, PDF, Markdown, HTML, CSV, Web,
+    DOCX, PDF, Markdown, HTML, CSV, Web,
     Processor
 )
 
-from langchain_core.documents import Document
-import pandas as pd
+# ==========================================================================================
+# Page Configuration
+# ==========================================================================================
+
+st.set_page_config(
+    page_title="Chonky – Document Processing Workbench",
+    layout="wide"
+)
+
+st.title("📦 Chonky – Document Processing Workbench")
 
 # ==========================================================================================
 # Session State Initialization
 # ==========================================================================================
 
 STATE_KEYS = [
-    "uploaded_files",
     "documents",
     "raw_text",
     "processed_text",
@@ -85,17 +88,6 @@ STATE_KEYS = [
 for key in STATE_KEYS:
     if key not in st.session_state:
         st.session_state[key] = None
-
-# ==========================================================================================
-# Page Config
-# ==========================================================================================
-
-st.set_page_config(
-    page_title="Chonky – Document Processing Workbench",
-    layout="wide"
-)
-
-st.title("📦 Chonky – Document Processing Workbench")
 
 # ==========================================================================================
 # Sidebar — Ingestion & Configuration
@@ -130,11 +122,10 @@ overlap = st.sidebar.number_input(
 )
 
 # ==========================================================================================
-# Loader Resolution
+# Loader Resolution (NON-TXT ONLY)
 # ==========================================================================================
 
 LOADER_MAP = {
-    "TXT": TXT,
     "PDF": PDF,
     "DOCX": DOCX,
     "Markdown": Markdown,
@@ -161,39 +152,50 @@ else:
 load_button = st.sidebar.button("Load Documents")
 
 # ==========================================================================================
-# Load Documents
+# Load Documents (Correct TXT Handling)
 # ==========================================================================================
 
 if load_button:
+    processor = Processor()
     documents: List[Document] = []
+    raw_text_parts: List[str] = []
 
     if source_type == "Local Files" and uploaded:
         with tempfile.TemporaryDirectory() as tmpdir:
-            paths = []
-
             for f in uploaded:
                 path = os.path.join(tmpdir, f.name)
                 with open(path, "wb") as out:
                     out.write(f.read())
-                paths.append(path)
 
-            loader = LOADER_MAP[loader_type]()
+                ext = os.path.splitext(f.name)[1].lower()
 
-            for path in paths:
-                docs = loader.load(path)
-                documents.extend(docs)
+                # ---------------- TXT (Processor-based, NOT Loader-based)
+                if ext == ".txt":
+                    text = processor.load_text(path)
+                    raw_text_parts.append(text)
+
+                # ---------------- All other document types (Loader-based)
+                else:
+                    loader_cls = LOADER_MAP.get(loader_type)
+                    if loader_cls is None:
+                        st.error(f"Unsupported loader type: {loader_type}")
+                        continue
+
+                    loader = loader_cls()
+                    docs = loader.load(path)
+                    documents.extend(docs)
+                    raw_text_parts.extend(d.page_content for d in docs)
 
     elif source_type == "Web URLs" and urls.strip():
         url_list = [u.strip() for u in urls.splitlines() if u.strip()]
         loader = Web()
         documents = loader.load(url_list)
+        raw_text_parts.extend(d.page_content for d in documents)
 
-    st.session_state.documents = documents
-    st.session_state.raw_text = "\n\n".join(
-        d.page_content for d in documents
-    )
+    st.session_state.documents = documents if documents else None
+    st.session_state.raw_text = "\n\n".join(raw_text_parts)
 
-    st.success(f"Loaded {len(documents)} document segments")
+    st.success("Documents loaded successfully")
 
 # ==========================================================================================
 # Main Tabs
@@ -216,8 +218,7 @@ tabs = st.tabs([
 with tabs[0]:
     st.header("Documents")
 
-    if st.session_state.documents:
-        st.write(f"Total Documents: {len(st.session_state.documents)}")
+    if st.session_state.raw_text:
         st.text_area(
             "Raw Text Preview",
             st.session_state.raw_text,
@@ -289,21 +290,18 @@ with tabs[2]:
         )
 
         if view == "Lines":
-            st.session_state.lines = st.session_state.processed_text.splitlines()
-            st.write(len(st.session_state.lines))
-            st.dataframe(pd.DataFrame(st.session_state.lines, columns=["Line"]))
+            lines = st.session_state.processed_text.splitlines()
+            st.dataframe(pd.DataFrame(lines, columns=["Line"]))
 
         elif view == "Paragraphs":
-            st.session_state.paragraphs = st.session_state.processed_text.split("\n\n")
-            st.write(len(st.session_state.paragraphs))
-            st.dataframe(pd.DataFrame(st.session_state.paragraphs, columns=["Paragraph"]))
+            paragraphs = st.session_state.processed_text.split("\n\n")
+            st.dataframe(pd.DataFrame(paragraphs, columns=["Paragraph"]))
 
         elif view == "Sentences":
-            st.session_state.sentences = processor.tokenize_sentences(
+            sentences = processor.tokenize_sentences(
                 st.session_state.processed_text
             )
-            st.write(len(st.session_state.sentences))
-            st.dataframe(pd.DataFrame(st.session_state.sentences, columns=["Sentence"]))
+            st.dataframe(pd.DataFrame(sentences, columns=["Sentence"]))
 
     else:
         st.info("Run preprocessing first")
@@ -318,16 +316,16 @@ with tabs[3]:
     if st.session_state.processed_text:
         processor = Processor()
         tokens = processor.tokenize_text(st.session_state.processed_text)
-        st.session_state.tokens = tokens
+        vocab = processor.create_vocabulary(tokens)
 
         st.write(f"Token Count: {len(tokens)}")
         st.dataframe(pd.DataFrame(tokens, columns=["Token"]))
 
-        vocab = processor.create_vocabulary(tokens)
-        st.session_state.vocabulary = vocab
-
         st.write(f"Vocabulary Size: {len(vocab)}")
         st.dataframe(pd.DataFrame(vocab, columns=["Word"]))
+
+        st.session_state.tokens = tokens
+        st.session_state.vocabulary = vocab
 
     else:
         st.info("Run preprocessing first")
@@ -358,21 +356,25 @@ with tabs[5]:
     st.header("Vectorization & Chunking")
 
     if st.session_state.documents:
-        loader = LOADER_MAP[loader_type]()
-        loader.documents = st.session_state.documents
+        loader_cls = LOADER_MAP.get(loader_type)
+        if loader_cls:
+            loader = loader_cls()
+            loader.documents = st.session_state.documents
 
-        if st.button("Chunk Documents"):
-            chunks = loader.split(chunk_size, overlap)
-            st.session_state.chunks = chunks
-            st.success(f"Created {len(chunks)} chunks")
+            if st.button("Chunk Documents"):
+                chunks = loader.split(chunk_size, overlap)
+                st.session_state.chunks = chunks
+                st.success(f"Created {len(chunks)} chunks")
 
-        if st.session_state.chunks:
-            st.write("Chunk Preview")
-            for i, c in enumerate(st.session_state.chunks[:5]):
-                st.text_area(f"Chunk {i}", c.page_content, height=150)
-
+            if st.session_state.chunks:
+                for i, c in enumerate(st.session_state.chunks[:5]):
+                    st.text_area(
+                        f"Chunk {i}",
+                        c.page_content,
+                        height=150
+                    )
     else:
-        st.info("Load documents first")
+        st.info("No chunkable documents loaded")
 
 # ==========================================================================================
 # Tab 7 — Export
@@ -401,4 +403,5 @@ with tabs[6]:
         st.download_button(
             "Download Chunks",
             chunk_text,
-            file_name="chunks.txt" )
+            file_name="chunks.txt"
+        )
