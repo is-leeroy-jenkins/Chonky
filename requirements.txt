@@ -11,6 +11,7 @@ jupytext
 jupyterlab
 langchain
 langchain-community
+langchain-openai
 matplotlib
 nltk
 openpyxl

@@ -43,6 +43,7 @@
 '''
 from __future__ import annotations
 
+import config as cfg
 import streamlit as st
 import tempfile
 import os
@@ -61,11 +62,12 @@ from processing import (
 # ==========================================================================================
 
 st.set_page_config(
-    page_title="Chonky – Document Processing Workbench",
-    layout="wide"
+    page_title="Chonky",
+    layout="wide",
+	page_icon=cfg.ICON
 )
 
-st.title("📦 Chonky – Document Processing Workbench")
+st.title("📦 NLP Workbench")
 
 # ==========================================================================================
 # Session State Initialization

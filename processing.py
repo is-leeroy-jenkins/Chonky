@@ -47,7 +47,6 @@ import string
 
 import docx
 from langchain_core.tools import Tool
-from langchain_openai import ChatOpenAI
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
 from pymupdf import Page
 from sklearn.feature_extraction.text import TfidfVectorizer
