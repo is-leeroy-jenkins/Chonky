@@ -8,9 +8,10 @@ and machine learning practitioners working with unstructured text. It unifies hi
 utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
 feature extraction, and document analysis.
 
-
+#### Local-setup
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
+#### Web-based
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://chonky-py.streamlit.app/)
 
 ## 🧠 Features
