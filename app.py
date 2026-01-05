@@ -44,6 +44,7 @@
 from __future__ import annotations
 
 import config as cfg
+from PIL import Image
 import streamlit as st
 import tempfile
 import os
@@ -90,7 +91,23 @@ STATE_KEYS = [
 for key in STATE_KEYS:
     if key not in st.session_state:
         st.session_state[key] = None
+    
+# ==========================================================================================
+# Logo
+# ==========================================================================================
+logo = Image.open("resources/images/chonky_logo.png")
 
+# Sidebar: centered image at top
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
+        """,
+        unsafe_allow_html=True )
+    
+    st.image( logo, width=55, height=45 )
+    st.markdown("</div>", unsafe_allow_html=True )
+    
 # ==========================================================================================
 # Sidebar — Ingestion & Configuration
 # ==========================================================================================
