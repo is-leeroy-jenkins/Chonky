@@ -92,22 +92,7 @@ for key in STATE_KEYS:
     if key not in st.session_state:
         st.session_state[key] = None
     
-# ==========================================================================================
-# Logo
-# ==========================================================================================
-logo = Image.open("resources/images/chonky.png")
 
-# Sidebar: centered image at top
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
-        """,
-        unsafe_allow_html=True )
-    
-    st.image( logo, width=55 )
-    st.markdown("</div>", unsafe_allow_html=True )
-    
 # ==========================================================================================
 # Sidebar — Ingestion & Configuration
 # ==========================================================================================
@@ -235,7 +220,7 @@ tabs = st.tabs([
 # ==========================================================================================
 
 with tabs[0]:
-    st.header("Documents")
+    st.header("")
 
     if st.session_state.raw_text:
         st.text_area(
@@ -251,7 +236,7 @@ with tabs[0]:
 # ==========================================================================================
 
 with tabs[1]:
-    st.header("Preprocessing Pipeline")
+    st.header("")
 
     if st.session_state.raw_text:
         processor = Processor()
@@ -298,7 +283,7 @@ with tabs[1]:
 # ==========================================================================================
 
 with tabs[2]:
-    st.header("Structural Views")
+    st.header("")
 
     if st.session_state.processed_text:
         processor = Processor()
@@ -330,7 +315,7 @@ with tabs[2]:
 # ==========================================================================================
 
 with tabs[3]:
-    st.header("Tokens & Vocabulary")
+    st.header("")
 
     if st.session_state.processed_text:
         processor = Processor()
@@ -354,7 +339,7 @@ with tabs[3]:
 # ==========================================================================================
 
 with tabs[4]:
-    st.header("Analysis & Statistics")
+    st.header("")
 
     if st.session_state.tokens:
         processor = Processor()
@@ -372,7 +357,7 @@ with tabs[4]:
 # ==========================================================================================
 
 with tabs[5]:
-    st.header("Vectorization & Chunking")
+    st.header("")
 
     if st.session_state.documents:
         loader_cls = LOADER_MAP.get(loader_type)
@@ -400,7 +385,7 @@ with tabs[5]:
 # ==========================================================================================
 
 with tabs[6]:
-    st.header("Export")
+    st.header("")
 
     if st.session_state.processed_text:
         st.download_button(
