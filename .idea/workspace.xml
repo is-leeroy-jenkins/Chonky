@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="76694280-cb71-48cd-94ba-bb095c0f94bb" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loaders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Chonky.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Chonky.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/git_toolbox_prj.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/icon.svg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-    </list>
+    <list default="true" id="76694280-cb71-48cd-94ba-bb095c0f94bb" name="Changes" comment="updates;" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -96,11 +85,32 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1768078879718</updated>
-      <workItem from="1768078881193" duration="6693000" />
+      <workItem from="1768078881193" duration="6911000" />
     </task>
+    <task id="LOCAL-00001" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1768087606146</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1768087606146</updated>
+    </task>
+    <task id="LOCAL-00002" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1768087637203</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1768087637203</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="updates;" />
+    <option name="LAST_COMMIT_MESSAGE" value="updates;" />
   </component>
 </project>
