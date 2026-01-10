@@ -97,7 +97,7 @@ for key in STATE_KEYS:
 # Sidebar — Ingestion & Configuration
 # ==========================================================================================
 
-st.sidebar.header("📥 Ingestion")
+st.sidebar.header( "📥 Ingestion" )
 
 source_type = st.sidebar.radio(
     "Data Source",
@@ -129,7 +129,7 @@ overlap = st.sidebar.number_input(
 # Loader Resolution (NON-TXT ONLY)
 # ==========================================================================================
 
-LOADER_MAP = {
+LOADERS = {
     "PDF": PDF,
     "DOCX": DOCX,
     "Markdown": Markdown,
@@ -180,7 +180,7 @@ if load_button:
 
                 # ---------------- All other document types (Loader-based)
                 else:
-                    loader_cls = LOADER_MAP.get(loader_type)
+                    loader_cls = LOADERS.get(loader_type )
                     if loader_cls is None:
                         st.error(f"Unsupported loader type: {loader_type}")
                         continue
@@ -360,7 +360,7 @@ with tabs[5]:
     st.header("")
 
     if st.session_state.documents:
-        loader_cls = LOADER_MAP.get(loader_type)
+        loader_cls = LOADERS.get(loader_type )
         if loader_cls:
             loader = loader_cls()
             loader.documents = st.session_state.documents

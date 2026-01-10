@@ -1,6 +1,7 @@
 beautifulsoup4
 chromadb
 docx
+docx2txt
 freesimplegui
 fitz
 frontend
