@@ -53,7 +53,7 @@ from PIL import Image
 from langchain_core.documents import Document
 
 import config as cfg
-from processing import Processor
+from processing import Processor, TextParser, WordParser, PdfParser
 from loaders import (
     TextLoader,
     CsvLoader,
@@ -91,6 +91,7 @@ st.set_page_config(
     layout="wide",
     page_icon=cfg.ICON,
 )
+
 SESSION_STATE_DEFAULTS = {
     # Ingestion
     "documents": None,
@@ -759,53 +760,188 @@ with tabs[0]:
                         key=f"preview_doc_{i}",
                     )
        
+# ======================================================================================
+# Tab — Processing / Preprocessing
+# ======================================================================================
 
-# ==========================================================================================
-# Tab 2 — Preprocessing Pipeline
-# ==========================================================================================
+with tabs[1]:
 
-with tabs[ 1 ]:
-	st.header( "" )
-	
-	if st.session_state.raw_text:
-		processor = Processor( )
-		
-		normalize = st.checkbox( "Normalize Text" )
-		remove_punct = st.checkbox( "Remove Punctuation" )
-		remove_stop = st.checkbox( "Remove Stopwords" )
-		lemmatize = st.checkbox( "Lemmatize Tokens" )
-		
-		if st.button( "Apply Pipeline" ):
-			text = st.session_state.raw_text
-			
-			if normalize:
-				text = processor.normalize_text( text )
-			
-			if remove_punct:
-				text = processor.remove_punctuation( text )
-			
-			if remove_stop:
-				text = processor.remove_stopwords( text )
-			
-			if lemmatize:
-				tokens = processor.tokenize_text( text )
-				tokens = processor.lemmatize_tokens( tokens )
-				text = " ".join( tokens )
-			
-			st.session_state.processed_text = text
-		
-		col1, col2 = st.columns( 2 )
-		
-		with col1:
-			st.subheader( "Before" )
-			st.text_area( "", st.session_state.raw_text, height=300 )
-		
-		with col2:
-			st.subheader( "After" )
-			st.text_area( "", st.session_state.processed_text or "", height=300 )
-	
-	else:
-		st.info( "Load documents first" )
+    st.subheader("Preprocessing")
+
+    # ------------------------------------------------------------------
+    # Defensive session_state initialization (local safety)
+    # ------------------------------------------------------------------
+    for key, default in {
+        "raw_text": None,
+        "processed_text": None,
+        "active_loader": None,
+    }.items():
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+    has_text = bool(st.session_state.raw_text)
+
+    if not has_text:
+        st.info("No raw text available yet. Load documents to enable processing.")
+
+    # ------------------------------------------------------------------
+    # Layout
+    # ------------------------------------------------------------------
+    left, right = st.columns([1, 1.5])
+
+    # ------------------------------------------------------------------
+    # RIGHT COLUMN — Text Views
+    # ------------------------------------------------------------------
+    with right:
+        st.markdown("### Raw Text (from Loading)")
+        st.text_area(
+            "Raw Text",
+            st.session_state.raw_text or "No text loaded yet.",
+            height=300,
+            disabled=True,
+            key="raw_text_view",
+        )
+
+        st.markdown("### Processed Text")
+        st.text_area(
+            "Processed Text",
+            st.session_state.processed_text or "",
+            height=300,
+            key="processed_text_view",
+        )
+
+    # ------------------------------------------------------------------
+    # LEFT COLUMN — Controls
+    # ------------------------------------------------------------------
+    with left:
+        st.markdown("### Common Text Processing")
+
+        # Common TextParser controls (string → string)
+        remove_html = st.checkbox("Remove HTML")
+        remove_markdown = st.checkbox("Remove Markdown")
+        remove_special = st.checkbox("Remove Special Characters")
+        remove_numbers = st.checkbox("Remove Numbers")
+        remove_punctuation = st.checkbox("Remove Punctuation")
+        remove_stopwords = st.checkbox("Remove Stopwords")
+        normalize_text = st.checkbox("Normalize (lowercase)")
+        lemmatize_text = st.checkbox("Lemmatize")
+        remove_fragments = st.checkbox("Remove Fragments")
+        collapse_whitespace = st.checkbox("Collapse Whitespace")
+
+        st.divider()
+
+        # --------------------------------------------------------------
+        # Loader-specific preprocessing (always visible)
+        # --------------------------------------------------------------
+        st.markdown("### Format-Specific Processing")
+
+        active = st.session_state.active_loader
+
+        # Word-specific
+        extract_tables = extract_paragraphs = False
+        if active == "WordLoader":
+            extract_tables = st.checkbox("Extract Tables (Word)")
+            extract_paragraphs = st.checkbox("Extract Paragraphs (Word)")
+
+        # PDF-specific
+        remove_headers = join_hyphenated = False
+        if active == "PdfLoader":
+            remove_headers = st.checkbox("Remove Headers / Footers (PDF)")
+            join_hyphenated = st.checkbox("Join Hyphenated Lines (PDF)")
+
+        # HTML-specific
+        strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
+        if active == "HtmlLoader":
+            strip_scripts = st.checkbox("Strip <script> / <style>")
+            keep_headings = st.checkbox("Keep Headings")
+            keep_paragraphs = st.checkbox("Keep Paragraphs")
+            keep_tables = st.checkbox("Keep Tables")
+
+        st.divider()
+
+        # --------------------------------------------------------------
+        # Actions (disabled until text exists)
+        # --------------------------------------------------------------
+        col_apply, col_reset, col_clear = st.columns(3)
+
+        apply_processing = col_apply.button(
+            "Apply", disabled=not has_text
+        )
+        reset_processing = col_reset.button(
+            "Reset to Raw", disabled=not has_text
+        )
+        clear_processing = col_clear.button(
+            "Clear", disabled=not has_text
+        )
+
+        # --------------------------------------------------------------
+        # Reset / Clear logic
+        # --------------------------------------------------------------
+        if reset_processing:
+            st.session_state.processed_text = st.session_state.raw_text
+            st.success("Processed text reset to raw text.")
+
+        if clear_processing:
+            st.session_state.processed_text = None
+            st.success("Processed text cleared.")
+
+        # --------------------------------------------------------------
+        # Apply Processing
+        # --------------------------------------------------------------
+        if apply_processing:
+            text = st.session_state.raw_text
+
+            # --------------------------
+            # Loader-specific FIRST
+            # --------------------------
+            if active == "WordLoader":
+                parser = WordParser()
+                if extract_tables and hasattr(parser, "extract_tables"):
+                    text = parser.extract_tables(text) or text
+                if extract_paragraphs and hasattr(parser, "extract_paragraphs"):
+                    text = parser.extract_paragraphs(text) or text
+
+            if active == "PdfLoader":
+                parser = PdfParser()
+                if remove_headers and hasattr(parser, "remove_headers"):
+                    text = parser.remove_headers(text) or text
+                if join_hyphenated and hasattr(parser, "join_hyphenated"):
+                    text = parser.join_hyphenated(text) or text
+
+            if active == "HtmlLoader":
+                if strip_scripts:
+                    text = TextParser().remove_html(text) or text
+                # Structural filtering can be layered later
+
+            # --------------------------
+            # Common TextParser pipeline
+            # --------------------------
+            tp = TextParser()
+
+            if remove_html:
+                text = tp.remove_html(text) or text
+            if remove_markdown:
+                text = tp.remove_markdown(text) or text
+            if remove_special:
+                text = tp.remove_special(text) or text
+            if remove_numbers:
+                text = tp.remove_numbers(text) or text
+            if remove_punctuation:
+                text = tp.remove_punctuation(text) or text
+            if remove_stopwords:
+                text = tp.remove_stopwords(text) or text
+            if normalize_text:
+                text = tp.normalize_text(text) or text
+            if lemmatize_text:
+                text = tp.lemmatize_text(text) or text
+            if remove_fragments:
+                text = tp.remove_fragments(text) or text
+            if collapse_whitespace:
+                text = tp.collapse_whitespace(text) or text
+
+            st.session_state.processed_text = text
+            st.success("Text processing applied.")
+
 
 # ==========================================================================================
 # Tab 3 — Structural Views
