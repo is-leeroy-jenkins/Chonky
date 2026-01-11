@@ -73,7 +73,7 @@ st.set_page_config(
 	page_icon=cfg.ICON
 )
 
-st.title("NLP Workbench")
+st.title("NLP Plumbing")
 
 # ==========================================================================================
 # Session State Initialization

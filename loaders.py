@@ -2322,7 +2322,7 @@ class OneDriveLoader( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-class GoogleStorageLoader( Loader ):
+class GoogleLoader( Loader ):
 	'''
 
 		Purpose:
