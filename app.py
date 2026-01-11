@@ -57,8 +57,7 @@ from processing import Processor
 
 
 from loaders import (PdfLoader, HtmlLoader, CsvLoader, ExcelLoader,
-                     GoogleLoader, OneDriveLoader, EmailLoader,
-                     WebLoader, SpfxLoader, PowerPointLoader, ArXivLoader,
+                     EmailLoader, WebLoader, PowerPointLoader, ArXivLoader, JsonLoader, GithubLoader,
                      MarkdownLoader, WordLoader, OutlookLoader, YoutubeLoader, WikiLoader)
 
 # ==========================================================================================
@@ -120,12 +119,9 @@ loader_type = st.sidebar.selectbox(
 	  'ArXiv',
 	  'Wikipedia',
 	  'PowerPoint',
-	  'SharePoint',
 	  'Youtube',
-	  'OneDrive',
-	  'GoogleDrive',
-	  'Email',
-	  'Outlook', ]
+	  'JSON',
+	  'Github' ]
 )
 
 chunk_size = st.sidebar.number_input(
@@ -161,12 +157,9 @@ LOADERS = \
 	  'ArXiv': ArXivLoader,
 	  'Wikipedia': WikiLoader,
 	  'PowerPoint': PowerPointLoader,
-	  'SharePoint': SpfxLoader,
 	  'Youtube': YoutubeLoader,
-	  'OneDrive': OneDriveLoader,
-	  'GoogleDrive': GoogleLoader,
-	  'Email': EmailLoader,
-	  'Outlook': OutlookLoader
+	  'JSON': JsonLoader,
+	  'Github': GithubLoader
 }
 
 # ==========================================================================================
@@ -223,7 +216,7 @@ if load_button:
 
     elif source_type == "Web URLs" and urls.strip():
         url_list = [u.strip() for u in urls.splitlines() if u.strip()]
-        loader = Web()
+        loader = WebLoader()
         documents = loader.load(url_list)
         raw_text_parts.extend(d.page_content for d in documents)
 
@@ -237,9 +230,9 @@ if load_button:
 # ==========================================================================================
 
 tabs = st.tabs([
-    "📄 Documents",
-    "🧹 Preprocessing Pipeline",
-    "📐 Structural Views",
+    "📄 Loading",
+    "🧹 Processing",
+    "📐 Scaffolding",
     "🔤 Tokens & Vocabulary",
     "📊 Analysis & Statistics",
     "🧩 Vectorization & Chunking",
@@ -250,7 +243,7 @@ tabs = st.tabs([
 # Tab 1 — Documents
 # ==========================================================================================
 
-with tabs[0]:
+with tabs[ 0 ]:
     st.header("")
 
     if st.session_state.raw_text:

@@ -1,3 +1,4 @@
+arxiv
 beautifulsoup4
 chromadb
 docx
@@ -8,9 +9,11 @@ ipywidgets
 ipython
 jupytext
 jupyterlab
+jq
 langchain
 langchain-community
 langchain-openai
+lxml
 matplotlib
 nltk
 openpyxl
@@ -19,6 +22,7 @@ PyMuPDF
 python-docx
 pathlib
 pydantic
+pytube
 pandas
 pinecone
 sentence-transformers
@@ -29,3 +33,5 @@ tiktoken
 transformers
 textblob
 tqdm
+wikipedia
+youtube-transcript-api

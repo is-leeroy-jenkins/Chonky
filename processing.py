@@ -1183,7 +1183,7 @@ class Text( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = nltk.word_tokenize( text )
+			_tokens = nltk.sent_tokenize( text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_data = [ ]
 			for index, chunk in enumerate( _sentences ):
@@ -1874,9 +1874,19 @@ class Word( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'extract_text', 'split_sentences', 'clean_sentences', 'create_vocabulary',
-			'compute_frequency_distribution', 'summarize', 'filepath', 'raw_text', 'paragraphs',
-			'sentences', 'cleaned_sentences', 'vocabulary', 'freq_dist' ]
+		return [ 'extract_text',
+		         'split_sentences',
+		         'clean_sentences',
+		         'create_vocabulary',
+		         'compute_frequency_distribution',
+		         'summarize',
+		         'filepath',
+		         'raw_text',
+		         'paragraphs',
+		         'sentences',
+		         'cleaned_sentences',
+		         'vocabulary',
+		         'freq_dist' ]
 	
 	def extract_text( self ) -> str | None:
 		"""

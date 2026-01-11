@@ -41,12 +41,14 @@
   </summary>
   ******************************************************************************************
 '''
+import arxiv
+import docx2txt
 from boogr import Error, ErrorDialog
 import config as cfg
 import glob
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.tools import Tool
-from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
+from langchain_text_splitters import Language, RecursiveCharacterTextSplitter, CharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
@@ -54,7 +56,10 @@ from langchain_community.document_loaders import (
     CSVLoader,
     Docx2txtLoader,
     PyPDFLoader,
+    JSONLoader,
+    GithubFileLoader,
     UnstructuredExcelLoader,
+    RecursiveUrlLoader,
     WebBaseLoader,
     YoutubeLoader,
 	ArxivLoader,
@@ -74,6 +79,7 @@ import os
 from pathlib import Path
 import re
 from typing import Optional, List, Dict, Any
+import wikipedia
 
 def throw_if( name: str, value: Any ) -> None:
 	'''
@@ -130,7 +136,7 @@ class Loader( ):
 	candidates: Optional[ List[ str ] ]
 	resolved: Optional[ List[ str ] ]
 	loader: Optional[ BaseLoader ]
-	splitter: Optional[ RecursiveCharacterTextSplitter ]
+	splitter: Optional[ RecursiveCharacterTextSplitter | CharacterTextSplitter ]
 	chunk_size: Optional[ int ]
 	overlap_amount: Optional[ int ]
 	
@@ -287,6 +293,160 @@ class Loader( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class TextLoader( Loader ):
+	'''
+		
+		Purpose:
+		-------
+		Class for loading text documents
+		
+	'''
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	splitter: Optional[ RecursiveCharacterTextSplitter | CharacterTextSplitter ]
+	raw_text: Optional[ str ]
+	separator: Optional[ str ]
+	length_function: Optional[ object ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.raw_text = None
+		self.documents = None
+		self.pattern = None
+		self.chunk_size = None
+		self.overlap_amount = None
+		self.separator = "\n\n"
+		self.length_function = len
+
+	def __dir__( self ):
+		'''
+
+			Returns:
+			--------
+			A list of all available members.
+
+
+		'''
+		return [ 'documents',
+		         'splitter',
+		         'pattern',
+		         'file_path',
+		         'expanded',
+		         'candidates',
+		         'resolved',
+		         'chunk_size',
+		         'overlap_amount',
+		         'verify_exists',
+		         'resolve_paths',
+		         'split_documents',
+		         'load',
+		         'split',]
+	
+	def load( self, filepath: str, size: int=1000, amount: int=200, seps: str="\n\n"  ) -> List[ Document ] | None:
+		"""
+	`
+			Purpose:
+				Loads raw text from a file.
+				
+			Parameters:
+				file_path (str): Path to the .txt file.
+				
+			Returns:
+				str: Raw file content as string.`
+			
+		"""
+		try:
+			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			else:
+				self.file_path = filepath
+				self.chunk_size = size
+				self.overlap_amount = amount
+				self.separator = seps
+				self.raw_text = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
+				self.splitter = CharacterTextSplitter( separator=self.separator,
+					chunk_size=self.chunk_size, chunk_overlap=self.overlap_amount )
+				self.documents = self.splitter.create_documents( texts=self.raw_text )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'Loader'
+			exception.cause = 'TextLoader'
+			exception.method = 'load( self, file_path: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split_tokens( self, size: int=1000, amount: int=200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded CSV documents into smaller text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Maximum number of characters per chunk.
+			chunk_overlap (int): Number of overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: List of split Document chunks.
+
+		'''
+		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
+			self.chunk_size = size
+			self.overlap_amount = amount
+			self.splitter = CharacterTextSplitter.from_tiktoken_encoder( encoding_name='cl100k_base',
+				chunk_size=self.chunk_size, chunk_overlap=self.overlap_amount)
+			self.documents = self.splitter.create_documents( texts=self.raw_text )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'TextLoader'
+			exception.method = 'split_tokens( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split_chars( self, size: int=1000, amount: int=200, seps: str="\n\n" ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded CSV documents into smaller text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Maximum number of characters per chunk.
+			chunk_overlap (int): Number of overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: List of split Document chunks.
+
+		'''
+		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
+			self.chunk_size = size
+			self.overlap_amount = amount
+			self.separator = seps
+			self.splitter = CharacterTextSplitter.from_tiktoken_encoder( encoding_name='cl100k_base',
+				chunk_size=self.chunk_size, chunk_overlap=self.overlap_amount)
+			self.documents = self.splitter.create_documents( texts=self.raw_text )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'TextLoader'
+			exception.method = 'split_chars( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+		
 class CsvLoader( Loader ):
 	'''
 
@@ -321,6 +481,7 @@ class CsvLoader( Loader ):
 	documents: Optional[ List[ Document ] ]
 	splitter: Optional[ RecursiveCharacterTextSplitter ]
 	file_path: Optional[ str ]
+	quote_char: Optional[ str ]
 	csv_args: Optional[ Dict[ str, Any ] ]
 	columns: Optional[ List[ str ] ]
 	
@@ -330,7 +491,8 @@ class CsvLoader( Loader ):
 		self.columns = None
 		self.csv_args = None
 		self.documents = None
-		self.pattern = None
+		self.quote_char = '"'
+		self.pattern = ","
 		self.chunk_size = None
 		self.overlap_amount = None
 		self.loader = None
@@ -348,6 +510,7 @@ class CsvLoader( Loader ):
 		         'documents',
 		         'splitter',
 		         'pattern',
+		         'delimiter'
 		         'file_path',
 		         'expanded',
 		         'candidates',
@@ -362,8 +525,8 @@ class CsvLoader( Loader ):
 		         'csv_args',
 		         'columns' ]
 	
-	def load( self, path: str, columns: Optional[ List[ str ] ],
-			csv_args: Optional[ Dict[ str, Any ] ] ) -> List[ Document ] | None:
+	def load( self, filepath: str, columns: Optional[ List[ str ] ]=None,
+			delimiter: str="\n\n", quotechar: str='"'  ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -383,9 +546,11 @@ class CsvLoader( Loader ):
 
 		'''
 		try:
-			self.file_path = self.verify_exists( path )
-			self.csv_args = csv_args
+			self.file_path = self.verify_exists( filepath )
 			self.columns = columns
+			self.pattern = delimiter
+			self.quote_char = quotechar
+			self.csv_args = { 'delimiter': self.pattern, 'fieldnames': self.columns, 'quotechar': self.quote_char }
 			self.loader = CSVLoader( file_path=self.file_path, csv_args=self.csv_args,
 				content_columns=self.columns )
 			self.documents = self.loader.load( )
@@ -416,7 +581,8 @@ class CsvLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'docs', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = size
 			self.overlap_amount = amount
 			_documents = self.split_documents( docs=self.documents, chunk=self.chunk_size,
@@ -466,16 +632,24 @@ class WebLoader( Loader ):
 		split( ) -> List[ Document ]
 
 	'''
-	loader: Optional[ WebBaseLoader ]
-	urls: Optional[ List[ str ] ]
+	loader: Optional[ RecursiveUrlLoader | WebBaseLoader ]
+	url: Optional[ str  ]
+	web_paths: Optional[ str | List[ str ] ]
 	documents: Optional[ List[ Document ] ]
 	file_path: Optional[ str ]
+	max_depth: Optional[ int ]
+	tiemout: Optional[ int ]
+	ignore: Optional[ bool ]
+	with_progress: Optional[ bool ]
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
-		self.urls = None
+		self.max_depth = None
+		self.tiemout = None
+		self.url = None
 		self.documents = None
 		self.file_path = None
+		self.web_paths = None
 		self.pattern = None
 		self.chunk_size = None
 		self.overlap_amount = None
@@ -496,6 +670,8 @@ class WebLoader( Loader ):
 		         'pattern',
 		         'file_path',
 		         'expanded',
+		         'max_depth',
+		         'timeout',
 		         'candidates',
 		         'resolved',
 		         'chunk_size',
@@ -507,7 +683,42 @@ class WebLoader( Loader ):
 		         'split',
 		         'urls', ]
 	
-	def load( self, urls: List[ str ] ) -> List[ Document ] | None:
+	def load_recursive( self, url: str, depth: int=2, max_time: int=10, ignore: bool=True ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load one or more web pages and convert to Document objects.
+
+			Parameters:
+			-----------
+			urls (str | List[str]): A single URL string or list of URL strings.
+
+			Returns:
+			--------
+			List[Document]: Parsed Document objects from fetched HTML content.
+
+		'''
+		try:
+			throw_if( 'url', url )
+			self.url= url
+			self.max_depth = depth
+			self.tiemout = max_time
+			self.ignore = ignore
+			self.loader = RecursiveUrlLoader( self.url, max_depth=self.max_depth,
+				timeout=self.tiemout, continue_on_failure=self.ignore )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'WebLoader'
+			exception.method = 'load_recursive( self, url: str, depth: int=2, max_time: int=10, ignore: bool=True ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def load_pages( self, urls: List[ str ], depth: int=2, timeout: int=10,
+			ignore: bool=True, progress: bool=True ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -525,8 +736,13 @@ class WebLoader( Loader ):
 		'''
 		try:
 			throw_if( 'urls', urls )
-			self.urls = urls
-			self.loader = WebBaseLoader( web_path=self.urls )
+			self.web_paths = urls
+			self.max_depth = depth
+			self.tiemout = timeout
+			self.ignore = ignore
+			self.with_progress = progress
+			self.loader = WebBaseLoader( web_paths=self.web_paths, show_progress=self.with_progress,
+				continue_on_failure=self.ignore )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -555,7 +771,8 @@ class WebLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'docs', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			_documents = self.split_documents( docs=self.documents, chunk=self.chunk_size,
@@ -662,7 +879,7 @@ class PdfLoader( Loader ):
 		         'markdown-img',
 		         'text-img' ]
 	
-	def load( self, path: str, mode: str='single', extract: str='plain',
+	def load( self, filepath: str, mode: str='single', extract: str='plain',
 			include: bool=True, format: str='markdown-img' ) -> List[ Document ]:
 		"""
 
@@ -674,8 +891,8 @@ class PdfLoader( Loader ):
 				List[Document]
 		"""
 		try:
-			throw_if( 'path', path )
-			self.file_path = self.verify_exists( path )
+			throw_if( 'path', filepath )
+			self.file_path = self.verify_exists( filepath )
 			self.mode = mode
 			self.extraction = extract
 			self.include_images = include
@@ -772,6 +989,17 @@ class ExcelLoader( Loader ):
 		         'load',
 		         'split', ]
 	
+	@property
+	def mode_options( self ):
+		'''
+			
+			Returns:
+			-------
+			List[ str ] of loading mode options
+			
+		'''
+		return [ 'single', 'page' ]
+	
 	def load( self, path: str, mode: str='elements', headers: bool=True ) -> List[
 		                                                                             Document ] | None:
 		'''
@@ -828,6 +1056,8 @@ class ExcelLoader( Loader ):
 
 		'''
 		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
@@ -962,7 +1192,8 @@ class WordLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			_splits = self.split_documents( docs=self.documents, chunk=self.chunk_size,
@@ -1009,6 +1240,7 @@ class MarkdownLoader( Loader ):
 	loader: Optional[ UnstructuredMarkdownLoader ]
 	file_path: str | None
 	documents: List[ Document ] | None
+	mode: Optional[ str ]
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
@@ -1018,6 +1250,7 @@ class MarkdownLoader( Loader ):
 		self.chunk_size = None
 		self.overlap_amount = None
 		self.loader = None
+		self.mode = None
 	
 	def __dir__( self ):
 		'''
@@ -1044,7 +1277,19 @@ class MarkdownLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, path: str ) -> List[ Document ] | None:
+	@property
+	def mode_options( self ):
+		'''
+
+			Returns:
+			--------
+			A List[ str ] of mode options
+
+		'''
+		return [ 'page',
+		         'single' ]
+	
+	def load( self, path: str, mode: str='single' ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -1063,7 +1308,8 @@ class MarkdownLoader( Loader ):
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
-			self.loader = UnstructuredMarkdownLoader( file_path=self.file_path )
+			self.mode = mode
+			self.loader = UnstructuredMarkdownLoader( file_path=self.file_path, mode=self.mode )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -1092,7 +1338,8 @@ class MarkdownLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			_documents = self.split_documents( docs=self.documents, chunk=self.chunk_size,
@@ -1220,7 +1467,8 @@ class HtmlLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
@@ -1234,13 +1482,150 @@ class HtmlLoader( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class JsonLoader( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Provides the UnstructuredHTMLLoader's functionality to parse HTML files into Document objects.
+
+		Attributes:
+		-----------
+		documents - List[ Document ]
+		file_path -  str
+		pattern -  str
+		expanded - List[ str ]
+		candidates - List[ str ]
+		resolved - List[ str ]
+		splitter - RecursiveCharacterTextSplitter
+		chunk_size - int
+		overlap_amount - int
+
+		Methods:
+		--------
+		verify_exists( self, path: str ) -> str,
+		resolve_paths( self, pattern: str ) -> List[ str ],
+		split_documents( self, docs: List[ Document ]  ) -> List[ Document ]
+		load( path: str, mode: str ) -> List[ Document ]
+		split( ) -> List[ Document ]
+
+	'''
+	loader: Optional[ JSONLoader ]
+	file_path: str | None
+	jq: Optional[ str ]
+	is_text: Optional[ bool ]
+	is_lines: Optional[ bool ]
+	documents: List[ Document ] | None
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = None
+		self.pattern = None
+		self.chunk_size = None
+		self.overlap_amount = None
+		self.loader = None
+		self.is_text = None
+		self.is_lines = None
+		self.jq = '.messages[].content'
+	
+	def __dir__( self ):
+		'''
+
+			Returns:
+			--------
+			A list of all available members.
+
+
+		'''
+		return [ 'loader',
+		         'documents',
+		         'splitter',
+		         'pattern',
+		         'file_path',
+		         'expanded',
+		         'candidates',
+		         'resolved',
+		         'chunk_size',
+		         'overlap_amount',
+		         'verify_exists',
+		         'resolve_paths',
+		         'split_documents',
+		         'load',
+		         'split', ]
+	
+	def load( self, filepath: str, is_text: bool=True, is_lines: bool=False ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load an HTML file and convert its contents into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the HTML (.html or .htm) file.
+
+			Returns:
+			--------
+			List[Document]: List of Document objects parsed from HTML content.
+
+		'''
+		try:
+			throw_if( 'filepath', filepath )
+			self.file_path = self.verify_exists( filepath )
+			self.is_text = is_text
+			self.is_lines = is_lines
+			self.loader = JSONLoader( file_path=self.file_path, jq_schema=self.jq,
+				text_content=self.is_text, json_lines=self.is_lines  )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'JsonLoader'
+			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded HTML documents into manageable text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Max characters per chunk.
+			chunk_overlap (int): Overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: Chunked list of LangChain Document objects.
+
+		'''
+		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'JsonLoader'
+			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+			
 class YouTubeLoader( Loader ):
 	'''
 
 		Purpose:
 		--------
-		Provides the YoutubeLoader's functionality
-		to parse video transcripts into Document objects.
+		Provides functionality to parse youttube video transcripts into Document objects.
 
 		Attributes:
 		-----------
@@ -1269,12 +1654,13 @@ class YouTubeLoader( Loader ):
 	include_info: Optional[ bool ]
 	llm: Optional[ ChatOpenAI ]
 	language: Optional[ str ]
+	translation: Optional[ str ]
 	temperature: Optional[ int ]
 	api_key: Optional[ str ]
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
-		self.include_info = True
+		self.include_info = None
 		self.temperature = 0
 		self.api_key = cfg.OPENAI_API_KEY
 		self.llm = ChatOpenAI( temperature=self.temperature, api_key=self.api_key )
@@ -1315,7 +1701,36 @@ class YouTubeLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, youtube_url: str ) -> List[ Document ] | None:
+	@property
+	def language_options( self ):
+		'''
+			
+			Returns:
+			--------
+			A List[ str ] of languages in order of decreasing preference
+			
+		'''
+		return [ 'en-US', 'ceb', 'es', 'zh-CN', 'fil', 'de', 'ja', 'ru' ]
+	
+	@property
+	def translation_options( self ):
+		'''
+
+		Returns:
+		--------
+		A List[ str ] of languages in order of decreasing preference
+		'''
+		return [ 'en-US',
+		         'ceb',
+		         'es',
+		         'zh-CN',
+		         'fil',
+		         'de',
+		         'ja',
+		         'ru' ]
+	
+	def load( self, youtube_url: str, lang: str='en',
+			trans: str='en', add_info: bool=True ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -1334,7 +1749,12 @@ class YouTubeLoader( Loader ):
 		try:
 			throw_if( 'youtube_url', youtube_url )
 			self.file_path = self.verify_exists( youtube_url )
-			self.loader = YoutubeLoader.from_youtube_url( youtube_url=self.file_path, )
+			self.include_info = add_info
+			self.language = lang
+			self.translation = trans
+			self.loader = YoutubeLoader.from_youtube_url( self.file_path,
+				add_video_info=self.include_info, language=[ self.language ],
+				translation=self.translation   )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -1363,7 +1783,8 @@ class YouTubeLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			self.documents = self.split_documents( docs=self.documents, chunk=self.chunk_size,
@@ -1382,8 +1803,9 @@ class ArXivLoader( Loader ):
 
 		Purpose:
 		--------
-		Provides the Arxiv loading functionality
-		to parse video research papers into Document objects.
+		alaods documents from an open-access archive for 2 million scholarly articles in the
+		fields of physics,  mathematics, computer science, quantitative biology,
+		quantitative finance, statistics,  electrical engineering and systems science, and economics.
 
 		Attributes:
 		-----------
@@ -1422,8 +1844,8 @@ class ArXivLoader( Loader ):
 		self.chunk_size = None
 		self.overlap_amount = None
 		self.loader = None
-		self.max_documents = 2
-		self.max_characters = 1000
+		self.max_documents = None
+		self.max_characters = None
 		self.include_metadata = False
 	
 	def __dir__( self ):
@@ -1454,7 +1876,7 @@ class ArXivLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, question: str ) -> List[ Document ] | None:
+	def load( self, query: str, max_chars: int=1000 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -1471,10 +1893,10 @@ class ArXivLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'question', question )
-			self.query = question
-			self.loader = ArxivLoader( query=self.query,
-				doc_content_chars_max=self.max_characters )
+			throw_if( 'query', query )
+			self.query = query
+			self.max_characters = max_chars
+			self.loader = ArxivLoader( query=self.query, doc_content_chars_max=self.max_characters )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -1503,7 +1925,8 @@ class ArXivLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
@@ -1563,8 +1986,8 @@ class WikiLoader( Loader ):
 		self.chunk_size = None
 		self.overlap_amount = None
 		self.loader = None
-		self.max_documents = 25
-		self.max_characters = 4000
+		self.max_documents = None
+		self.max_characters = None
 		self.include_all
 	
 	def __dir__( self ):
@@ -1595,7 +2018,7 @@ class WikiLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, question: str ) -> List[ Document ] | None:
+	def load( self, query: str, max_docs: int=25, max_chars: int=4000 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -1612,8 +2035,10 @@ class WikiLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'question', question )
-			self.query = question
+			throw_if( 'query', query)
+			self.query = query
+			self.max_documents = max_docs
+			self.max_characters = max_chars
 			self.loader = WikipediaLoader( query=self.query, max_documents=self.max_documents,
 				load_all_available_meta=self.include_all, doc_content_chars_max=self.max_characters )
 			self.documents = self.loader.load( )
@@ -1644,7 +2069,8 @@ class WikiLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'documents', self.documents )
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
 			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
@@ -1658,6 +2084,317 @@ class WikiLoader( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class GithubLoader( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Provides the functionality to laod github files in to langchain documents
+
+		Attributes:
+		-----------
+		documents - List[ Document ]
+		file_path -  str
+		pattern -  str
+		expanded - List[ str ]
+		candidates - List[ str ]
+		resolved - List[ str ]
+		splitter - RecursiveCharacterTextSplitter
+		chunk_size - int
+		overlap_amount - int
+
+		Methods:
+		--------
+		verify_exists( self, path: str ) -> str;
+		resolve_paths( self, pattern: str ) -> List[ str ];
+		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
+		load( path: str, mode: str ) -> List[ Document ];
+		split( ) -> List[ Document ];
+
+	'''
+	loader: Optional[ WikipediaLoader ]
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	query: Optional[ str ]
+	max_documents: Optional[ int ]
+	max_characters: Optional[ int ]
+	include_all: Optional[ bool ]
+	query: Optional[ str ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = None
+		self.query = None
+		self.chunk_size = None
+		self.overlap_amount = None
+		self.loader = None
+		self.max_documents = None
+		self.max_characters = None
+		self.include_all
+	
+	def __dir__( self ):
+		'''
+
+			Returns:
+			--------
+			A list of all available members.
+
+
+		'''
+		return [ 'loader',
+		         'documents',
+		         'splitter',
+		         'pattern',
+		         'file_path',
+		         'expanded',
+		         'candidates',
+		         'resolved',
+		         'chunk_size',
+		         'overlap_amount',
+		         'max_documents',
+		         'max_characters',
+		         'include_all',
+		         'verify_exists',
+		         'resolve_paths',
+		         'split_documents',
+		         'load',
+		         'split', ]
+	
+	def load( self, query: str, max_docs: int = 25, max_chars: int = 4000 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load an wikipedia and convert its contents into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the HTML (.html or .htm) file.
+
+			Returns:
+			--------
+			List[Document]: List of Document objects parsed from HTML content.
+
+		'''
+		try:
+			throw_if( 'query', query )
+			self.query = query
+			self.max_documents = max_docs
+			self.max_characters = max_chars
+			self.loader = WikipediaLoader( query=self.query, max_documents=self.max_documents,
+				load_all_available_meta=self.include_all, doc_content_chars_max=self.max_characters )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'WikiLoader'
+			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded Wikipedia search documents into manageable text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Max characters per chunk.
+			chunk_overlap (int): Overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: Chunked list of LangChain Document objects.
+
+		'''
+		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'GithubLoader'
+			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+
+class PowerPointLoader( Loader ):
+	'''
+
+		Purpose:
+		--------
+		Provides PowerPoint loading functionality
+		to parse ppt files into Document objects.
+
+		Attributes:
+		-----------
+		documents - List[ Document ]
+		file_path -  str
+		pattern -  str
+		expanded - List[ str ]
+		candidates - List[ str ]
+		resolved - List[ str ]
+		splitter - RecursiveCharacterTextSplitter
+		chunk_size - int
+		overlap_amount - int
+
+		Methods:
+		--------
+		verify_exists( self, path: str ) -> str;
+		resolve_paths( self, pattern: str ) -> List[ str ];
+		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
+		load( path: str, mode: str ) -> List[ Document ];
+		split( ) -> List[ Document ];
+
+	'''
+	loader: Optional[ UnstructuredPowerPointLoader ]
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	mode: Optional[ str ]
+	query: Optional[ str ]
+	
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = None
+		self.query = None
+		self.chunk_size = None
+		self.overlap_amount = None
+		self.loader = None
+		self.mode = None
+	
+	def __dir__( self ):
+		'''
+
+			Returns:
+			--------
+			A list of all available members.
+
+
+		'''
+		return [ 'loader',
+		         'documents',
+		         'splitter',
+		         'pattern',
+		         'file_path',
+		         'expanded',
+		         'candidates',
+		         'resolved',
+		         'chunk_size',
+		         'overlap_amount',
+		         'query',
+		         'mode',
+		         'verify_exists',
+		         'resolve_paths',
+		         'split_documents',
+		         'load',
+		         'split', ]
+	
+	def load( self, path: str, mode: str='single' ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load PowerPoint slides and convert their content into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the HTML (.html or .htm) file.
+
+			Returns:
+			--------
+			List[Document]: List of Document objects parsed from HTML content.
+
+		'''
+		try:
+			throw_if( 'path', path )
+			self.file_path = self.verify_exists( path )
+			self.mode = mode
+			self.loader = UnstructuredPowerPointLoader( file_path=self.file_path, mode=self.mode )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'PowerPointLoader'
+			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def load_multiple( self, path: str ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load PowerPoint slides and convert their content into LangChain Document objects.
+
+			Parameters:
+			-----------
+			path (str): Path to the HTML (.html or .htm) file.
+
+			Returns:
+			--------
+			List[Document]: List of Document objects parsed from HTML content.
+
+		'''
+		try:
+			throw_if( 'path', path )
+			self.file_path = self.verify_exists( path )
+			self.mode = 'multiple'
+			self.loader = UnstructuredPowerPointLoader( file_path=self.file_path, mode=self.mode )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'PowerPointLoader'
+			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Split loaded Wikipedia search documents into manageable text chunks.
+
+			Parameters:
+			-----------
+			chunk_size (int): Max characters per chunk.
+			chunk_overlap (int): Overlapping characters between chunks.
+
+			Returns:
+			--------
+			List[Document]: Chunked list of LangChain Document objects.
+
+		'''
+		try:
+			if self.documents is None:
+				raise ValueError( 'No documents loaded!' )
+			self.chunk_size = chunk
+			self.overlap_amount = overlap
+			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'PowerPointLoader'
+			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			error = ErrorDialog( exception )
+			error.show( )
+
+			
 class OutlookLoader( Loader ):
 	'''
 
@@ -1984,173 +2721,7 @@ class SpfxLoader( Loader ):
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
 			error = ErrorDialog( exception )
 			error.show( )
-
-class PowerPointLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides PowerPoint loading functionality
-		to parse ppt files into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
-	loader: Optional[ UnstructuredPowerPointLoader ]
-	file_path: Optional[ str ]
-	documents: Optional[ List[ Document ] ]
-	mode: Optional[ str ]
-	query: Optional[ str ]
-	
-	def __init__( self ) -> None:
-		super( ).__init__( )
-		self.file_path = None
-		self.documents = None
-		self.query = None
-		self.chunk_size = None
-		self.overlap_amount = None
-		self.loader = None
-		self.mode = None
-	
-	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
-		return [ 'loader',
-		         'documents',
-		         'splitter',
-		         'pattern',
-		         'file_path',
-		         'expanded',
-		         'candidates',
-		         'resolved',
-		         'chunk_size',
-		         'overlap_amount',
-		         'query',
-		         'mode',
-		         'verify_exists',
-		         'resolve_paths',
-		         'split_documents',
-		         'load',
-		         'split', ]
-	
-	def load( self, path: str, mode: str = 'single' ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load PowerPoint slides and convert their content into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
-		try:
-			throw_if( 'path', path )
-			self.file_path = self.verify_exists( path )
-			self.mode = mode
-			self.loader = UnstructuredPowerPointLoader( file_path=self.file_path, mode=self.mode )
-			self.documents = self.loader.load( )
-			return self.documents
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'chonky'
-			exception.cause = 'PowerPointLoader'
-			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def load_multiple( self, path: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load PowerPoint slides and convert their content into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
-		try:
-			throw_if( 'path', path )
-			self.file_path = self.verify_exists( path )
-			self.mode = 'multiple'
-			self.loader = UnstructuredPowerPointLoader( file_path=self.file_path, mode=self.mode )
-			self.documents = self.loader.load( )
-			return self.documents
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'chonky'
-			exception.cause = 'PowerPointLoader'
-			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Wikipedia search documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
-		try:
-			throw_if( 'documents', self.documents )
-			self.chunk_size = chunk
-			self.overlap_amount = overlap
-			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
-				overlap=self.overlap_amount )
-			return self.documents
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'chonky'
-			exception.cause = 'PowerPointLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
-
+			
 class OneDriveLoader( Loader ):
 	'''
 
@@ -2228,6 +2799,17 @@ class OneDriveLoader( Loader ):
 		         'load',
 		         'load_folder',
 		         'split', ]
+	
+	@property
+	def file_options( self ):
+		'''
+
+			Returns:
+			-------
+			List[ str ] of file options
+
+		'''
+		return [ 'pdf', 'doc', 'docx', 'txt']
 	
 	def load( self, id: str ) -> List[ Document ] | None:
 		'''
@@ -2355,7 +2937,7 @@ class GoogleLoader( Loader ):
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
 	query: Optional[ str ]
-	document_id: Optional[ str ]
+	file_id: Optional[ str ]
 	folder_id: Optional[ str ]
 	query: Optional[ str ]
 	is_recursive: Optional[ bool ]
@@ -2365,7 +2947,7 @@ class GoogleLoader( Loader ):
 		self.file_path = None
 		self.documents = None
 		self.query = None
-		self.document_id = None
+		self.file_id = None
 		self.folder_id = None
 		self.chunk_size = None
 		self.overlap_amount = None
@@ -2393,7 +2975,7 @@ class GoogleLoader( Loader ):
 		         'overlap_amount',
 		         'query',
 		         'folder_id',
-		         'document_Id',
+		         'file_id',
 		         'is_recursive',
 		         'verify_exists',
 		         'resolve_paths',
@@ -2402,7 +2984,20 @@ class GoogleLoader( Loader ):
 		         'load_folder',
 		         'split', ]
 	
-	def load( self, id: str, recursive: bool = False ) -> List[ Document ] | None:
+	@property
+	def file_options( self ):
+		'''
+
+			Returns:
+			-------
+			List[ str ] of file options
+
+		'''
+		return [ 'document',
+		         'sheet',
+		         'pdf' ]
+	
+	def load_file( self, file_id: str, recursive: bool=False ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2419,11 +3014,11 @@ class GoogleLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'id', id )
+			throw_if( 'file_id', file_id )
 			throw_if( 'recursive', recursive )
-			self.document_id = id
+			self.file_id = file_id
 			self.is_recursive = recursive
-			self.loader = GoogleDriveLoader( document_ids=[ self.document_id ],
+			self.loader = GoogleDriveLoader( file_ids=[ self.file_id ],
 				recursive=self.is_recursive )
 			self.documents = self.loader.load( )
 			return self.documents
@@ -2431,11 +3026,11 @@ class GoogleLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
-			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			exception.method = 'load_File( self, file_id: str ) -> List[ Document ]'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def load_folder( self, id: str, recursive: bool = True ) -> List[ Document ] | None:
+	def load_folder( self, folder_id: str, recursive: bool=False ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2452,8 +3047,8 @@ class GoogleLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'id', id )
-			self.folder_id = id
+			throw_if( 'folder_id', folder_id )
+			self.folder_id = folder_id
 			self.is_recursive = recursive
 			self.loader = GoogleDriveLoader( folder_id=self.folder_id, recursive=self.is_recursive )
 			self.documents = self.loader.load( )
