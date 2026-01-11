@@ -451,7 +451,118 @@ with tabs[0]:
                 st.session_state.active_loader = "PowerPointLoader"
 
                 st.success(f"Loaded {len(docs)} PowerPoint document(s).")
-                
+        # --------------------------- Excel Loader (FILE + SQLITE)
+        with st.expander("📊 Excel Loader", expanded=False):
+
+            excel_file = st.file_uploader(
+                "Upload Excel file",
+                type=["xlsx", "xls"],
+                key="excel_upload",
+            )
+
+            sheet_name = st.text_input(
+                "Sheet name (leave blank for all sheets)",
+                key="excel_sheet",
+            )
+
+            table_prefix = st.text_input(
+                "SQLite table prefix",
+                value="excel",
+                help="Each sheet will be written as <prefix>_<sheetname>",
+                key="excel_table_prefix",
+            )
+
+            col_load, col_clear = st.columns(2)
+            load_excel = col_load.button("Load", key="excel_load")
+            clear_excel = col_clear.button("Clear", key="excel_clear")
+
+            # ------------------------------------------------------
+            # Clear logic (remove only ExcelLoader documents)
+            # ------------------------------------------------------
+            if clear_excel and st.session_state.get("documents"):
+                st.session_state.documents = [
+                    d for d in st.session_state.documents
+                    if d.metadata.get("loader") != "ExcelLoader"
+                ]
+                st.info("ExcelLoader documents removed.")
+
+            # ------------------------------------------------------
+            # Load + SQLite ingestion
+            # ------------------------------------------------------
+            if load_excel and excel_file:
+
+                # Ensure SQLite directory exists
+                sqlite_path = os.path.join("stores", "sqlite", "data.db")
+                os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
+
+                with tempfile.TemporaryDirectory() as tmp:
+                    excel_path = os.path.join(tmp, excel_file.name)
+                    with open(excel_path, "wb") as f:
+                        f.write(excel_file.read())
+
+                    # Read Excel into DataFrames
+                    if sheet_name.strip():
+                        dfs = {
+                            sheet_name: pd.read_excel(excel_path, sheet_name=sheet_name)
+                        }
+                    else:
+                        dfs = pd.read_excel(excel_path, sheet_name=None)
+
+                # Open SQLite connection
+                conn = sqlite3.connect(sqlite_path)
+
+                docs = []
+
+                for sheet, df in dfs.items():
+                    if df.empty:
+                        continue
+
+                    # Normalize table name
+                    table_name = f"{table_prefix}_{sheet}".replace(" ", "_").lower()
+
+                    # Write DataFrame to SQLite
+                    df.to_sql(
+                        table_name,
+                        conn,
+                        if_exists="replace",
+                        index=False,
+                    )
+
+                    # Convert DataFrame to text for NLP pipeline
+                    text = df.to_csv(index=False)
+
+                    docs.append(
+                        Document(
+                            page_content=text,
+                            metadata={
+                                "loader": "ExcelLoader",
+                                "source": excel_file.name,
+                                "sheet": sheet,
+                                "table": table_name,
+                                "sqlite_db": sqlite_path,
+                            },
+                        )
+                    )
+
+                conn.close()
+
+                if docs:
+                    if st.session_state.documents:
+                        st.session_state.documents.extend(docs)
+                    else:
+                        st.session_state.documents = docs
+                        st.session_state.raw_documents = list(docs)
+                        st.session_state.raw_text = "\n\n".join(
+                            d.page_content for d in docs
+                        )
+
+                    st.session_state.active_loader = "ExcelLoader"
+                    st.success(
+                        f"Loaded {len(docs)} sheet(s) and stored in SQLite."
+                    )
+                else:
+                    st.warning("No data loaded (empty sheets or invalid selection).")
+
         # --------------------------- arXiv Loader (APPEND, PARAMETER-COMPLETE)
         with st.expander( "🧠 ArXiv", expanded=False ):
             arxiv_query = st.text_input(
@@ -761,7 +872,7 @@ with tabs[0]:
                     )
        
 # ======================================================================================
-# Tab — Processing / Preprocessing
+# Tab — Processing / Preprocessing (Grouped Expanders)
 # ======================================================================================
 
 with tabs[1]:
@@ -811,57 +922,68 @@ with tabs[1]:
         )
 
     # ------------------------------------------------------------------
-    # LEFT COLUMN — Controls
+    # LEFT COLUMN — Controls (Grouped Expanders)
     # ------------------------------------------------------------------
     with left:
-        st.markdown("### Common Text Processing")
-
-        # Common TextParser controls (string → string)
-        remove_html = st.checkbox("Remove HTML")
-        remove_markdown = st.checkbox("Remove Markdown")
-        remove_special = st.checkbox("Remove Special Characters")
-        remove_numbers = st.checkbox("Remove Numbers")
-        remove_punctuation = st.checkbox("Remove Punctuation")
-        remove_stopwords = st.checkbox("Remove Stopwords")
-        normalize_text = st.checkbox("Normalize (lowercase)")
-        lemmatize_text = st.checkbox("Lemmatize")
-        remove_fragments = st.checkbox("Remove Fragments")
-        collapse_whitespace = st.checkbox("Collapse Whitespace")
-
-        st.divider()
-
-        # --------------------------------------------------------------
-        # Loader-specific preprocessing (always visible)
-        # --------------------------------------------------------------
-        st.markdown("### Format-Specific Processing")
 
         active = st.session_state.active_loader
 
-        # Word-specific
+        # ==============================================================
+        # Common Text Processing (TextParser)
+        # ==============================================================
+        with st.expander("🧠 Common Text Processing", expanded=True):
+
+            remove_html = st.checkbox("Remove HTML")
+            remove_markdown = st.checkbox("Remove Markdown")
+            remove_special = st.checkbox("Remove Special Characters")
+            remove_numbers = st.checkbox("Remove Numbers")
+            remove_punctuation = st.checkbox("Remove Punctuation")
+            remove_stopwords = st.checkbox("Remove Stopwords")
+            normalize_text = st.checkbox("Normalize (lowercase)")
+            lemmatize_text = st.checkbox("Lemmatize")
+            remove_fragments = st.checkbox("Remove Fragments")
+            collapse_whitespace = st.checkbox("Collapse Whitespace")
+
+        # ==============================================================
+        # Word-Specific Processing (WordParser)
+        # ==============================================================
         extract_tables = extract_paragraphs = False
-        if active == "WordLoader":
-            extract_tables = st.checkbox("Extract Tables (Word)")
-            extract_paragraphs = st.checkbox("Extract Paragraphs (Word)")
+        with st.expander("📄 Word Processing", expanded=False):
+            if active == "WordLoader":
+                extract_tables = st.checkbox("Extract Tables")
+                extract_paragraphs = st.checkbox("Extract Paragraphs")
+            else:
+                st.caption("Available when Word documents are loaded.")
 
-        # PDF-specific
+        # ==============================================================
+        # PDF-Specific Processing (PdfParser)
+        # ==============================================================
         remove_headers = join_hyphenated = False
-        if active == "PdfLoader":
-            remove_headers = st.checkbox("Remove Headers / Footers (PDF)")
-            join_hyphenated = st.checkbox("Join Hyphenated Lines (PDF)")
+        with st.expander("📕 PDF Processing", expanded=False):
+            if active == "PdfLoader":
+                remove_headers = st.checkbox("Remove Headers / Footers")
+                join_hyphenated = st.checkbox("Join Hyphenated Lines")
+            else:
+                st.caption("Available when PDF documents are loaded.")
 
-        # HTML-specific
+        # ==============================================================
+        # HTML-Specific Processing (Structural)
+        # ==============================================================
         strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
-        if active == "HtmlLoader":
-            strip_scripts = st.checkbox("Strip <script> / <style>")
-            keep_headings = st.checkbox("Keep Headings")
-            keep_paragraphs = st.checkbox("Keep Paragraphs")
-            keep_tables = st.checkbox("Keep Tables")
+        with st.expander("🌐 HTML Processing", expanded=False):
+            if active == "HtmlLoader":
+                strip_scripts = st.checkbox("Strip <script> / <style>")
+                keep_headings = st.checkbox("Keep Headings")
+                keep_paragraphs = st.checkbox("Keep Paragraphs")
+                keep_tables = st.checkbox("Keep Tables")
+            else:
+                st.caption("Available when HTML documents are loaded.")
 
         st.divider()
 
-        # --------------------------------------------------------------
-        # Actions (disabled until text exists)
-        # --------------------------------------------------------------
+        # ==============================================================
+        # Actions
+        # ==============================================================
         col_apply, col_reset, col_clear = st.columns(3)
 
         apply_processing = col_apply.button(
@@ -874,9 +996,9 @@ with tabs[1]:
             "Clear", disabled=not has_text
         )
 
-        # --------------------------------------------------------------
-        # Reset / Clear logic
-        # --------------------------------------------------------------
+        # ==============================================================
+        # Reset / Clear
+        # ==============================================================
         if reset_processing:
             st.session_state.processed_text = st.session_state.raw_text
             st.success("Processed text reset to raw text.")
@@ -885,15 +1007,15 @@ with tabs[1]:
             st.session_state.processed_text = None
             st.success("Processed text cleared.")
 
-        # --------------------------------------------------------------
-        # Apply Processing
-        # --------------------------------------------------------------
+        # ==============================================================
+        # Apply Processing (Execution Order Matters)
+        # ==============================================================
         if apply_processing:
             text = st.session_state.raw_text
 
-            # --------------------------
-            # Loader-specific FIRST
-            # --------------------------
+            # ----------------------------------------------------------
+            # Format-specific FIRST
+            # ----------------------------------------------------------
             if active == "WordLoader":
                 parser = WordParser()
                 if extract_tables and hasattr(parser, "extract_tables"):
@@ -911,11 +1033,11 @@ with tabs[1]:
             if active == "HtmlLoader":
                 if strip_scripts:
                     text = TextParser().remove_html(text) or text
-                # Structural filtering can be layered later
+                # Structural selectors can be refined later
 
-            # --------------------------
-            # Common TextParser pipeline
-            # --------------------------
+            # ----------------------------------------------------------
+            # Common TextParser pipeline (string → string)
+            # ----------------------------------------------------------
             tp = TextParser()
 
             if remove_html:
