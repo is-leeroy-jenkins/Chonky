@@ -176,7 +176,7 @@ LOADERS = \
 if source_type == "Local Files":
     uploaded = st.sidebar.file_uploader(
         "Upload Documents",
-        type=["txt", "pdf", "docx", "md", "html", "csv"],
+        type=["txt", "pdf", "docx", "md", "html", "csv", "xlsx" ],
         accept_multiple_files=True
     )
 else:
