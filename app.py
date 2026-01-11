@@ -53,10 +53,15 @@ from typing import List
 import pandas as pd
 from langchain_core.documents import Document
 
-from processing import (
-    DOCX, PDF, Markdown, HTML, CSV, Web,
-    Processor
-)
+from processing import Processor
+
+
+from loaders import ( PdfLoader as PDF,
+                     HtmlLoader as HTML,
+                     CsvLoader as CSV,
+                     WebLoader as Web,
+                     WordLoader as Word,
+                     MarkdownLoader )
 
 # ==========================================================================================
 # Page Configuration
@@ -131,8 +136,8 @@ overlap = st.sidebar.number_input(
 
 LOADERS = {
     "PDF": PDF,
-    "DOCX": DOCX,
-    "Markdown": Markdown,
+    "DOCX": Word,
+    "Markdown": MarkdownLoader,
     "HTML": HTML,
     "CSV": CSV,
     "Web": Web
