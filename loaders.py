@@ -1589,7 +1589,7 @@ class JsonLoader( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2180,11 +2180,14 @@ class GithubLoader( Loader ):
 
 			Purpose:
 			--------
-			Load an wikipedia and convert its contents into LangChain Document objects.
+			Load filtered contents of Github repo/branch into LangChain Document objects.
 
 			Parameters:
 			-----------
-			path (str): Path to the HTML (.html or .htm) file.
+			url (str):
+			repo (str):
+			branch (str):
+			filetype (str):
 
 			Returns:
 			--------
@@ -2205,12 +2208,12 @@ class GithubLoader( Loader ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
-			exception.cause = 'WikiLoader'
-			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			exception.cause = 'GithubLoader'
+			exception.method = 'load( self, url: str, repo: str, branch: str, filetype: str=md ) -> List[ Document ]'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:

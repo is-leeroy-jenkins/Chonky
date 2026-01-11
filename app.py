@@ -56,7 +56,7 @@ from langchain_core.documents import Document
 from processing import Processor
 
 
-from loaders import (PdfLoader, HtmlLoader, CsvLoader, ExcelLoader,
+from loaders import (PdfLoader, HtmlLoader, CsvLoader, ExcelLoader, TextLoader,
                      EmailLoader, WebLoader, PowerPointLoader, ArXivLoader, JsonLoader, GithubLoader,
                      MarkdownLoader, WordLoader, OutlookLoader, YoutubeLoader, WikiLoader)
 
@@ -146,7 +146,7 @@ overlap = st.sidebar.number_input(
 
 LOADERS = \
 {
-	  'Text': WordLoader,
+	  'Text': TextLoader,
 	  'PDF': PdfLoader,
 	  'Word': WordLoader,
 	  'Markdown': MarkdownLoader,
