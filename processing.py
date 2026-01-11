@@ -161,7 +161,7 @@ class Processor( ):
 		self.tokenized = ''
 		self.cleaned_text = ''
 
-class Text( Processor ):
+class TextParser( Processor ):
 	'''
 
 		Purpose:
@@ -1812,7 +1812,7 @@ class Text( Processor ):
 			error.show( )
 	
 
-class Word( Processor ):
+class WordParser( Processor ):
 	"""
 
 		Purpose:
@@ -2016,7 +2016,7 @@ class Word( Processor ):
 		print( f'Vocabulary Size: {len( self.vocabulary )}' )
 		print( f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
 
-class PDF( Processor ):
+class PdfParser( Processor ):
 	"""
 
 		Purpose:
