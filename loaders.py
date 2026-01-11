@@ -43,6 +43,8 @@
 '''
 import arxiv
 import docx2txt
+from Lib.webbrowser import open_new
+
 from boogr import Error, ErrorDialog
 import config as cfg
 import glob
@@ -2112,7 +2114,7 @@ class GithubLoader( Loader ):
 		split( ) -> List[ Document ];
 
 	'''
-	loader: Optional[ WikipediaLoader ]
+	loader: Optional[ GithubFileLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
 	query: Optional[ str ]
@@ -2120,6 +2122,11 @@ class GithubLoader( Loader ):
 	max_characters: Optional[ int ]
 	include_all: Optional[ bool ]
 	query: Optional[ str ]
+	repo: Optional[ str ]
+	branch: Optional[ str ]
+	access_token: Optional[ str ]
+	github_url: Optional[ str ]
+	file_filter: Optional[ str ]
 	
 	def __init__( self ) -> None:
 		super( ).__init__( )
@@ -2131,7 +2138,11 @@ class GithubLoader( Loader ):
 		self.loader = None
 		self.max_documents = None
 		self.max_characters = None
-		self.include_all
+		self.include_all = None
+		self.github_url = None
+		self.repo = None
+		self.branch = None
+		self.file_filter = None
 	
 	def __dir__( self ):
 		'''
@@ -2155,13 +2166,16 @@ class GithubLoader( Loader ):
 		         'max_documents',
 		         'max_characters',
 		         'include_all',
+		         'repo',
+		         'branch',
+		         'file_filter',
 		         'verify_exists',
 		         'resolve_paths',
 		         'split_documents',
 		         'load',
 		         'split', ]
 	
-	def load( self, query: str, max_docs: int = 25, max_chars: int = 4000 ) -> List[ Document ] | None:
+	def load( self, url: str, repo: str, branch: str, filetype: str='.md' ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
@@ -2178,12 +2192,14 @@ class GithubLoader( Loader ):
 
 		'''
 		try:
-			throw_if( 'query', query )
-			self.query = query
-			self.max_documents = max_docs
-			self.max_characters = max_chars
-			self.loader = WikipediaLoader( query=self.query, max_documents=self.max_documents,
-				load_all_available_meta=self.include_all, doc_content_chars_max=self.max_characters )
+			throw_if( 'url', url )
+			self.github_url = url
+			self.repo = repo
+			self.branch = branch
+			self.pattern = filetype
+			self.file_filter = lambda file_path: file_path.endswith( self.pattern )
+			self.loader = GithubFileLoader( repo=self.repo, branch=self.branch,
+				github_api_url=self.github_url, file_filter=self.file_filter )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
