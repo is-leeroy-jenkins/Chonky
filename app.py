@@ -56,12 +56,10 @@ from langchain_core.documents import Document
 from processing import Processor
 
 
-from loaders import ( PdfLoader as PDF,
-                     HtmlLoader as HTML,
-                     CsvLoader as CSV,
-                     WebLoader as Web,
-                     WordLoader as Word,
-                     MarkdownLoader )
+from loaders import (PdfLoader, HtmlLoader, CsvLoader, ExcelLoader,
+                     GoogleLoader, OneDriveLoader, EmailLoader,
+                     WebLoader, SpfxLoader, PowerPointLoader, ArXivLoader,
+                     MarkdownLoader, WordLoader, OutlookLoader, YoutubeLoader, WikiLoader)
 
 # ==========================================================================================
 # Page Configuration
@@ -73,7 +71,7 @@ st.set_page_config(
 	page_icon=cfg.ICON
 )
 
-st.title("NLP Plumbing")
+st.markdown("#### NLPlumbing")
 
 # ==========================================================================================
 # Session State Initialization
@@ -102,16 +100,32 @@ for key in STATE_KEYS:
 # Sidebar — Ingestion & Configuration
 # ==========================================================================================
 
-st.sidebar.header( "📥 Ingestion" )
+st.sidebar.header( '📥 Ingestion' )
 
 source_type = st.sidebar.radio(
-    "Data Source",
-    ["Local Files", "Web URLs"]
+    'Data Source',
+    ['Local Files', 'Web URLs']
 )
 
 loader_type = st.sidebar.selectbox(
-    "Loader Type",
-    ["TXT", "PDF", "DOCX", "Markdown", "HTML", "CSV", "Web"]
+	'Loader Type',
+	[ 'Text',
+	  'PDF',
+	  'Word',
+	  'Markdown',
+	  'HTML',
+	  'CSV',
+	  'Web',
+	  'Excel',
+	  'ArXiv',
+	  'Wikipedia',
+	  'PowerPoint',
+	  'SharePoint',
+	  'Youtube',
+	  'OneDrive',
+	  'GoogleDrive',
+	  'Email',
+	  'Outlook', ]
 )
 
 chunk_size = st.sidebar.number_input(
@@ -134,13 +148,25 @@ overlap = st.sidebar.number_input(
 # Loader Resolution (NON-TXT ONLY)
 # ==========================================================================================
 
-LOADERS = {
-    "PDF": PDF,
-    "DOCX": Word,
-    "Markdown": MarkdownLoader,
-    "HTML": HTML,
-    "CSV": CSV,
-    "Web": Web
+LOADERS = \
+{
+	  'Text': WordLoader,
+	  'PDF': PdfLoader,
+	  'Word': WordLoader,
+	  'Markdown': MarkdownLoader,
+	  'HTML': HtmlLoader,
+	  'CSV': CsvLoader,
+	  'Web': WebLoader,
+	  'Excel': ExcelLoader,
+	  'ArXiv': ArXivLoader,
+	  'Wikipedia': WikiLoader,
+	  'PowerPoint': PowerPointLoader,
+	  'SharePoint': SpfxLoader,
+	  'Youtube': YoutubeLoader,
+	  'OneDrive': OneDriveLoader,
+	  'GoogleDrive': GoogleLoader,
+	  'Email': EmailLoader,
+	  'Outlook': OutlookLoader
 }
 
 # ==========================================================================================
