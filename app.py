@@ -44,6 +44,7 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import tempfile
 from typing import List
 
@@ -92,6 +93,12 @@ st.set_page_config(
     page_icon=cfg.ICON,
 )
 
+st.markdown("")
+
+# ======================================================================================
+# Session State Initialization
+# ======================================================================================
+
 SESSION_STATE_DEFAULTS = {
     # Ingestion
     "documents": None,
@@ -122,39 +129,13 @@ for key, default in SESSION_STATE_DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-st.markdown("#### NLPlumbing")
-
-# ======================================================================================
-# Session State Initialization
-# ======================================================================================
-
-if "documents" not in st.session_state:
-    st.session_state.documents = None
-
-if "active_loader" not in st.session_state:
-    st.session_state.active_loader = None
-
-# Baseline snapshot of the initially ingested corpus (pre-processing, pre-chunking).
-if "raw_text" not in st.session_state:
-    st.session_state.raw_text = None
-
-# Optional: keep a copy of the original Documents as loaded (pre-chunking).
-if "raw_documents" not in st.session_state:
-    st.session_state.raw_documents = None
-    
-if "vocabulary" not in st.session_state:
-    st.session_state.vocabulary = None
-
-if "token_counts" not in st.session_state:
-    st.session_state.token_counts = None
-
 # ======================================================================================
 # Sidebar (Branding / Global Only)
 # ======================================================================================
 
 with st.sidebar:
 	st.header( "Chonky" )
-	st.caption( "Document ingestion & NLP plumbing" )
+	st.caption( "Pipelines" )
 	st.divider( )
 	st.subheader( "" )
 
@@ -164,13 +145,13 @@ with st.sidebar:
 
 tabs = st.tabs(
     [
-        "📄 Loading",
-        "🧹 Processing",
-        "📐 Scaffolding",
-        "🔤 Tokens & Vocabulary",
-        "📊 Analysis & Statistics",
-        "🧩 Vectorization & Chunking",
-        "📤 Export",
+        "Loading",
+        "Processing",
+        "Scaffolding",
+        "Tokens & Vocabulary",
+        "Analysis & Statistics",
+        "Vectorization & Chunking",
+        "Export",
     ]
 )
 
@@ -213,10 +194,10 @@ with tabs[0]:
     # LEFT COLUMN — Loader Expanders
     # ------------------------------------------------------------------
     with left:
-        st.subheader("Load Documents")
+        st.subheader("")
 
         # --------------------------- Text Loader
-        with st.expander("📄 Text", expanded=False):
+        with st.expander("📄 Text Loader", expanded=False):
             files = st.file_uploader(
                 "Upload TXT files",
                 type=["txt"],
@@ -252,7 +233,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} text document(s).")
 
         # --------------------------- CSV Loader
-        with st.expander("📑 CSV", expanded=False):
+        with st.expander("📑 CSV Loader", expanded=False):
             csv_file = st.file_uploader("Upload CSV", type=["csv"], key="csv_upload")
             delimiter = st.text_input("Delimiter", value="\n\n", key="csv_delim")
             quotechar = st.text_input("Quote Character", value='"', key="csv_quote")
@@ -288,7 +269,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} CSV document(s).")
 
         # --------------------------- PDF Loader
-        with st.expander("📕 PDF", expanded=False):
+        with st.expander("📕 PDF Loader", expanded=False):
             pdf = st.file_uploader("Upload PDF", type=["pdf"], key="pdf_upload")
             mode = st.selectbox("Mode", ["single", "elements"], key="pdf_mode")
             extract = st.selectbox("Extract", ["plain", "ocr"], key="pdf_extract")
@@ -327,7 +308,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} PDF document(s).")
 
         # --------------------------- Markdown Loader
-        with st.expander("🧾 Markdown", expanded=False):
+        with st.expander("🧾 Markdown Loader", expanded=False):
             md = st.file_uploader("Upload Markdown", type=["md", "markdown"], key="md_upload")
 
             col_load, col_clear = st.columns(2)
@@ -356,7 +337,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} Markdown document(s).")
 
         # --------------------------- HTML Loader
-        with st.expander("🌐 HTML", expanded=False):
+        with st.expander("🌐 HTML Loader", expanded=False):
             html = st.file_uploader("Upload HTML", type=["html", "htm"], key="html_upload")
 
             col_load, col_clear = st.columns(2)
@@ -385,7 +366,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} HTML document(s).")
 
         # --------------------------- JSON Loader
-        with st.expander("🧩 JSON", expanded=False):
+        with st.expander("🧩 JSON Loader", expanded=False):
             js = st.file_uploader("Upload JSON", type=["json"], key="json_upload")
             is_lines = st.checkbox("JSON Lines", value=False, key="json_lines")
 
@@ -419,7 +400,7 @@ with tabs[0]:
                 st.success(f"Loaded {len(docs)} JSON document(s).")
 
         # --------------------------- PowerPoint Loader
-        with st.expander("📽 Power Point", expanded=False):
+        with st.expander("📽 Power Point Loader", expanded=False):
             pptx = st.file_uploader("Upload PPTX", type=["pptx"], key="pptx_upload")
             mode = st.selectbox("Mode", ["single", "multiple"], key="pptx_mode")
 
@@ -564,7 +545,7 @@ with tabs[0]:
                     st.warning("No data loaded (empty sheets or invalid selection).")
 
         # --------------------------- arXiv Loader (APPEND, PARAMETER-COMPLETE)
-        with st.expander( "🧠 ArXiv", expanded=False ):
+        with st.expander( "🧠 ArXiv Loader", expanded=False ):
             arxiv_query = st.text_input(
                 "Query",
                 placeholder="e.g., transformer OR llm",
@@ -614,7 +595,7 @@ with tabs[0]:
 	                st.success( f"Fetched {len( docs )} arXiv document(s)." )
         
         # --------------------------- Wikipedia Loader (APPEND, PARAMETER-COMPLETE)
-        with st.expander( "📚 Wikipedia", expanded=False ):
+        with st.expander( "📚 Wikipedia Loader", expanded=False ):
             wiki_query = st.text_input(
                 "Query",
                 placeholder="e.g., Natural language processing",
@@ -678,7 +659,7 @@ with tabs[0]:
 	                st.success( f"Fetched {len( docs )} Wikipedia document(s)." )
         
         # --------------------------- GitHub Loader
-        with st.expander( "🐙 GitHub", expanded=False ):
+        with st.expander( "🐙 GitHub Loader", expanded=False ):
             gh_url = st.text_input(
                 "GitHub API URL",
                 placeholder="https://api.github.com",
@@ -877,7 +858,7 @@ with tabs[0]:
 
 with tabs[1]:
 
-    st.subheader("Preprocessing")
+    st.subheader("")
 
     # ------------------------------------------------------------------
     # Defensive session_state initialization (local safety)
@@ -904,7 +885,7 @@ with tabs[1]:
     # RIGHT COLUMN — Text Views
     # ------------------------------------------------------------------
     with right:
-        st.markdown("### Raw Text (from Loading)")
+        st.markdown("#### Raw Text")
         st.text_area(
             "Raw Text",
             st.session_state.raw_text or "No text loaded yet.",
@@ -913,7 +894,7 @@ with tabs[1]:
             key="raw_text_view",
         )
 
-        st.markdown("### Processed Text")
+        st.markdown("#### Processed Text")
         st.text_area(
             "Processed Text",
             st.session_state.processed_text or "",
@@ -1143,7 +1124,7 @@ with tabs[ 4 ]:
 
 with tabs[5]:  # 🧩 Vectorization & Chunking (or Chunking tab index)
 
-    st.subheader("Chunking")
+    st.subheader("")
 
     docs = st.session_state.get("documents")
     loader_name = st.session_state.get("active_loader")
