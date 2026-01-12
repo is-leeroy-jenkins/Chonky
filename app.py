@@ -135,7 +135,7 @@ for key, default in SESSION_STATE_DEFAULTS.items():
 
 with st.sidebar:
 	st.header( "Chonky" )
-	st.caption( "Pipe" )
+	st.caption( "Text Plumbling" )
 	st.divider( )
 	st.subheader( "" )
 
