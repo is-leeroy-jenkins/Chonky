@@ -885,7 +885,6 @@ with tabs[1]:
     # RIGHT COLUMN — Text Views
     # ------------------------------------------------------------------
     with right:
-        st.markdown("##### Raw Text")
         st.text_area(
             "Raw Text",
             st.session_state.raw_text or "No text loaded yet.",
@@ -894,7 +893,6 @@ with tabs[1]:
             key="raw_text_view",
         )
 
-        st.markdown("##### Processed Text")
         st.text_area(
             "Processed Text",
             st.session_state.processed_text or "",
