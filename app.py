@@ -43,7 +43,9 @@
 '''
 from __future__ import annotations
 
+import base64
 import os
+from pathlib import Path
 import sqlite3
 import tempfile
 from typing import List
@@ -153,8 +155,8 @@ for key, default in SESSION_STATE_DEFAULTS.items():
 
 with st.sidebar:
 	st.header( "Chonky" )
-	st.caption( "Text Plumbling" )
-	st.divider( )
+	st.caption( "Pipelines & Plumbling" )
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( "" )
 
 # ======================================================================================
