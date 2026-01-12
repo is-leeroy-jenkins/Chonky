@@ -135,7 +135,7 @@ for key, default in SESSION_STATE_DEFAULTS.items():
 
 with st.sidebar:
 	st.header( "Chonky" )
-	st.caption( "Pipelines" )
+	st.caption( "Pipe" )
 	st.divider( )
 	st.subheader( "" )
 
@@ -559,7 +559,7 @@ with tabs[0]:
                 value=1000,
                 step=250,
                 key="arxiv_max_chars",
-                help="Passed as max_chars to ArXivLoader.load(query, max_chars=...).",
+                help="Maximum characters read",
             )
             
             col_load, col_clear = st.columns( 2 )
@@ -609,7 +609,7 @@ with tabs[0]:
                 value=25,
                 step=1,
                 key="wiki_max_docs",
-                help="Passed as max_docs to WikiLoader.load(query, max_docs=..., max_chars=...).",
+                help="Maximum number of documents loaded",
             )
             
             wiki_max_chars = st.number_input(
@@ -619,7 +619,7 @@ with tabs[0]:
                 value=4000,
                 step=250,
                 key="wiki_max_chars",
-                help="Passed as max_chars to WikiLoader.load(query, max_docs=..., max_chars=...).",
+                help="Upper limit on the number of characters",
             )
             
             col_load, col_clear = st.columns( 2 )
@@ -665,14 +665,14 @@ with tabs[0]:
                 placeholder="https://api.github.com",
                 value="https://api.github.com",
                 key="gh_url",
-                help="Passed as the 'url' argument to GithubLoader.load(...).",
+                help="web url to a github repository",
             )
             
             gh_repo = st.text_input(
                 "Repo (owner/name)",
                 placeholder="openai/openai-python",
                 key="gh_repo",
-                help="Passed as the 'repo' argument to GithubLoader.load(...).",
+                help="Name of the repository",
             )
             
             gh_branch = st.text_input(
@@ -680,14 +680,14 @@ with tabs[0]:
                 placeholder="main",
                 value="main",
                 key="gh_branch",
-                help="Passed as the 'branch' argument to GithubLoader.load(...).",
+                help="The branch of the repository",
             )
             
             gh_filetype = st.text_input(
                 "File type filter",
                 value=".md",
                 key="gh_filetype",
-                help="Passed as the 'filetype' argument (default .md). Example: .py, .md, .txt",
+                help="Filering by file type. Example: .py, .md, .txt",
             )
             
             col_load, col_clear = st.columns( 2 )
@@ -833,7 +833,7 @@ with tabs[0]:
     # RIGHT COLUMN — Document Preview
     # ------------------------------------------------------------------
     with right:
-        st.subheader("Document Preview")
+        st.subheader("")
 
         docs = st.session_state.documents
         if not docs:
@@ -885,7 +885,7 @@ with tabs[1]:
     # RIGHT COLUMN — Text Views
     # ------------------------------------------------------------------
     with right:
-        st.markdown("#### Raw Text")
+        st.markdown("##### Raw Text")
         st.text_area(
             "Raw Text",
             st.session_state.raw_text or "No text loaded yet.",
@@ -894,7 +894,7 @@ with tabs[1]:
             key="raw_text_view",
         )
 
-        st.markdown("#### Processed Text")
+        st.markdown("##### Processed Text")
         st.text_area(
             "Processed Text",
             st.session_state.processed_text or "",
@@ -912,7 +912,7 @@ with tabs[1]:
         # ==============================================================
         # Common Text Processing (TextParser)
         # ==============================================================
-        with st.expander("🧠 Common Text Processing", expanded=True):
+        with st.expander("🧠 Text Processing", expanded=True):
 
             remove_html = st.checkbox("Remove HTML")
             remove_markdown = st.checkbox("Remove Markdown")
