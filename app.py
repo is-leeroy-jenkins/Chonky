@@ -71,6 +71,11 @@ from loaders import (
     ArXivLoader
 )
 
+# ================================================================================
+# Contants / Helpers / Utilities
+# ============================================================================
+BASE_DIR = os.path.dirname( os.path.abspath( __file__ ) )
+
 CHUNKABLE_LOADERS = {
     "TextLoader": ["chars", "tokens"],
     "CsvLoader": ["chars"],
@@ -82,6 +87,15 @@ CHUNKABLE_LOADERS = {
     "JsonLoader": ["chars"],
     "PowerPointLoader": ["chars"],
 }
+
+
+BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 0 10px 0;'></div>"
+
+
+def encode_image_base64(path: str) -> str:
+	data = Path(path).read_bytes()
+	return base64.b64encode(data).decode("utf-8")
+
 
 # ======================================================================================
 # Page Configuration
@@ -113,7 +127,11 @@ SESSION_STATE_DEFAULTS = {
     "tokens": None,
     "vocabulary": None,
     "token_counts": None,
-
+		
+	# SQLite / Excel
+	"sqlite_tables": [ ],
+	"active_table": None,
+	
     # Chunking
     "chunks": None,
 
@@ -152,6 +170,7 @@ tabs = st.tabs(
         "Analysis & Statistics",
         "Vectorization & Chunking",
         "Export",
+		"Data"
     ]
 )
 
@@ -231,6 +250,156 @@ with tabs[0]:
                 st.session_state.active_loader = "TextLoader"
 
                 st.success(f"Loaded {len(docs)} text document(s).")
+		        
+        # --------------------------- NLTK Loader (BUILT-IN + LOCAL)
+        with st.expander("📚 Corpora Loader", expanded=False):
+
+            import nltk
+            from nltk.corpus import (
+                brown,
+                gutenberg,
+                reuters,
+                webtext,
+                inaugural,
+                state_union,
+            )
+
+            st.markdown("#### NLTK Corpora")
+
+            corpus_name = st.selectbox(
+                "Select corpus",
+                [
+                    "Brown",
+                    "Gutenberg",
+                    "Reuters",
+                    "WebText",
+                    "Inaugural",
+                    "State of the Union",
+                ],
+                key="nltk_corpus_name",
+            )
+
+            file_ids = []
+            try:
+                if corpus_name == "Brown":
+                    file_ids = brown.fileids()
+                elif corpus_name == "Gutenberg":
+                    file_ids = gutenberg.fileids()
+                elif corpus_name == "Reuters":
+                    file_ids = reuters.fileids()
+                elif corpus_name == "WebText":
+                    file_ids = webtext.fileids()
+                elif corpus_name == "Inaugural":
+                    file_ids = inaugural.fileids()
+                elif corpus_name == "State of the Union":
+                    file_ids = state_union.fileids()
+            except LookupError:
+                st.error(
+                    "NLTK corpus not found. Run:\n\n"
+                    "python -m nltk.downloader all\n\n"
+                    "or download individual corpora."
+                )
+
+            selected_files = st.multiselect(
+                "Select files (leave empty to load all)",
+                options=file_ids,
+                key="nltk_file_ids",
+            )
+
+            st.divider()
+
+            st.markdown("#### Local Corpus")
+
+            local_corpus_dir = st.text_input(
+                "Local directory",
+                placeholder="path/to/text/files",
+                key="nltk_local_dir",
+            )
+
+            col_load, col_clear = st.columns(2)
+            load_nltk = col_load.button("Load", key="nltk_load")
+            clear_nltk = col_clear.button("Clear", key="nltk_clear")
+
+            # ------------------------------------------------------
+            # Clear logic
+            # ------------------------------------------------------
+            if clear_nltk and st.session_state.get("documents"):
+                st.session_state.documents = [
+                    d for d in st.session_state.documents
+                    if d.metadata.get("loader") != "NLTKLoader"
+                ]
+                st.info("NLTKLoader documents removed.")
+
+            # ------------------------------------------------------
+            # Load logic
+            # ------------------------------------------------------
+            if load_nltk:
+                docs = []
+
+                # Built-in corpora
+                if file_ids:
+                    files_to_load = selected_files or file_ids
+
+                    for fid in files_to_load:
+                        try:
+                            if corpus_name == "Brown":
+                                text = " ".join(brown.words(fid))
+                            elif corpus_name == "Gutenberg":
+                                text = gutenberg.raw(fid)
+                            elif corpus_name == "Reuters":
+                                text = reuters.raw(fid)
+                            elif corpus_name == "WebText":
+                                text = webtext.raw(fid)
+                            elif corpus_name == "Inaugural":
+                                text = inaugural.raw(fid)
+                            elif corpus_name == "State of the Union":
+                                text = state_union.raw(fid)
+
+                            docs.append(
+                                Document(
+                                    page_content=text,
+                                    metadata={
+                                        "loader": "NLTKLoader",
+                                        "corpus": corpus_name,
+                                        "file_id": fid,
+                                    },
+                                )
+                            )
+                        except Exception:
+                            continue
+
+                # Local corpus
+                if local_corpus_dir and os.path.isdir(local_corpus_dir):
+                    for fname in os.listdir(local_corpus_dir):
+                        path = os.path.join(local_corpus_dir, fname)
+                        if os.path.isfile(path) and fname.lower().endswith(".txt"):
+                            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                                text = f.read()
+
+                            docs.append(
+                                Document(
+                                    page_content=text,
+                                    metadata={
+                                        "loader": "NLTKLoader",
+                                        "source": path,
+                                    },
+                                )
+                            )
+
+                if docs:
+                    if st.session_state.documents:
+                        st.session_state.documents.extend(docs)
+                    else:
+                        st.session_state.documents = docs
+                        st.session_state.raw_documents = list(docs)
+                        st.session_state.raw_text = "\n\n".join(
+                            d.page_content for d in docs
+                        )
+
+                    st.session_state.active_loader = "NLTKLoader"
+                    st.success(f"Loaded {len(docs)} document(s) from NLTK.")
+                else:
+                    st.warning("No documents loaded.")
 
         # --------------------------- CSV Loader
         with st.expander("📑 CSV Loader", expanded=False):
@@ -432,6 +601,7 @@ with tabs[0]:
                 st.session_state.active_loader = "PowerPointLoader"
 
                 st.success(f"Loaded {len(docs)} PowerPoint document(s).")
+		        
         # --------------------------- Excel Loader (FILE + SQLITE)
         with st.expander("📊 Excel Loader", expanded=False):
 
@@ -1241,3 +1411,71 @@ with tabs[ 6 ]:
 			chunk_text,
 			file_name="chunks.txt"
 		)
+# ======================================================================================
+# Tab — SQLite Preview
+# ======================================================================================
+
+with tabs[ 7 ]:  # adjust index if you insert elsewhere
+
+    st.subheader("")
+
+    sqlite_path = os.path.join("stores", "sqlite", "data.db")
+
+    if not os.path.exists(sqlite_path):
+        st.info("No SQLite database found. Load Excel data first.")
+    else:
+        conn = sqlite3.connect(sqlite_path)
+
+        # --------------------------------------------------
+        # Tables
+        # --------------------------------------------------
+        tables_df = pd.read_sql(
+            "SELECT name FROM sqlite_master WHERE type='table';",
+            conn,
+        )
+
+        if tables_df.empty:
+            st.info("Database exists but contains no tables.")
+            conn.close()
+        else:
+            st.markdown("### Tables")
+            st.dataframe(tables_df, use_container_width=True)
+
+            table_name = st.selectbox(
+                "Select table",
+                tables_df["name"].tolist(),
+            )
+
+            # --------------------------------------------------
+            # Row Count
+            # --------------------------------------------------
+            count_df = pd.read_sql(
+                f"SELECT COUNT(*) AS rows FROM {table_name};",
+                conn,
+            )
+            st.metric("Row Count", int(count_df.iloc[0]["rows"]))
+
+            # --------------------------------------------------
+            # Schema
+            # --------------------------------------------------
+            st.markdown("### Schema")
+            schema_df = pd.read_sql(
+                f"PRAGMA table_info({table_name});",
+                conn,
+            )
+            st.dataframe(
+                schema_df[["cid", "name", "type", "notnull"]],
+                use_container_width=True,
+            )
+
+            # --------------------------------------------------
+            # Preview Data
+            # --------------------------------------------------
+            st.markdown("### Preview (First 100 Rows)")
+            preview_df = pd.read_sql(
+                f"SELECT * FROM {table_name} LIMIT 100;",
+                conn,
+            )
+            st.dataframe(preview_df, use_container_width=True)
+
+            conn.close()
