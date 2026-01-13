@@ -1218,6 +1218,7 @@ with tabs[ 1 ]:
 			lemmatize_text = st.checkbox( "Lemmatize" )
 			remove_fragments = st.checkbox( "Remove Fragments" )
 			collapse_whitespace = st.checkbox( "Collapse Whitespace" )
+			compress_whitespace = st.checkbox( "Compress Whitespace" )
 
 		# ==============================================================
 		# Word-Specific Processing (WordParser)
@@ -1311,6 +1312,8 @@ with tabs[ 1 ]:
 				processed_text = tp.remove_fragments( processed_text )
 			if collapse_whitespace:
 				processed_text = tp.collapse_whitespace( processed_text )
+			if compress_whitespace:
+				processed_text = tp.compress_whitespace( processed_text )
 
 			# ----------------------------------------------------------
 			# Format-specific FIRST

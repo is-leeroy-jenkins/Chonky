@@ -434,10 +434,12 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_compressed = re.sub( r'\t\s{2,}', ' ', self.raw_input )
-			self.cleaned_lines = [ line for line in _compressed ]
-			compressed_text = ''.join( self.cleaned_lines )
-			return compressed_text
+			lines = [ ]
+			for line in self.raw_input.splitlines( ):
+				lines.append( re.sub( r"[ \t]+", " ", line ).strip( ) )
+			
+			self.parsed_text = "\n".join( lines )
+			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
