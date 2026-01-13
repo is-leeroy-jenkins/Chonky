@@ -519,7 +519,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			lower_cased = [ ]
-			tokens = text.split( ' ' )
+			tokens = text.split( )
 			for char in tokens:
 				lower = char.lower( )
 				lower_cased.append( lower )
@@ -596,7 +596,7 @@ class TextParser( Processor ):
 			_cleaned = [ ]
 			_fragments = text.split( )
 			for char in _fragments:
-				if char.isalpha( ) and len( char) > 3:
+				if char.isalpha( ) and len( char) > 2:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
@@ -641,17 +641,8 @@ class TextParser( Processor ):
 			_rightbrakcet = re.sub( r'\]{1,}', ' ', _leftbracket )
 			_leftbrace = re.sub( r'\{{1,}', '', _rightbrakcet )
 			_rightbrace = re.sub( r'\}{1,}', '', _leftbrace )
-			_symbol = re.sub( r'\x0c{1,}', ' ', _rightbrace )
-			_chars = re.sub( r'[`_*\'#/\\~>\"=<+)\-(]', ' ', _symbol )
-			_tab = re.sub( r'\t', ' ', _chars )
-			_period = re.sub( r' \. ', '. ', _tab )
-			_control = re.sub( r'[\x00-\x1F\x7F]', ' ', _period )
-			_quest = re.sub( r' \? ', '? ', _control )
-			_comma = re.sub( r' \, ', ', ',  _quest )
-			_number = re.sub( r' no. ', ' number ', _comma )
-			_section = re.sub( r'sec./ex.', 'section example', _number )
-			_space = re.sub( r'\s+', ' ', _section )
-			return _section
+			_chars = re.sub( r'[`_*\'#/\\~>\"=<+)\-(]', ' ', _rightbrace )
+			return _chars
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
