@@ -1150,7 +1150,7 @@ with tabs[ 0 ]:
 					st.text_area(
 						'Content',
 						d.page_content[ :5000 ],
-						height=200,
+						height=500,
 						key=f'preview_doc_{i}',
 					)
 
@@ -1356,7 +1356,7 @@ with tabs[ 1 ]:
 		st.text_area(
 			'Processed Text',
 			value=st.session_state.processed_text_view or "",
-			height=300,
+			height=500,
 			key='processed_text_view',
 		)
 		
