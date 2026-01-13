@@ -1252,8 +1252,8 @@ with tabs[ 1 ]:
 				keep_tables = st.checkbox( "Keep Tables" )
 			else:
 				st.caption( "Available when HTML documents are loaded." )
-
-		st.divider( )
+		
+		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
 		# ==============================================================
 		# Actions
@@ -1503,7 +1503,7 @@ with tabs[ 5 ]:
 	
 	col_run, col_reset = st.columns( 2 )
 	
-	run_chunking = col_run.button( "Apply Chunking" )
+	run_chunking = col_run.button( "Chunk" )
 	reset_chunking = col_reset.button( "Reset" )
 	
 	# ---------------------------
