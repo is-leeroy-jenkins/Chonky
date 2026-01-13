@@ -167,11 +167,7 @@ def clear_if_active( loader_name: str ) -> None:
 # Page Configuration
 # ======================================================================================
 
-st.set_page_config(
-	page_title='Chonky',
-	layout='wide',
-	page_icon=cfg.ICON,
-)
+st.set_page_config( page_title='Chonky', layout='wide', page_icon=cfg.ICON )
 
 st.markdown( "" )
 
@@ -359,14 +355,41 @@ with tabs[ 0 ]:
 				key='txt_upload',
 			)
 			
-			col_load, col_clear = st.columns( 2 )
+			# ------------------------------------------------------------------
+			# Buttons: Load / Clear / Save (same placement + interaction model)
+			# ------------------------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
 			load_txt = col_load.button( 'Load', key='txt_load' )
 			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
 			
+			# Save is enabled only when THIS loader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'TextLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='text_loader_output.txt',
+					mime='text/plain',
+					key='txt_save',
+				)
+			else:
+				col_save.button( 'Save', key='txt_save_disabled', disabled=True )
+			
+			# ------------------------------------------------------------------
+			# Clear (unchanged behavior)
+			# ------------------------------------------------------------------
 			if clear_txt:
 				clear_if_active( 'TextLoader' )
 				st.info( 'Text Loader state cleared.' )
 			
+			# ------------------------------------------------------------------
+			# Load (unchanged behavior)
+			# ------------------------------------------------------------------
 			if load_txt and files:
 				docs = [ ]
 				for f in files:
@@ -389,7 +412,7 @@ with tabs[ 0 ]:
 				st.success( f'Loaded {len( docs )} text document(s).' )
 		
 		# --------------------------- NLTK Loader (BUILT-IN + LOCAL)
-		with st.expander( '📚 Corpora Loader', expanded=False ):
+		with st.expander( "📚 Corpora Loader", expanded=False ):
 			import nltk
 			from nltk.corpus import (
 				brown,
@@ -400,40 +423,40 @@ with tabs[ 0 ]:
 				state_union,
 			)
 			
-			st.markdown( '#### NLTK Corpora' )
+			st.markdown( "#### NLTK Corpora" )
 			
 			corpus_name = st.selectbox(
-				'Select corpus',
+				"Select corpus",
 				[
-						'Brown',
-						'Gutenberg',
-						'Reuters',
-						'WebText',
-						'Inaugural',
-						'State of the Union',
+						"Brown",
+						"Gutenberg",
+						"Reuters",
+						"WebText",
+						"Inaugural",
+						"State of the Union",
 				],
-				key='nltk_corpus_name',
+				key="nltk_corpus_name",
 			)
 			
 			file_ids = [ ]
 			try:
-				if corpus_name == 'Brown':
+				if corpus_name == "Brown":
 					file_ids = brown.fileids( )
-				elif corpus_name == 'Gutenberg':
+				elif corpus_name == "Gutenberg":
 					file_ids = gutenberg.fileids( )
-				elif corpus_name == 'Reuters':
+				elif corpus_name == "Reuters":
 					file_ids = reuters.fileids( )
-				elif corpus_name == 'WebText':
+				elif corpus_name == "WebText":
 					file_ids = webtext.fileids( )
-				elif corpus_name == 'Inaugural':
+				elif corpus_name == "Inaugural":
 					file_ids = inaugural.fileids( )
-				elif corpus_name == 'State of the Union':
+				elif corpus_name == "State of the Union":
 					file_ids = state_union.fileids( )
 			except LookupError:
 				st.error(
-					'NLTK corpus not found. Run:\n\n'
-					'python -m nltk.downloader all\n\n'
-					'or download individual corpora.'
+					"NLTK corpus not found. Run:\n\n"
+					"python -m nltk.downloader all\n\n"
+					"or download individual corpora."
 				)
 			
 			selected_files = st.multiselect(
@@ -444,20 +467,39 @@ with tabs[ 0 ]:
 			
 			st.divider( )
 			
-			st.markdown( '#### Local Corpus' )
+			st.markdown( "#### Local Corpus" )
 			
 			local_corpus_dir = st.text_input(
-				'Local directory',
+				"Local directory",
 				placeholder="path/to/text/files",
 				key="nltk_local_dir",
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_nltk = col_load.button( 'Load', key='nltk_load' )
-			clear_nltk = col_clear.button( 'Clear', key='nltk_clear' )
+			# ------------------------------------------------------------------
+			# Load / Clear / Save controls (same row, same pattern)
+			# ------------------------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_nltk = col_load.button( "Load", key="nltk_load" )
+			clear_nltk = col_clear.button( "Clear", key="nltk_clear" )
+			
+			# Build the current "NLTK-only" export payload (for Save)
+			_docs = st.session_state.get( "documents" ) or [ ]
+			_nltk_docs = [ d for d in _docs if
+			               getattr( d, "metadata", { } ).get( "loader" ) == "NLTKLoader" ]
+			_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs ) if _nltk_docs else ""
+			_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
+			
+			col_save.download_button(
+				"Save",
+				data=_nltk_text or "",
+				file_name=_export_name,
+				mime="text/plain",
+				disabled=not bool( _nltk_text.strip( ) ),
+			)
 			
 			# ------------------------------------------------------
-			# Clear logic
+			# Clear logic (preserve behavior)
 			# ------------------------------------------------------
 			if clear_nltk and st.session_state.get( "documents" ):
 				st.session_state.documents = [
@@ -467,7 +509,7 @@ with tabs[ 0 ]:
 				st.info( "NLTKLoader documents removed." )
 			
 			# ------------------------------------------------------
-			# Load logic
+			# Load logic (preserve behavior)
 			# ------------------------------------------------------
 			if load_nltk:
 				docs = [ ]
@@ -478,26 +520,26 @@ with tabs[ 0 ]:
 					
 					for fid in files_to_load:
 						try:
-							if corpus_name == 'Brown':
-								text = ' '.join( brown.words( fid ) )
-							elif corpus_name == 'Gutenberg':
+							if corpus_name == "Brown":
+								text = " ".join( brown.words( fid ) )
+							elif corpus_name == "Gutenberg":
 								text = gutenberg.raw( fid )
-							elif corpus_name == 'Reuters':
+							elif corpus_name == "Reuters":
 								text = reuters.raw( fid )
-							elif corpus_name == 'WebText':
+							elif corpus_name == "WebText":
 								text = webtext.raw( fid )
-							elif corpus_name == 'Inaugural':
+							elif corpus_name == "Inaugural":
 								text = inaugural.raw( fid )
-							elif corpus_name == 'State of the Union':
+							elif corpus_name == "State of the Union":
 								text = state_union.raw( fid )
 							
 							docs.append(
 								Document(
 									page_content=text,
 									metadata={
-											'loader': 'NLTKLoader',
-											'corpus': corpus_name,
-											'file_id': fid,
+											"loader": "NLTKLoader",
+											"corpus": corpus_name,
+											"file_id": fid,
 									},
 								)
 							)
@@ -528,9 +570,7 @@ with tabs[ 0 ]:
 					else:
 						st.session_state.documents = docs
 						st.session_state.raw_documents = list( docs )
-						st.session_state.raw_text = "\n\n".join(
-							d.page_content for d in docs
-						)
+						st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
 					
 					st.session_state.active_loader = "NLTKLoader"
 					st.success( f"Loaded {len( docs )} document(s) from NLTK." )
@@ -539,18 +579,71 @@ with tabs[ 0 ]:
 		
 		# --------------------------- CSV Loader
 		with st.expander( "📑 CSV Loader", expanded=False ):
-			csv_file = st.file_uploader( "Upload CSV", type=[ "csv" ], key="csv_upload" )
-			delimiter = st.text_input( "Delimiter", value="\n\n", key="csv_delim" )
-			quotechar = st.text_input( "Quote Character", value='"', key="csv_quote" )
+			csv_file = st.file_uploader(
+				"Upload CSV",
+				type=[ "csv" ],
+				key="csv_upload",
+			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_csv = col_load.button( "Load", key="csv_load" )
-			clear_csv = col_clear.button( "Clear", key="csv_clear" )
+			delimiter = st.text_input(
+				"Delimiter",
+				value="\n\n",
+				key="csv_delim",
+			)
 			
+			quotechar = st.text_input(
+				"Quote Character",
+				value='"',
+				key="csv_quote",
+			)
+			
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_csv = col_load.button(
+				"Load",
+				key="csv_load",
+			)
+			
+			clear_csv = col_clear.button(
+				"Clear",
+				key="csv_clear",
+			)
+			
+			# Save enabled only when CsvLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( "active_loader" ) == "CsvLoader"
+					and isinstance( st.session_state.get( "raw_text" ), str )
+					and st.session_state.get( "raw_text" ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					"Save",
+					data=st.session_state.get( "raw_text" ),
+					file_name="csv_loader_output.txt",
+					mime="text/plain",
+					key="csv_save",
+				)
+			else:
+				col_save.button(
+					"Save",
+					key="csv_save_disabled",
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear
+			# --------------------------------------------------
 			if clear_csv:
 				clear_if_active( "CsvLoader" )
 				st.info( "CSV Loader state cleared." )
 			
+			# --------------------------------------------------
+			# Load
+			# --------------------------------------------------
 			if load_csv and csv_file:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, csv_file.name )
@@ -558,12 +651,7 @@ with tabs[ 0 ]:
 						f.write( csv_file.read( ) )
 					
 					loader = CsvLoader( )
-					docs = loader.load(
-						path,
-						columns=None,
-						delimiter=delimiter,
-						quotechar=quotechar,
-					)
+					docs = loader.load( path, columns=None, delimiter=delimiter, quotechar=quotechar )
 				
 				st.session_state.documents = docs
 				st.session_state.raw_documents = list( docs )
@@ -575,23 +663,86 @@ with tabs[ 0 ]:
 		
 		# --------------------------- PDF Loader
 		with st.expander( '📕 PDF Loader', expanded=False ):
-			pdf = st.file_uploader( 'Upload PDF', type=[ 'pdf' ], key='pdf_upload' )
-			mode = st.selectbox( 'Mode', [ 'single',
-			                               'elements' ], key='pdf_mode' )
-			extract = st.selectbox( 'Extract', [ 'plain',
-			                                     'ocr' ], key='pdf_extract' )
-			include = st.checkbox( 'Include Images', value=True, key='pdf_include' )
-			fmt = st.selectbox( 'Format', [ 'markdown-img',
-			                                'text' ], key='pdf_fmt' )
+			pdf = st.file_uploader(
+				'Upload PDF',
+				type=[ 'pdf' ],
+				key='pdf_upload',
+			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_pdf = col_load.button( 'Load', key='pdf_load' )
-			clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
+			mode = st.selectbox(
+				'Mode',
+				[ 'single',
+				  'elements' ],
+				key='pdf_mode',
+			)
 			
+			extract = st.selectbox(
+				'Extract',
+				[ 'plain',
+				  'ocr' ],
+				key='pdf_extract',
+			)
+			
+			include = st.checkbox(
+				'Include Images',
+				value=True,
+				key='pdf_include',
+			)
+			
+			fmt = st.selectbox(
+				'Format',
+				[ 'markdown-img',
+				  'text' ],
+				key='pdf_fmt',
+			)
+			
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_pdf = col_load.button(
+				'Load',
+				key='pdf_load',
+			)
+			
+			clear_pdf = col_clear.button(
+				'Clear',
+				key='pdf_clear',
+			)
+			
+			# Save enabled only when PdfLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'PdfLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='pdf_loader_output.txt',
+					mime='text/plain',
+					key='pdf_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='pdf_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear (UNCHANGED behavior)
+			# --------------------------------------------------
 			if clear_pdf:
 				clear_if_active( "PdfLoader" )
 				st.info( "PDF Loader state cleared." )
 			
+			# --------------------------------------------------
+			# Load (UNCHANGED behavior)
+			# --------------------------------------------------
 			if load_pdf and pdf:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, pdf.name )
@@ -617,17 +768,60 @@ with tabs[ 0 ]:
 		
 		# --------------------------- Markdown Loader
 		with st.expander( '🧾 Markdown Loader', expanded=False ):
-			md = st.file_uploader( 'Upload Markdown', type=[ 'md',
-			                                                 'markdown' ], key='md_upload' )
+			md = st.file_uploader(
+				'Upload Markdown',
+				type=[ 'md',
+				       'markdown' ],
+				key='md_upload',
+			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_md = col_load.button( 'Load', key='md_load' )
-			clear_md = col_clear.button( 'Clear', key='md_clear' )
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
 			
+			load_md = col_load.button(
+				'Load',
+				key='md_load',
+			)
+			
+			clear_md = col_clear.button(
+				'Clear',
+				key='md_clear',
+			)
+			
+			# Save enabled only when MarkdownLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'MarkdownLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='markdown_loader_output.txt',
+					mime='text/plain',
+					key='md_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='md_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear (UNCHANGED behavior)
+			# --------------------------------------------------
 			if clear_md:
 				clear_if_active( 'MarkdownLoader' )
 				st.info( "Markdown Loader state cleared." )
 			
+			# --------------------------------------------------
+			# Load (UNCHANGED behavior)
+			# --------------------------------------------------
 			if load_md and md:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, md.name )
@@ -639,24 +833,72 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = docs
 				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.raw_text = "\n\n".join(
+					d.page_content for d in docs
+				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "MarkdownLoader"
 				
-				st.success( f"Loaded {len( docs )} Markdown document(s)." )
+				st.success(
+					f"Loaded {len( docs )} Markdown document(s)."
+				)
 		
 		# --------------------------- HTML Loader
 		with st.expander( '🌐 HTML Loader', expanded=False ):
-			html = st.file_uploader( 'Upload HTML', type=[ 'html', 'htm' ], key='html_upload' )
+			html = st.file_uploader(
+				'Upload HTML',
+				type=[ 'html',
+				       'htm' ],
+				key='html_upload',
+			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_html = col_load.button( 'Load', key='html_load' )
-			clear_html = col_clear.button( 'Clear', key='html_clear' )
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
 			
+			load_html = col_load.button(
+				'Load',
+				key='html_load',
+			)
+			
+			clear_html = col_clear.button(
+				'Clear',
+				key='html_clear',
+			)
+			
+			# Save enabled only when HtmlLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'HtmlLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='html_loader_output.txt',
+					mime='text/plain',
+					key='html_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='html_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear (UNCHANGED behavior)
+			# --------------------------------------------------
 			if clear_html:
 				clear_if_active( "HtmlLoader" )
 				st.info( "HTML Loader state cleared." )
 			
+			# --------------------------------------------------
+			# Load (UNCHANGED behavior)
+			# --------------------------------------------------
 			if load_html and html:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, html.name )
@@ -668,25 +910,77 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = docs
 				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.raw_text = "\n\n".join(
+					d.page_content for d in docs
+				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "HtmlLoader"
 				
-				st.success( f"Loaded {len( docs )} HTML document(s)." )
+				st.success(
+					f"Loaded {len( docs )} HTML document(s)."
+				)
 		
 		# --------------------------- JSON Loader
 		with st.expander( '🧩 JSON Loader', expanded=False ):
-			js = st.file_uploader( 'Upload JSON', type=[ 'json' ], key='json_upload' )
-			is_lines = st.checkbox( 'JSON Lines', value=False, key='json_lines' )
+			js = st.file_uploader(
+				'Upload JSON',
+				type=[ 'json' ],
+				key='json_upload',
+			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_json = col_load.button( 'Load', key='json_load' )
-			clear_json = col_clear.button( 'Clear', key='json_clear' )
+			is_lines = st.checkbox(
+				'JSON Lines',
+				value=False,
+				key='json_lines',
+			)
 			
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_json = col_load.button(
+				'Load',
+				key='json_load',
+			)
+			
+			clear_json = col_clear.button(
+				'Clear',
+				key='json_clear',
+			)
+			
+			# Save enabled only when JsonLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'JsonLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='json_loader_output.txt',
+					mime='text/plain',
+					key='json_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='json_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear (UNCHANGED behavior)
+			# --------------------------------------------------
 			if clear_json:
 				clear_if_active( 'JsonLoader' )
 				st.info( 'JSON Loader state cleared.' )
 			
+			# --------------------------------------------------
+			# Load (UNCHANGED behavior)
+			# --------------------------------------------------
 			if load_json and js:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, js.name )
@@ -702,23 +996,78 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = docs
 				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.raw_text = "\n\n".join(
+					d.page_content for d in docs
+				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "JsonLoader"
 				
-				st.success( f"Loaded {len( docs )} JSON document(s)." )
+				st.success(
+					f"Loaded {len( docs )} JSON document(s)."
+				)
 		
 		# --------------------------- PowerPoint Loader
 		with st.expander( '📽 Power Point Loader', expanded=False ):
-			pptx = st.file_uploader( 'Upload PPTX', type=[ 'pptx' ], key='pptx_upload' )
-			mode = st.selectbox( 'Mode', [ 'single', 'multiple' ], key='pptx_mode' )
-			col_load, col_clear = st.columns( 2 )
-			load_pptx = col_load.button( 'Load', key='pptx_load' )
-			clear_pptx = col_clear.button( 'Clear', key='pptx_clear' )
+			pptx = st.file_uploader(
+				'Upload PPTX',
+				type=[ 'pptx' ],
+				key='pptx_upload',
+			)
+			
+			mode = st.selectbox(
+				'Mode',
+				[ 'single',
+				  'multiple' ],
+				key='pptx_mode',
+			)
+			
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_pptx = col_load.button(
+				'Load',
+				key='pptx_load',
+			)
+			
+			clear_pptx = col_clear.button(
+				'Clear',
+				key='pptx_clear',
+			)
+			
+			# Save enabled only when PowerPointLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'PowerPointLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='powerpoint_loader_output.txt',
+					mime='text/plain',
+					key='pptx_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='pptx_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear (UNCHANGED behavior)
+			# --------------------------------------------------
 			if clear_pptx:
 				clear_if_active( 'PowerPointLoader' )
 				st.info( 'PowerPoint Loader state cleared.' )
 			
+			# --------------------------------------------------
+			# Load (UNCHANGED behavior)
+			# --------------------------------------------------
 			if load_pptx and pptx:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, pptx.name )
@@ -734,21 +1083,29 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = docs
 				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.raw_text = "\n\n".join(
+					d.page_content for d in docs
+				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "PowerPointLoader"
 				
-				st.success( f"Loaded {len( docs )} PowerPoint document(s)." )
+				st.success(
+					f"Loaded {len( docs )} PowerPoint document(s)."
+				)
 		
 		# --------------------------- Excel Loader (FILE + SQLITE)
 		with st.expander( '📊 Excel Loader', expanded=False ):
 			excel_file = st.file_uploader(
 				'Upload Excel file',
-				type=[ 'xlsx', 'xls' ],
+				type=[ 'xlsx',
+				       'xls' ],
 				key='excel_upload',
 			)
 			
-			sheet_name = st.text_input( 'Sheet name (leave blank for all sheets)', key='excel_sheet', )
+			sheet_name = st.text_input(
+				'Sheet name (leave blank for all sheets)',
+				key='excel_sheet',
+			)
 			
 			table_prefix = st.text_input(
 				'SQLite table prefix',
@@ -757,9 +1114,42 @@ with tabs[ 0 ]:
 				key='excel_table_prefix',
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_excel = col_load.button( 'Load', key='excel_load' )
-			clear_excel = col_clear.button( 'Clear', key='excel_clear' )
+			# --------------------------------------------------
+			# Buttons: Load / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_load, col_clear, col_save = st.columns( 3 )
+			
+			load_excel = col_load.button(
+				'Load',
+				key='excel_load',
+			)
+			
+			clear_excel = col_clear.button(
+				'Clear',
+				key='excel_clear',
+			)
+			
+			# Save enabled only when ExcelLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'ExcelLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='excel_loader_output.txt',
+					mime='text/plain',
+					key='excel_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='excel_save_disabled',
+					disabled=True,
+				)
 			
 			# ------------------------------------------------------
 			# Clear logic (remove only ExcelLoader documents)
@@ -772,7 +1162,7 @@ with tabs[ 0 ]:
 				st.info( "ExcelLoader documents removed." )
 			
 			# ------------------------------------------------------
-			# Load + SQLite ingestion
+			# Load + SQLite ingestion (UNCHANGED behavior)
 			# ------------------------------------------------------
 			if load_excel and excel_file:
 				# Ensure SQLite directory exists
@@ -787,10 +1177,16 @@ with tabs[ 0 ]:
 					# Read Excel into DataFrames
 					if sheet_name.strip( ):
 						dfs = {
-								sheet_name: pd.read_excel( excel_path, sheet_name=sheet_name )
+								sheet_name: pd.read_excel(
+									excel_path,
+									sheet_name=sheet_name,
+								)
 						}
 					else:
-						dfs = pd.read_excel( excel_path, sheet_name=None )
+						dfs = pd.read_excel(
+							excel_path,
+							sheet_name=None,
+						)
 				
 				# Open SQLite connection
 				conn = sqlite3.connect( sqlite_path )
@@ -802,7 +1198,9 @@ with tabs[ 0 ]:
 						continue
 					
 					# Normalize table name
-					table_name = f"{table_prefix}_{sheet}".replace( " ", "_" ).lower( )
+					table_name = f"{table_prefix}_{sheet}".replace(
+						" ", "_"
+					).lower( )
 					
 					# Write DataFrame to SQLite
 					df.to_sql(
@@ -840,49 +1238,95 @@ with tabs[ 0 ]:
 							d.page_content for d in docs
 						)
 					
+					st.session_state.processed_text = None
 					st.session_state.active_loader = "ExcelLoader"
+					
 					st.success(
 						f"Loaded {len( docs )} sheet(s) and stored in SQLite."
 					)
 				else:
-					st.warning( "No data loaded (empty sheets or invalid selection)." )
+					st.warning(
+						"No data loaded (empty sheets or invalid selection)."
+					)
 		
 		# --------------------------- arXiv Loader (APPEND, PARAMETER-COMPLETE)
-		with st.expander( "🧠 ArXiv Loader", expanded=False ):
+		with st.expander( '🧠 ArXiv Loader', expanded=False ):
 			arxiv_query = st.text_input(
-				"Query",
-				placeholder="e.g., transformer OR llm",
-				key="arxiv_query",
+				'Query',
+				placeholder='e.g., transformer OR llm',
+				key='arxiv_query',
 			)
 			
 			arxiv_max_chars = st.number_input(
-				"Max characters per document",
+				'Max characters per document',
 				min_value=250,
 				max_value=100000,
 				value=1000,
 				step=250,
-				key="arxiv_max_chars",
-				help="Maximum characters read",
+				key='arxiv_max_chars',
+				help='Maximum characters read',
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			arxiv_fetch = col_load.button( "Fetch", key="arxiv_fetch" )
-			arxiv_clear = col_clear.button( "Clear", key="arxiv_clear" )
+			# --------------------------------------------------
+			# Buttons: Fetch / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_fetch, col_clear, col_save = st.columns( 3 )
 			
-			if arxiv_clear and st.session_state.get( "documents" ):
+			arxiv_fetch = col_fetch.button(
+				'Fetch',
+				key='arxiv_fetch',
+			)
+			
+			arxiv_clear = col_clear.button(
+				'Clear',
+				key='arxiv_clear',
+			)
+			
+			# Save enabled only when ArXivLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'ArXivLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='arxiv_loader_output.txt',
+					mime='text/plain',
+					key='arxiv_save',
+				)
+			else:
+				col_save.button(
+					"Save",
+					key="arxiv_save_disabled",
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear logic (remove only ArXivLoader documents)
+			# --------------------------------------------------
+			if arxiv_clear and st.session_state.get( 'documents' ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "ArXivLoader"
+						if d.metadata.get( 'loader' ) != 'ArXivLoader'
 				]
-				st.info( "ArXivLoader documents removed." )
+				st.info( 'ArXivLoader documents removed.' )
 			
+			# --------------------------------------------------
+			# Fetch (APPEND semantics preserved)
+			# --------------------------------------------------
 			if arxiv_fetch and arxiv_query:
 				loader = ArXivLoader( )
-				docs = loader.load( arxiv_query, max_chars=int( arxiv_max_chars ) ) or [ ]
+				docs = loader.load(
+					arxiv_query,
+					max_chars=int( arxiv_max_chars ),
+				) or [ ]
 				
 				for d in docs:
-					d.metadata[ "loader" ] = "ArXivLoader"
-					d.metadata[ "source" ] = arxiv_query
+					d.metadata[ 'loader' ] = 'ArXivLoader'
+					d.metadata[ 'source' ] = arxiv_query
 				
 				if docs:
 					if st.session_state.documents:
@@ -891,44 +1335,85 @@ with tabs[ 0 ]:
 						st.session_state.documents = docs
 						# Baseline snapshot only on first corpus load
 						st.session_state.raw_documents = list( docs )
-						st.session_state.raw_text = "\n\n".join(
-							x.page_content for x in docs )
+						st.session_state.raw_text = '\n\n'.join(
+							x.page_content for x in docs
+						)
 					
-					st.session_state.active_loader = "ArXivLoader"
-					st.success( f"Fetched {len( docs )} arXiv document(s)." )
+					st.session_state.processed_text = None
+					st.session_state.active_loader = 'ArXivLoader'
+					
+					st.success(
+						f'Fetched {len( docs )} arXiv document(s).'
+					)
 		
 		# --------------------------- Wikipedia Loader (APPEND, PARAMETER-COMPLETE)
-		with st.expander( "📚 Wikipedia Loader", expanded=False ):
+		with st.expander( '📚 Wikipedia Loader', expanded=False ):
 			wiki_query = st.text_input(
-				"Query",
-				placeholder="e.g., Natural language processing",
-				key="wiki_query",
+				'Query',
+				placeholder='e.g., Natural language processing',
+				key='wiki_query',
 			)
 			
 			wiki_max_docs = st.number_input(
-				"Max documents",
+				'Max documents',
 				min_value=1,
 				max_value=250,
 				value=25,
 				step=1,
-				key="wiki_max_docs",
-				help="Maximum number of documents loaded",
+				key='wiki_max_docs',
+				help='Maximum number of documents loaded',
 			)
 			
 			wiki_max_chars = st.number_input(
-				"Max characters per document",
+				'Max characters per document',
 				min_value=250,
 				max_value=100000,
 				value=4000,
 				step=250,
-				key="wiki_max_chars",
-				help="Upper limit on the number of characters",
+				key='wiki_max_chars',
+				help='Upper limit on the number of characters',
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			wiki_fetch = col_load.button( "Fetch", key="wiki_fetch" )
-			wiki_clear = col_clear.button( "Clear", key="wiki_clear" )
+			# --------------------------------------------------
+			# Buttons: Fetch / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_fetch, col_clear, col_save = st.columns( 3 )
 			
+			wiki_fetch = col_fetch.button(
+				'Fetch',
+				key='wiki_fetch',
+			)
+			
+			wiki_clear = col_clear.button(
+				'Clear',
+				key='wiki_clear',
+			)
+			
+			# Save enabled only when WikiLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'WikiLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='wiki_loader_output.txt',
+					mime='text/plain',
+					key='wiki_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='wiki_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear logic (remove only WikiLoader documents)
+			# --------------------------------------------------
 			if wiki_clear and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
@@ -936,6 +1421,9 @@ with tabs[ 0 ]:
 				]
 				st.info( "WikiLoader documents removed." )
 			
+			# --------------------------------------------------
+			# Fetch (APPEND semantics preserved)
+			# --------------------------------------------------
 			if wiki_fetch and wiki_query:
 				loader = WikiLoader( )
 				docs = loader.load(
@@ -956,54 +1444,98 @@ with tabs[ 0 ]:
 						# Baseline snapshot only on first corpus load
 						st.session_state.raw_documents = list( docs )
 						st.session_state.raw_text = "\n\n".join(
-							x.page_content for x in docs )
+							x.page_content for x in docs
+						)
 					
+					st.session_state.processed_text = None
 					st.session_state.active_loader = "WikiLoader"
-					st.success( f"Fetched {len( docs )} Wikipedia document(s)." )
+					
+					st.success(
+						f"Fetched {len( docs )} Wikipedia document(s)."
+					)
 		
 		# --------------------------- GitHub Loader
-		with st.expander( "🐙 GitHub Loader", expanded=False ):
+		with st.expander( '🐙 GitHub Loader', expanded=False ):
 			gh_url = st.text_input(
-				"GitHub API URL",
+				'GitHub API URL',
 				placeholder="https://api.github.com",
 				value="https://api.github.com",
-				key="gh_url",
-				help="web url to a github repository",
+				key='gh_url',
+				help='web url to a github repository',
 			)
 			
 			gh_repo = st.text_input(
-				"Repo (owner/name)",
-				placeholder="openai/openai-python",
-				key="gh_repo",
-				help="Name of the repository",
+				'Repo (owner/name)',
+				placeholder='openai/openai-python',
+				key='gh_repo',
+				help='Name of the repository',
 			)
 			
 			gh_branch = st.text_input(
-				"Branch",
-				placeholder="main",
-				value="main",
-				key="gh_branch",
-				help="The branch of the repository",
+				'Branch',
+				placeholder='main',
+				value='main',
+				key='gh_branch',
+				help='The branch of the repository',
 			)
 			
 			gh_filetype = st.text_input(
-				"File type filter",
-				value=".md",
-				key="gh_filetype",
-				help="Filering by file type. Example: .py, .md, .txt",
+				'File type filter',
+				value='.md',
+				key='gh_filetype',
+				help='Filtering by file type. Example: .py, .md, .txt',
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			gh_fetch = col_load.button( "Fetch", key="gh_fetch" )
-			gh_clear = col_clear.button( "Clear", key="gh_clear" )
+			# --------------------------------------------------
+			# Buttons: Fetch / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_fetch, col_clear, col_save = st.columns( 3 )
 			
-			if gh_clear and st.session_state.get( "documents" ):
+			gh_fetch = col_fetch.button(
+				'Fetch',
+				key='gh_fetch',
+			)
+			
+			gh_clear = col_clear.button(
+				'Clear',
+				key='gh_clear',
+			)
+			
+			# Save enabled only when GithubLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( 'active_loader' ) == 'GithubLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='github_loader_output.txt',
+					mime='text/plain',
+					key='gh_save',
+				)
+			else:
+				col_save.button(
+					'Save',
+					key='gh_save_disabled',
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear logic (remove only GithubLoader documents)
+			# --------------------------------------------------
+			if gh_clear and st.session_state.get( 'documents' ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "GithubLoader"
+						if d.metadata.get( 'loader' ) != 'GithubLoader'
 				]
-				st.info( "GithubLoader documents removed." )
+				st.info( 'GithubLoader documents removed.' )
 			
+			# --------------------------------------------------
+			# Fetch (APPEND semantics preserved)
+			# --------------------------------------------------
 			if gh_fetch and gh_repo and gh_branch:
 				loader = GithubLoader( )
 				docs = loader.load(
@@ -1014,8 +1546,8 @@ with tabs[ 0 ]:
 				) or [ ]
 				
 				for d in docs:
-					d.metadata[ "loader" ] = "GithubLoader"
-					d.metadata[ "source" ] = f"{gh_repo}@{gh_branch}"
+					d.metadata[ 'loader' ] = 'GithubLoader'
+					d.metadata[ 'source' ] = f'{gh_repo}@{gh_branch}'
 				
 				if docs:
 					if st.session_state.documents:
@@ -1024,11 +1556,16 @@ with tabs[ 0 ]:
 						st.session_state.documents = docs
 						# Baseline snapshot only on first corpus load
 						st.session_state.raw_documents = list( docs )
-						st.session_state.raw_text = "\n\n".join(
-							x.page_content for x in docs )
+						st.session_state.raw_text = '\n\n'.join(
+							x.page_content for x in docs
+						)
 					
-					st.session_state.active_loader = "GithubLoader"
-					st.success( f"Fetched {len( docs )} GitHub document(s)." )
+					st.session_state.processed_text = None
+					st.session_state.active_loader = 'GithubLoader'
+					
+					st.success(
+						f'Fetched {len( docs )} GitHub document(s).'
+					)
 		
 		# --------------------------- Web Loader
 		with st.expander( "🔗 Web Loader", expanded=False ):
@@ -1038,10 +1575,46 @@ with tabs[ 0 ]:
 				key="web_urls",
 			)
 			
-			col_load, col_clear = st.columns( 2 )
-			load_web = col_load.button( "Fetch", key="web_fetch" )
-			clear_web = col_clear.button( "Clear", key="web_clear" )
+			# --------------------------------------------------
+			# Buttons: Fetch / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_fetch, col_clear, col_save = st.columns( 3 )
 			
+			load_web = col_fetch.button(
+				"Fetch",
+				key="web_fetch",
+			)
+			
+			clear_web = col_clear.button(
+				"Clear",
+				key="web_clear",
+			)
+			
+			# Save enabled only when WebLoader is active and raw_text exists
+			can_save = (
+					st.session_state.get( "active_loader" ) == "WebLoader"
+					and isinstance( st.session_state.get( "raw_text" ), str )
+					and st.session_state.get( "raw_text" ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					"Save",
+					data=st.session_state.get( "raw_text" ),
+					file_name="web_loader_output.txt",
+					mime="text/plain",
+					key="web_save",
+				)
+			else:
+				col_save.button(
+					"Save",
+					key="web_save_disabled",
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear logic (remove only WebLoader documents)
+			# --------------------------------------------------
 			if clear_web and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
@@ -1049,11 +1622,15 @@ with tabs[ 0 ]:
 				]
 				st.info( "WebLoader documents removed." )
 			
+			# --------------------------------------------------
+			# Fetch (APPEND semantics preserved)
+			# --------------------------------------------------
 			if load_web and urls.strip( ):
 				loader = WebLoader( recursive=False )
 				new_docs = [ ]
 				
-				for url in [ u.strip( ) for u in urls.splitlines( ) if u.strip( ) ]:
+				for url in [ u.strip( ) for u in urls.splitlines( )
+						if u.strip( ) ]:
 					docs = loader.load( url )
 					for d in docs:
 						d.metadata[ "loader" ] = "WebLoader"
@@ -1070,7 +1647,9 @@ with tabs[ 0 ]:
 							d.page_content for d in new_docs
 						)
 					
+					st.session_state.processed_text = None
 					st.session_state.active_loader = "WebLoader"
+					
 					st.success( f"Fetched {len( new_docs )} web document(s)." )
 		
 		# --------------------------- Web Crawler (RECURSIVE)
@@ -1096,10 +1675,46 @@ with tabs[ 0 ]:
 				key="crawl_domain_lock",
 			)
 			
-			col_run, col_clear = st.columns( 2 )
-			run_crawl = col_run.button( "Crawl", key="crawl_run" )
-			clear_crawl = col_clear.button( "Clear", key="crawl_clear" )
+			# --------------------------------------------------
+			# Buttons: Crawl / Clear / Save (same row, same style)
+			# --------------------------------------------------
+			col_run, col_clear, col_save = st.columns( 3 )
 			
+			run_crawl = col_run.button(
+				"Crawl",
+				key="crawl_run",
+			)
+			
+			clear_crawl = col_clear.button(
+				"Clear",
+				key="crawl_clear",
+			)
+			
+			# Save enabled only when WebCrawler is active and raw_text exists
+			can_save = (
+					st.session_state.get( "active_loader" ) == "WebCrawler"
+					and isinstance( st.session_state.get( "raw_text" ), str )
+					and st.session_state.get( "raw_text" ).strip( )
+			)
+			
+			if can_save:
+				col_save.download_button(
+					"Save",
+					data=st.session_state.get( "raw_text" ),
+					file_name="web_crawler_output.txt",
+					mime="text/plain",
+					key="crawl_save",
+				)
+			else:
+				col_save.button(
+					"Save",
+					key="crawl_save_disabled",
+					disabled=True,
+				)
+			
+			# --------------------------------------------------
+			# Clear logic (remove only WebCrawler documents)
+			# --------------------------------------------------
 			if clear_crawl and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
@@ -1107,6 +1722,9 @@ with tabs[ 0 ]:
 				]
 				st.info( "Web crawler documents removed." )
 			
+			# --------------------------------------------------
+			# Crawl (APPEND semantics preserved)
+			# --------------------------------------------------
 			if run_crawl and start_url:
 				loader = WebLoader(
 					recursive=True,
@@ -1129,8 +1747,13 @@ with tabs[ 0 ]:
 						d.page_content for d in docs
 					)
 				
+				st.session_state.processed_text = None
 				st.session_state.active_loader = "WebCrawler"
-				st.success( f"Crawled {len( docs )} document(s)." )
+				
+				st.success(
+					f"Crawled {len( docs )} document(s)."
+				)
+	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Document Preview
 	# ------------------------------------------------------------------
