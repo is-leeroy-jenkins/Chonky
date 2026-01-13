@@ -1186,8 +1186,6 @@ with tabs[ 1 ]:
 			st.session_state._processing_seed_hash = processed_text
 	else:
 		st.session_state.raw_text_view = ""
-		
-	st.subheader( "" )
 
 	if not has_text:
 		st.info( "No raw text available yet. Load documents to enable processing." )
@@ -1338,7 +1336,7 @@ with tabs[ 1 ]:
 		st.text_area(
 			'Raw Text',
 			value=st.session_state.raw_text_view or 'No text loaded yet.',
-			height=300,
+			height=150,
 			disabled=False,
 			key='raw_text_view',
 		)
@@ -1382,7 +1380,7 @@ with tabs[ 2 ]:
 		)
 		
 		if view == 'Lines':
-			lines = processor.chunk_text( processed_text )
+			lines = processor.split_sentences( processed_text )
 			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
 		
 		elif view == 'Paragraphs':
