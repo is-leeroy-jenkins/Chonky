@@ -195,10 +195,10 @@ with st.sidebar:
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-bottom: 0.85rem;
+                margin-bottom: 0.95rem;
             ">
                 <img src="data:image/png;base64,{logo_b64}"
-                     style="max-height: 40px;" />
+                     style="max-height: 30px;" />
             </div>
             """,
 			unsafe_allow_html=True
@@ -1382,16 +1382,16 @@ with tabs[ 2 ]:
 		)
 		
 		if view == 'Lines':
-			lines = processed_text.splitlines( )
-			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ) )
+			lines = processor.chunk_text( processed_text )
+			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
 		
 		elif view == 'Paragraphs':
 			paragraphs = processed_text.split( '\n\n' )
-			st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ) )
+			st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ))
 		
 		elif view == 'Sentences':
-			sentences = processor.tokenize_sentences( processed_text )
-			st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ) )
+			sentences = processor.split_sentences( processed_text )
+			st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ))
 	
 	else:
 		st.info( 'Run preprocessing first' )
@@ -1412,7 +1412,7 @@ with tabs[ 3 ]:
 		vocab = processor.create_vocabulary( tokens )
 		
 		st.write( f'Token Count: {len( tokens )}' )
-		st.dataframe( pd.DataFrame( tokens, columns=[ 'Token' ] ) )
+		st.dataframe( pd.DataFrame( tokens, columns=[ 'Token' ] )  )
 		
 		st.write( f'Vocabulary Size: {len( vocab )}' )
 		st.dataframe( pd.DataFrame( vocab, columns=[ 'Word' ] ) )
