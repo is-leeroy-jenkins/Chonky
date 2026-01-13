@@ -2066,7 +2066,7 @@ with tabs[ 4 ]:
 	
 	if st.session_state.tokens:
 		processor = TextParser( )
-		df_frequency = processor.create_frequency_distribution( st.session_state.tokens )
+		df_frequency = processor.create_frequency_distribution( tokens )
 		st.session_state.df_frequency = df_frequency
 		st.dataframe( df_frequency )
 	
@@ -2132,8 +2132,8 @@ with tabs[ 5 ]:
 	
 	col_run, col_reset = st.columns( 2 )
 	
-	run_chunking = col_run.button( "Chunk" )
-	reset_chunking = col_reset.button( "Reset" )
+	run_chunking = col_run.button( 'Chunk' )
+	reset_chunking = col_reset.button( 'Reset' )
 	
 	# ---------------------------
 	# Actions
@@ -2157,8 +2157,8 @@ with tabs[ 5 ]:
 		st.session_state.documents = chunked_docs
 		
 		st.success(
-			f"Chunking complete: {len( chunked_docs )} chunks generated "
-			f"(mode={mode}, size={chunk_size}, overlap={overlap})"
+			f'Chunking complete: {len( chunked_docs )} chunks generated '
+			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
 		)
 
 # ==========================================================================================
@@ -2285,8 +2285,8 @@ with tabs[ 5 ]:
 		st.session_state.documents = chunked_docs
 
 		st.success(
-			f"Chunking complete: {len( chunked_docs )} chunks generated "
-			f"(mode={mode}, size={chunk_size}, overlap={overlap})"
+			f'Chunking complete: {len( chunked_docs )} chunks generated '
+			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
 		)
 
 # ======================================================================================
@@ -2329,10 +2329,10 @@ with tabs[ 7 ]:
 			# Row Count
 			# --------------------------------------------------
 			df_count = pd.read_sql(
-				f"SELECT COUNT(*) AS rows FROM {table_name};",
+				f'SELECT COUNT(*) AS rows FROM {table_name};',
 				conn,
 			)
-			st.metric( "Row Count", int( df_count.iloc[ 0 ][ "rows" ] ) )
+			st.metric( 'Row Count', int( df_count.iloc[ 0 ][ 'rows' ] ) )
 			
 			# --------------------------------------------------
 			# Schema
