@@ -79,7 +79,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
-from typing import List, Optional, Dict, Tuple, Any
+from typing import List, Optional, Dict, Tuple, Any, Set
 import tiktoken
 from tiktoken.core import Encoding
 import unicodedata
@@ -231,7 +231,9 @@ class TextParser( Processor ):
 	corpus: Optional[ DataFrame ]
 	frequency_distribution: Optional[ DataFrame ]
 	conditional_distribution: Optional[ DataFrame ]
-	
+	PUNCTUATION: Optional[ Set[ str ] ]
+	CONTROL_CHARACTERS: Optional[ Set[ str ] ]
+
 	def __init__( self ):
 		'''
 
@@ -241,6 +243,8 @@ class TextParser( Processor ):
 
 		'''
 		super( ).__init__( )
+		self.PUNCTUATION = set( string.punctuation )
+		self.CONTROL_CHARACTERS = ( {chr(i) for i in range(0x00, 0x20)} | {chr(0x7F)} )
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.encoding = tiktoken.get_encoding( 'cl100k_base' )
@@ -441,7 +445,7 @@ class TextParser( Processor ):
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-	
+		
 	def remove_punctuation( self, text: str ) -> str:
 		"""
 		
@@ -470,9 +474,16 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = text.split( None )
-			self.cleaned_tokens = [ t for t in _tokens if t not in string.punctuation ]
-			return ' '.join( self.cleaned_tokens )
+			self.raw_input = text
+			result_chars = [ ]
+			for char in self.raw_input:
+				if char in self.PUNCTUATION:
+					continue
+				if unicodedata.category( char ).startswith( "P" ):
+					continue
+				result_chars.append( char )
+			self.cleaned_text = "".join( result_chars )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -480,7 +491,7 @@ class TextParser( Processor ):
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-	
+		
 	def normalize_text( self, text: str ) -> str | None:
 		"""
 
@@ -545,7 +556,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_vocab = words.words( 'en' )
-			_tokens = text.split( None )
+			_tokens = text.split(  )
 			_words = [ w for w in _tokens if w in _vocab ]
 			_data = ' '.join( _words )
 			return _data
@@ -581,7 +592,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_cleaned = [ ]
-			_fragments = text.split( None )
+			_fragments = text.split( )
 			for char in _fragments:
 				if char.isalpha( ) and len( char) > 3:
 					_cleaned.append( char )
@@ -706,8 +717,8 @@ class TextParser( Processor ):
 			self.raw_input = text
 			_text = re.sub( r'\[.*?]\(.*?\)', ' ', text )
 			_unmarked = re.sub( r'[`_*#~><-]', ' ', _text )
-			_cleaned = re.sub( r'!\[.*?]\(.*?\)', ' ', _unmarked )
-			return _cleaned
+			self.cleaned_text = re.sub( r'!\[.*?]\(.*?\)', ' ', _unmarked )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -776,18 +787,14 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			# Decode escaped unicode literals (e.g., \\u2019)
 			try:
 				text = bytes( text, 'utf-8' ).decode( 'unicode_escape' )
 			except UnicodeDecodeError:
-				pass  # Ignore undecodable sequences
+				pass
 
 			self.raw_input = text
-			# Decode HTML entities (&amp;, &quot;, &#8217;)
 			_html = html.unescape( self.raw_input )
-			# Normalize accents and symbols (e.g., é → e, ü → u)
 			_norm = unicodedata.normalize( 'NFKC', _html )
-			# Strip out stray control characters
 			_chars = re.sub( r'[\x00-\x1F\x7F]', '', _norm )
 			cleaned_text = _chars.strip( )
 			return cleaned_text
@@ -909,9 +916,10 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_numbers = re.sub( r'[^0-9]', ' ', text )
-			cleaned_text = _numbers.strip( )
-			return cleaned_text
+			self.raw_input = text
+			_clean = [ c for c in self.raw_input if not c.isdigit( ) ]
+			self.cleaned_text = ''.join( _clean )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -920,6 +928,41 @@ class TextParser( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+	def remove_numerals( self, text: str ) -> str | None:
+		"""
+
+			Purpose:
+			---------
+			Removes the numbers 0 through 9 from the input text.
+
+			Parameters
+			----------
+			text : str
+			Input string potentially containing encoded characters.
+
+			Returns
+			-------
+			str
+			Cleaned Unicode-normalized text.
+
+		"""
+		try:
+			throw_if( "text", text )
+			self.raw_input = text
+			roman_pattern = (r"\bM{0,4}(CM|CD|D?C{0,3})"
+			                 r"(XC|XL|L?X{0,3})"
+			                 r"(IX|IV|V?I{0,3})\b" )
+		
+			self.parsed_text = re.sub( roman_pattern, " ", self.raw_input, flags=re.IGNORECASE, )
+			return self.parsed_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'TextParser'
+			exception.method = 'remove_numerals( self, text: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+			
 	def remove_formatting( self, text: str ) -> str:
 		"""
 
@@ -1382,7 +1425,7 @@ class TextParser( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def create_vectors( self, tokens: List[ str ] ) -> Dict[ str, np.ndarray ]:
+	def create_vectors( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 		
 			Purpose:
@@ -1411,7 +1454,6 @@ class TextParser( Processor ):
 			}
 		"""
 		try:
-			# Each word is treated as a single "document" for TF-IDF
 			fake_docs = [ [ word ] for word in tokens ]
 			joined_docs = [ ' '.join( doc ) for doc in fake_docs ]
 			vectorizer = TfidfVectorizer( )
@@ -1422,6 +1464,7 @@ class TextParser( Processor ):
 				vector = X[ idx ].toarray( ).flatten( )
 				embeddings[ word ] = vector
 			
+			_data = pd.DataFrame( data=embeddings, columns=feature_names )
 			return embeddings
 		except Exception as e:
 			exception = Error( e )
