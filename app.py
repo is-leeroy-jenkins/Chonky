@@ -2338,14 +2338,8 @@ with tabs[ 7 ]:
 			# Schema
 			# --------------------------------------------------
 			st.markdown( '### Schema' )
-			df_schema = pd.read_sql(
-				f'PRAGMA table_info({table_name});',
-				conn,
-			)
-			st.dataframe(
-				df_schema[ [ 'cid', 'name', 'type', 'notnull' ] ],
-				use_container_width=True,
-			)
+			df_schema = pd.read_sql( f'PRAGMA table_info({table_name});', conn )
+			st.dataframe( df_schema[ [ 'cid', 'name', 'type', 'notnull' ] ], use_container_width=True, )
 			
 			# --------------------------------------------------
 			# Preview Data
