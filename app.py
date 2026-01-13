@@ -1568,11 +1568,11 @@ with tabs[ 0 ]:
 					)
 		
 		# --------------------------- Web Loader
-		with st.expander( "🔗 Web Loader", expanded=False ):
+		with st.expander( '🔗 Web Loader', expanded=False ):
 			urls = st.text_area(
-				"Enter one URL per line",
+				'Enter one URL per line',
 				placeholder="https://example.com\nhttps://another.com",
-				key="web_urls",
+				key='web_urls',
 			)
 			
 			# --------------------------------------------------
@@ -1581,46 +1581,46 @@ with tabs[ 0 ]:
 			col_fetch, col_clear, col_save = st.columns( 3 )
 			
 			load_web = col_fetch.button(
-				"Fetch",
-				key="web_fetch",
+				'Fetch',
+				key='web_fetch',
 			)
 			
 			clear_web = col_clear.button(
-				"Clear",
-				key="web_clear",
+				'Clear',
+				key='web_clear',
 			)
 			
 			# Save enabled only when WebLoader is active and raw_text exists
 			can_save = (
-					st.session_state.get( "active_loader" ) == "WebLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
+					st.session_state.get( 'active_loader' ) == 'WebLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
 			)
 			
 			if can_save:
 				col_save.download_button(
-					"Save",
-					data=st.session_state.get( "raw_text" ),
-					file_name="web_loader_output.txt",
-					mime="text/plain",
-					key="web_save",
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='web_loader_output.txt',
+					mime='text/plain',
+					key='web_save',
 				)
 			else:
 				col_save.button(
-					"Save",
-					key="web_save_disabled",
+					'Save',
+					key='web_save_disabled',
 					disabled=True,
 				)
 			
 			# --------------------------------------------------
 			# Clear logic (remove only WebLoader documents)
 			# --------------------------------------------------
-			if clear_web and st.session_state.get( "documents" ):
+			if clear_web and st.session_state.get( 'documents' ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "WebLoader"
+						if d.metadata.get( 'loader' ) != 'WebLoader'
 				]
-				st.info( "WebLoader documents removed." )
+				st.info( 'WebLoader documents removed.' )
 			
 			# --------------------------------------------------
 			# Fetch (APPEND semantics preserved)
@@ -1633,8 +1633,8 @@ with tabs[ 0 ]:
 						if u.strip( ) ]:
 					docs = loader.load( url )
 					for d in docs:
-						d.metadata[ "loader" ] = "WebLoader"
-						d.metadata[ "source" ] = url
+						d.metadata[ 'loader' ] = 'WebLoader'
+						d.metadata[ 'source' ] = url
 					new_docs.extend( docs )
 				
 				if new_docs:
@@ -1643,36 +1643,36 @@ with tabs[ 0 ]:
 					else:
 						st.session_state.documents = new_docs
 						st.session_state.raw_documents = list( new_docs )
-						st.session_state.raw_text = "\n\n".join(
+						st.session_state.raw_text = '\n\n'.join(
 							d.page_content for d in new_docs
 						)
 					
 					st.session_state.processed_text = None
-					st.session_state.active_loader = "WebLoader"
+					st.session_state.active_loader = 'WebLoader'
 					
-					st.success( f"Fetched {len( new_docs )} web document(s)." )
+					st.success( f'Fetched {len( new_docs )} web document(s).' )
 		
 		# --------------------------- Web Crawler (RECURSIVE)
-		with st.expander( "🕷️ Web Crawler", expanded=False ):
+		with st.expander( '🕷️ Web Crawler', expanded=False ):
 			start_url = st.text_input(
-				"Start URL",
+				'Start URL',
 				placeholder="https://example.com",
 				key="crawl_start_url",
 			)
 			
 			max_depth = st.number_input(
-				"Max crawl depth",
+				'Max crawl depth',
 				min_value=1,
 				max_value=5,
 				value=2,
 				step=1,
-				key="crawl_depth",
+				key='crawl_depth',
 			)
 			
 			stay_on_domain = st.checkbox(
-				"Stay on starting domain",
+				'Stay on starting domain',
 				value=True,
-				key="crawl_domain_lock",
+				key='crawl_domain_lock',
 			)
 			
 			# --------------------------------------------------
@@ -1681,46 +1681,46 @@ with tabs[ 0 ]:
 			col_run, col_clear, col_save = st.columns( 3 )
 			
 			run_crawl = col_run.button(
-				"Crawl",
-				key="crawl_run",
+				'Crawl',
+				key='crawl_run',
 			)
 			
 			clear_crawl = col_clear.button(
-				"Clear",
-				key="crawl_clear",
+				'Clear',
+				key='crawl_clear',
 			)
 			
 			# Save enabled only when WebCrawler is active and raw_text exists
 			can_save = (
-					st.session_state.get( "active_loader" ) == "WebCrawler"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
+					st.session_state.get( 'active_loader' ) == 'WebCrawler'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
 			)
 			
 			if can_save:
 				col_save.download_button(
-					"Save",
-					data=st.session_state.get( "raw_text" ),
-					file_name="web_crawler_output.txt",
+					'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='web_crawler_output.txt',
 					mime="text/plain",
 					key="crawl_save",
 				)
 			else:
 				col_save.button(
-					"Save",
-					key="crawl_save_disabled",
+					'Save',
+					key='crawl_save_disabled',
 					disabled=True,
 				)
 			
 			# --------------------------------------------------
 			# Clear logic (remove only WebCrawler documents)
 			# --------------------------------------------------
-			if clear_crawl and st.session_state.get( "documents" ):
+			if clear_crawl and st.session_state.get( 'documents' ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "WebCrawler"
+						if d.metadata.get( 'loader' ) != 'WebCrawler'
 				]
-				st.info( "Web crawler documents removed." )
+				st.info( 'Web crawler documents removed.' )
 			
 			# --------------------------------------------------
 			# Crawl (APPEND semantics preserved)
@@ -1735,24 +1735,20 @@ with tabs[ 0 ]:
 				docs = loader.load( start_url )
 				
 				for d in docs:
-					d.metadata[ "loader" ] = "WebCrawler"
-					d.metadata[ "source" ] = start_url
+					d.metadata[ 'loader' ] = 'WebCrawler'
+					d.metadata[ 'source' ] = start_url
 				
 				if st.session_state.documents:
 					st.session_state.documents.extend( docs )
 				else:
 					st.session_state.documents = docs
 					st.session_state.raw_documents = list( docs )
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in docs
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in docs )
 				
 				st.session_state.processed_text = None
-				st.session_state.active_loader = "WebCrawler"
+				st.session_state.active_loader = 'WebCrawler'
 				
-				st.success(
-					f"Crawled {len( docs )} document(s)."
-				)
+				st.success( f'Crawled {len( docs )} document(s).' )
 	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Document Preview
@@ -1822,61 +1818,61 @@ with tabs[ 1 ]:
 	# LEFT COLUMN — Controls (Grouped Expanders)
 	# ------------------------------------------------------------------
 	with left:
-		active = st.session_state.get( "active_loader" )
+		active = st.session_state.get( 'active_loader' )
 
 		# ==============================================================
 		# Common Text Processing (TextParser)
 		# ==============================================================
-		with st.expander( "🧠 Text Processing", expanded=True ):
-			remove_html = st.checkbox( "Remove HTML" )
-			remove_markdown = st.checkbox( "Remove Markdown" )
-			remove_special = st.checkbox( "Remove Special Characters" )
-			remove_numbers = st.checkbox( "Remove Numbers" )
-			remove_punctuation = st.checkbox( "Remove Punctuation" )
+		with st.expander( '🧠 Text Processing', expanded=True ):
+			remove_html = st.checkbox( 'Remove HTML' )
+			remove_markdown = st.checkbox( 'Remove Markdown' )
+			remove_special = st.checkbox( 'Remove Special Characters' )
+			remove_numbers = st.checkbox( 'Remove Numbers' )
+			remove_punctuation = st.checkbox( 'Remove Punctuation' )
 			remove_formatting = st.checkbox( 'Remove Formatting' )
-			remove_stopwords = st.checkbox( "Remove Stopwords" )
+			remove_stopwords = st.checkbox( 'Remove Stopwords' )
 			remove_numerals = st.checkbox( 'Remove Numerals' )
 			remove_encodings = st.checkbox( 'Remove Encoding' )
-			normalize_text = st.checkbox( "Normalize (lowercase)" )
-			lemmatize_text = st.checkbox( "Lemmatize" )
-			remove_fragments = st.checkbox( "Remove Fragments" )
-			collapse_whitespace = st.checkbox( "Collapse Whitespace" )
-			compress_whitespace = st.checkbox( "Compress Whitespace" )
+			normalize_text = st.checkbox( 'Normalize (lowercase)' )
+			lemmatize_text = st.checkbox( 'Lemmatize' )
+			remove_fragments = st.checkbox( 'Remove Fragments' )
+			collapse_whitespace = st.checkbox( 'Collapse Whitespace' )
+			compress_whitespace = st.checkbox( 'Compress Whitespace' )
 
 		# ==============================================================
 		# Word-Specific Processing (WordParser)
 		# ==============================================================
 		extract_tables = extract_paragraphs = False
-		with st.expander( "📄 Word Processing", expanded=False ):
-			if active == "WordLoader":
-				extract_tables = st.checkbox( "Extract Tables" )
-				extract_paragraphs = st.checkbox( "Extract Paragraphs" )
+		with st.expander( '📄 Word Processing', expanded=False ):
+			if active == 'WordLoader':
+				extract_tables = st.checkbox( 'Extract Tables' )
+				extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
 			else:
-				st.caption( "Available when Word documents are loaded." )
+				st.caption( 'Available when Word documents are loaded.' )
 
 		# ==============================================================
 		# PDF-Specific Processing (PdfParser)
 		# ==============================================================
 		remove_headers = join_hyphenated = False
-		with st.expander( "📕 PDF Processing", expanded=False ):
-			if active == "PdfLoader":
-				remove_headers = st.checkbox( "Remove Headers / Footers" )
-				join_hyphenated = st.checkbox( "Join Hyphenated Lines" )
+		with st.expander( '📕 PDF Processing', expanded=False ):
+			if active == 'PdfLoader':
+				remove_headers = st.checkbox( 'Remove Headers / Footers' )
+				join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
 			else:
-				st.caption( "Available when PDF documents are loaded." )
+				st.caption( 'Available when PDF documents are loaded.' )
 
 		# ==============================================================
 		# HTML-Specific Processing (Structural)
 		# ==============================================================
 		strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
-		with st.expander( "🌐 HTML Processing", expanded=False ):
-			if active == "HtmlLoader":
-				strip_scripts = st.checkbox( "Strip <script> / <style>" )
-				keep_headings = st.checkbox( "Keep Headings" )
-				keep_paragraphs = st.checkbox( "Keep Paragraphs" )
-				keep_tables = st.checkbox( "Keep Tables" )
+		with st.expander( '🌐 HTML Processing', expanded=False ):
+			if active == 'HtmlLoader':
+				strip_scripts = st.checkbox( 'Strip <script> / <style>' )
+				keep_headings = st.checkbox( 'Keep Headings' )
+				keep_paragraphs = st.checkbox( 'Keep Paragraphs' )
+				keep_tables = st.checkbox( 'Keep Tables' )
 			else:
-				st.caption( "Available when HTML documents are loaded." )
+				st.caption( 'Available when HTML documents are loaded.' )
 		
 		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
@@ -1885,9 +1881,9 @@ with tabs[ 1 ]:
 		# ==============================================================
 		col_apply, col_reset, col_clear = st.columns( 3 )
 
-		apply_processing = col_apply.button( "Apply", disabled=not has_text )
-		reset_processing = col_reset.button( "Reset", disabled=not has_text )
-		clear_processing = col_clear.button( "Clear", disabled=not has_text )
+		apply_processing = col_apply.button( 'Apply', disabled=not has_text )
+		reset_processing = col_reset.button( 'Reset', disabled=not has_text )
+		clear_processing = col_clear.button( 'Clear', disabled=not has_text )
 
 		# ==============================================================
 		# Reset / Clear
@@ -1895,12 +1891,12 @@ with tabs[ 1 ]:
 		if reset_processing:
 			st.session_state.processed_text = ''
 			st.session_state.processed_text_view = ''
-			st.success( "Processed text reset to raw text." )
+			st.success( 'Processed text reset to raw text.' )
 		
 		if clear_processing:
 			st.session_state.processed_text = ""
 			st.session_state.processed_text_view = ""
-			st.success( "Processed text cleared." )
+			st.success( 'Processed text cleared.' )
 
 		# ==============================================================
 		# Apply Processing (Execution Order Matters)
@@ -2008,7 +2004,7 @@ with tabs[ 2 ]:
 		processor = TextParser( )
 		
 		view = st.selectbox(
-			"View Type",
+			'View Type',
 			[ 'Lines',
 			  'Paragraphs',
 			  'Sentences' ]
