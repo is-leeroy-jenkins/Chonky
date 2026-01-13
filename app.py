@@ -1210,7 +1210,10 @@ with tabs[ 1 ]:
 			remove_special = st.checkbox( "Remove Special Characters" )
 			remove_numbers = st.checkbox( "Remove Numbers" )
 			remove_punctuation = st.checkbox( "Remove Punctuation" )
+			remove_formatting = st.checkbox( 'Remove Formatting' )
 			remove_stopwords = st.checkbox( "Remove Stopwords" )
+			remove_numerals = st.checkbox( 'Remove Numerals' )
+			remove_encodings = st.checkbox( 'Remove Encoding' )
 			normalize_text = st.checkbox( "Normalize (lowercase)" )
 			lemmatize_text = st.checkbox( "Lemmatize" )
 			remove_fragments = st.checkbox( "Remove Fragments" )
@@ -1290,10 +1293,16 @@ with tabs[ 1 ]:
 				processed_text = tp.remove_special( processed_text )
 			if remove_numbers:
 				processed_text = tp.remove_numbers( processed_text )
+			if remove_formatting:
+				processed_text = tp.remove_formatting( processed_text )
 			if remove_punctuation:
 				processed_text = tp.remove_punctuation( processed_text )
 			if remove_stopwords:
 				processed_text = tp.remove_stopwords( processed_text )
+			if remove_numerals:
+				processed_text = tp.remove_numerals( processed_text )
+			if remove_encodings:
+				processed_text = tp.remove_encodings( processed_text )
 			if normalize_text:
 				processed_text = tp.normalize_text( processed_text )
 			if lemmatize_text:
