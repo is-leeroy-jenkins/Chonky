@@ -43,7 +43,6 @@
 '''
 import arxiv
 import docx2txt
-from Lib.webbrowser import open_new
 
 from boogr import Error, ErrorDialog
 import config as cfg
