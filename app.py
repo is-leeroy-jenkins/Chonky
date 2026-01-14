@@ -2066,7 +2066,8 @@ with tabs[ 4 ]:
 	
 	if st.session_state.tokens:
 		processor = TextParser( )
-		df_frequency = processor.create_frequency_distribution( tokens )
+		tkns = [ t for t in tokens ]
+		df_frequency = processor.create_frequency_distribution( tkns )
 		st.session_state.df_frequency = df_frequency
 		st.dataframe( df_frequency )
 	
