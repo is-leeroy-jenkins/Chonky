@@ -691,8 +691,9 @@ class TextParser( Processor ):
 			throw_if( 'text', text )
 			self.raw_input = text
 			MEANING_CRITICAL = {
-					"+",  # C++, A+, B+ cells, O+ blood type
 					"&",  # AT&T, R&D, P&G, M&A
+					"-",
+					"--",
 					"/",  # and/or, input/output
 					"_",  # snake_case, file_names
 					"%",  # percentage semantics
@@ -715,7 +716,7 @@ class TextParser( Processor ):
 			cleaned = [ ]
 			for ch in self.raw_input:
 				if ch in MEANING_CRITICAL:
-					cleaned.append( ch )
+					cleaned.append( ' ' )
 					continue
 				if ch in REMOVE_SYMBOLS:
 					continue
