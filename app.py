@@ -162,34 +162,34 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.df_schema = None
 		st.session_state.df_preview = None
 		st.session_state.df_count = None
-		
-def metric_with_tooltip(label: str, value: str, tooltip: str):
-    """
-	    Renders a metric with a hover tooltip using a two-column layout.
-	    Left column = the metric itself
-	    Right column = hoverable ℹ️ icon
-    """
-    col_metric, col_info = st.columns([0.97, 0.03])
-    
-    with col_metric:
-	    st.metric( label, value )
 
-    with col_info:
-	    if label not in [ 'Characters',
-	                      'Tokens',
-	                      'Unique Tokens',
-	                      'Avg Length' ]:
-	        st.markdown(
-	            f"""
+def metric_with_tooltip( label: str, value: str, tooltip: str ):
+	"""
+		Renders a metric with a hover tooltip using a two-column layout.
+		Left column = the metric itself
+		Right column = hoverable ℹ️ icon
+	"""
+	col_metric, col_info = st.columns( [ 0.5, 0.5 ] )
+	
+	with col_metric:
+		st.metric( label, value )
+	
+	with col_info:
+		if label not in [ 'Characters',
+		                  'Tokens',
+		                  'Unique Tokens',
+		                  'Avg Length' ]:
+			st.markdown(
+				f"""
 	            <span style="
 	                cursor: help;
-	                font-size: 0.70rem;
+	                font-size: 0.85rem;
 	                color:#888;
 	                vertical-align: super;
 	            " title="{tooltip}">ℹ️ </span>
 	            """,
-	            unsafe_allow_html=True,
-	        )
+				unsafe_allow_html=True,
+			)
 
 # ======================================================================================
 # Page Configuration
@@ -257,16 +257,17 @@ tabs = st.tabs(
 # ======================================================================================
 
 with tabs[ 0 ]:
+	# ------------------------------------------------------------------
+	# Metrics container (single owner)
+	# ------------------------------------------------------------------
 	metrics_container = st.container( )
+	
 	def render_metrics_panel( ):
 		raw_text = st.session_state.get( 'raw_text' )
 		if not isinstance( raw_text, str ) or not raw_text.strip( ):
 			st.info( 'Load data to view corpus metrics.' )
 			return
 		
-		# -------------------------------
-		# Tokenization
-		# -------------------------------
 		try:
 			tokens = [
 					t.lower( )
@@ -285,24 +286,17 @@ with tabs[ 0 ]:
 			st.warning( 'No valid alphabetic tokens found.' )
 			return
 		
-		# -------------------------------
-		# Core counts
-		# -------------------------------
 		char_count = len( raw_text )
 		token_count = len( tokens )
 		vocab = set( tokens )
 		vocab_size = len( vocab )
 		counts = Counter( tokens )
 		
-		# -------------------------------
-		# Lexical statistics
-		# -------------------------------
 		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
 		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
 		avg_word_len = sum( len( t ) for t in tokens ) / token_count
 		ttr = vocab_size / token_count
 		
-		# Defaults (CRITICAL)
 		stopword_ratio = 0.0
 		lexical_density = 0.0
 		
@@ -311,9 +305,8 @@ with tabs[ 0 ]:
 			stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
 			lexical_density = 1.0 - stopword_ratio
 		except LookupError:
-			# Keep defaults — do NOT error
 			pass
-		
+			
 		# -------------------------------
 		# Corpus Metrics
 		# -------------------------------
@@ -374,63 +367,67 @@ with tabs[ 0 ]:
 			with col8:
 				metric_with_tooltip( "Lexical Density", f"{lexical_density:.2%}",
 					"Lexical Density: proportion of nouns, verbs, adjectives, adverbs", )
-		
-		# -------------------------------
-		# Readability
-		# -------------------------------
-		with st.expander( "📖 Readability", expanded=False ):
-			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3 = st.columns( 3 )
-				
-				with r1:
-					metric_with_tooltip(
-						"Flesch Reading Ease",
-						f"{textstat.flesch_reading_ease( raw_text ):.1f}",
-						"Higher scores = easier to read. Based on sentence length and syllable count.",
-					)
-				
-				with r2:
-					metric_with_tooltip(
-						"Flesch–Kincaid Grade",
-						f"{textstat.flesch_kincaid_grade( raw_text ):.1f}",
-						"Estimated U.S. grade level needed to comprehend the text.",
-					)
-				
-				with r3:
-					metric_with_tooltip(
-						"Gunning Fog",
-						f"{textstat.gunning_fog( raw_text ):.1f}",
-						"Higher scores mean more complex text; based on sentence length and complex words.",
-					)
-			else:
-				st.caption( "Install `textstat` to enable readability metrics." )
-		
-		# -------------------------------
-		# Top Tokens
-		# -------------------------------
-		with st.expander( "🔤 Top Tokens", expanded=False ):
-			top_tokens = counts.most_common( 10 )
-			st.table( [ { "token": tok, "count": cnt } for tok, cnt in top_tokens ] )
+			
+			# -------------------------------
+			# Readability
+			# -------------------------------
+			with st.expander( "📖 Readability", expanded=False ):
+				if TEXTSTAT_AVAILABLE:
+					r1, r2, r3 = st.columns( 3 )
+					
+					with r1:
+						metric_with_tooltip(
+							"Flesch Reading Ease",
+							f"{textstat.flesch_reading_ease( raw_text ):.1f}",
+							"Higher scores = easier to read. Based on sentence length and syllable count.",
+						)
+					
+					with r2:
+						metric_with_tooltip(
+							"Flesch–Kincaid Grade",
+							f"{textstat.flesch_kincaid_grade( raw_text ):.1f}",
+							"Estimated U.S. grade level needed to comprehend the text.",
+						)
+					
+					with r3:
+						metric_with_tooltip(
+							"Gunning Fog",
+							f"{textstat.gunning_fog( raw_text ):.1f}",
+							"Higher scores mean more complex text; based on sentence length and complex words.",
+						)
+				else:
+					st.caption( "Install `textstat` to enable readability metrics." )
+			# -------------------------------
+			# Top Tokens
+			# -------------------------------
+			with st.expander( "🔤 Top Tokens", expanded=False ):
+				top_tokens = counts.most_common( 10 )
+				st.table( [ {
+						            "token": tok,
+						            "count": cnt } for tok, cnt in top_tokens ] )
 	
 	# ------------------------------------------------------------------
-	# Defensive session_state initialization
+	# SINGLE metrics render (correct placement)
+	# ------------------------------------------------------------------
+	with metrics_container:
+		render_metrics_panel( )
+
+	# ------------------------------------------------------------------
+	# Defensive session_state initialization (UNCHANGED)
 	# ------------------------------------------------------------------
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 	
 	# ------------------------------------------------------------------
-	# Layout
+	# Layout (UNCHANGED)
 	# ------------------------------------------------------------------
 	left, right = st.columns( [ 1, 1.5 ] )
-	
 	
 	# ------------------------------------------------------------------
 	# LEFT COLUMN — Loader Expanders
 	# ------------------------------------------------------------------
 	with left:
-		st.subheader( "" )
-		
 		# --------------------------- Text Loader
 		with st.expander( '📄 Text Loader', expanded=False ):
 			files = st.file_uploader(
@@ -561,17 +558,19 @@ with tabs[ 0 ]:
 			)
 			
 			# ------------------------------------------------------------------
-			# Load / Clear / Save controls (same row, same pattern)
+			# Load / Clear / Save controls
 			# ------------------------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
 			
 			load_nltk = col_load.button( "Load", key="nltk_load" )
 			clear_nltk = col_clear.button( "Clear", key="nltk_clear" )
 			
-			# Build the current "NLTK-only" export payload (for Save)
+			# Build the current "NLTK-only" export payload
 			_docs = st.session_state.get( "documents" ) or [ ]
-			_nltk_docs = [ d for d in _docs if
-			               getattr( d, "metadata", { } ).get( "loader" ) == "NLTKLoader" ]
+			_nltk_docs = [
+					d for d in _docs
+					if getattr( d, "metadata", { } ).get( "loader" ) == "NLTKLoader"
+			]
 			_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs ) if _nltk_docs else ""
 			_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
 			
@@ -584,17 +583,24 @@ with tabs[ 0 ]:
 			)
 			
 			# ------------------------------------------------------
-			# Clear logic (preserve behavior)
+			# Clear logic (CORRECTED)
 			# ------------------------------------------------------
 			if clear_nltk and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
 						if d.metadata.get( "loader" ) != "NLTKLoader"
 				]
+				
+				# 🔑 rebuild raw_text after clear
+				st.session_state.raw_text = (
+						"\n\n".join( d.page_content for d in st.session_state.documents )
+						if st.session_state.documents else None
+				)
+				
 				st.info( "NLTKLoader documents removed." )
 			
 			# ------------------------------------------------------
-			# Load logic (preserve behavior)
+			# Load logic (CORRECTED)
 			# ------------------------------------------------------
 			if load_nltk:
 				docs = [ ]
@@ -655,12 +661,15 @@ with tabs[ 0 ]:
 					else:
 						st.session_state.documents = docs
 						st.session_state.raw_documents = list( docs )
-						st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+					
+					# 🔑 rebuild raw_text after load / append
+					st.session_state.raw_text = "\n\n".join(
+						d.page_content for d in st.session_state.documents
+					)
 					
 					st.session_state.active_loader = "NLTKLoader"
 					st.success( f"Loaded {len( docs )} document(s) from NLTK." )
-				else:
-					st.warning( "No documents loaded." )
+					st.rerun( )
 		
 		# --------------------------- CSV Loader
 		with st.expander( "📑 CSV Loader", expanded=False ):
@@ -1836,18 +1845,15 @@ with tabs[ 0 ]:
 				st.success( f'Crawled {len( docs )} document(s).' )
 	
 	# ------------------------------------------------------------------
-	# RIGHT COLUMN — Document Preview
+	# RIGHT COLUMN — Document Preview (UNCHANGED)
 	# ------------------------------------------------------------------
 	with right:
-		st.subheader( "" )
-		
 		docs = st.session_state.documents
 		if not docs:
 			st.info( 'No documents loaded.' )
 		else:
 			st.caption( f'Active Loader: {st.session_state.active_loader}' )
 			st.write( f'Documents: {len( docs )}' )
-			
 			for i, d in enumerate( docs[ :5 ] ):
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
@@ -1858,9 +1864,6 @@ with tabs[ 0 ]:
 						key=f'preview_doc_{i}',
 					)
 
-	with metrics_container:
-		render_metrics_panel( )
-		
 # ======================================================================================
 # Tab — Processing / Preprocessing (Grouped Expanders)
 # ======================================================================================
