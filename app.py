@@ -2061,13 +2061,13 @@ with tabs[ 4 ]:
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 			
+	tokens = st.session_state.get( 'tokens' )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	df_table = st.session_state.get( 'df_table' )
 	
 	if st.session_state.tokens:
 		processor = TextParser( )
-		tkns = [ t for t in tokens ]
-		df_frequency = processor.create_frequency_distribution( tkns )
+		df_frequency = processor.create_conditional_frequency( tokens )
 		st.session_state.df_frequency = df_frequency
 		st.dataframe( df_frequency )
 	
