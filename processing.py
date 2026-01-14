@@ -401,7 +401,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			extra_lines = re.sub( r'[\r\n\t]+', ' ', self.raw_input )
+			extra_lines = re.sub( r'[\r\n]+', ' ', self.raw_input )
 			self.cleaned_lines = [ line for line in extra_lines ]
 			return ''.join( self.cleaned_lines )
 		except Exception as e:
@@ -447,7 +447,7 @@ class TextParser( Processor ):
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-		
+	
 	def remove_punctuation( self, text: str ) -> str:
 		"""
 		
@@ -477,16 +477,70 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			result_chars = [ ]
-			for char in self.raw_input:
-				if char in self.PUNCTUATION:
-					result_chars.append( ' ')
-				elif unicodedata.category( char ).startswith( "P" ):
-					result_chars.append( ' ')
-				else:
-					result_chars.append( char )
-			self.cleaned_text = "".join( result_chars )
-			return self.cleaned_text
+			# --------------------------------------------------------------
+			# Meaning-critical punctuation that MUST NOT be removed
+			# --------------------------------------------------------------
+			MEANING_CRITICAL = {
+					"'",  # contractions, possessives
+					"-",  # hyphenated words
+					"/",  # and/or, input/output
+					"_",  # snake_case identifiers
+			}
+			
+			# --------------------------------------------------------------
+			# Remove only punctuation that is *never* part of English words.
+			# Keep hyphens inside words: "well-being" OK, " - " removed.
+			# Keep apostrophes inside words: "can't" OK, " ' phrase " removed.
+			# Keep slashes used as morpheme separators.
+			# --------------------------------------------------------------
+			cleaned_chars = [ ]
+			length = len( self.raw_input )
+			for i, ch in enumerate( self.raw_input ):
+				# 1. KEEP meaning-critical punctuation unconditionally
+				if ch in MEANING_CRITICAL:
+					cleaned_chars.append( ch )
+					continue
+				
+				# 2. KEEP periods inside abbreviations (U.S.A., e.g., i.e.)
+				if ch == ".":
+					prev = self.raw_input[ i - 1 ] if i > 0 else ""
+					nxt = self.raw_input[ i + 1 ] if i < length - 1 else ""
+					if prev.isalpha( ) and nxt == "":
+						# End-of-sentence full stop: remove
+						continue
+					if prev.isalpha( ) and (nxt == "." or nxt.isalpha( )):
+						cleaned_chars.append( ch )
+						continue
+					# Other periods removed
+					continue
+				
+				# 3. REMOVE all ASCII punctuation EXCEPT meaning-critical ones
+				if ch in string.punctuation:
+					# But DO NOT remove hyphens inside words: "well-being"
+					if ch == "-" and (
+							i > 0 and i < length - 1
+							and self.raw_input[ i - 1 ].isalpha( )
+							and self.raw_input[ i + 1 ].isalpha( )
+					):
+						cleaned_chars.append( ch )
+					# Everything else removed
+					continue
+				
+				# 4. REMOVE common Unicode punctuation except quotes/dashes
+				if unicodedata.category( ch ).startswith( "P" ):
+					# Keep Unicode apostrophes (’), hyphens (–, —), ellipsis …
+					if ch in { "’",
+					           "‘",
+					           "–",
+					           "—" }:
+						cleaned_chars.append( ch )
+					continue
+				
+				# 5. Default: keep all non-punctuation characters
+				cleaned_chars.append( ch )
+			
+			self.parsed_text = "".join( cleaned_chars )
+			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -608,7 +662,7 @@ class TextParser( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def remove_special( self, text: str ) -> str | None:
+	def remove_symbols( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -635,15 +689,46 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_dots = re.sub( r'\...{1,}', ' ', text )
-			_bullets = re.sub( r'•{2,}', ' ', _dots )
-			_dashes = re.sub( r'--{2,}', ' ', _bullets )
-			_leftbracket = re.sub( r'\[{1,}', ' ', _dashes )
-			_rightbrakcet = re.sub( r'\]{1,}', ' ', _leftbracket )
-			_leftbrace = re.sub( r'\{{1,}', '', _rightbrakcet )
-			_rightbrace = re.sub( r'\}{1,}', '', _leftbrace )
-			_chars = re.sub( r'[`_*\'#/\\~>\"=<+)\-(]', ' ', _rightbrace )
-			return _chars
+			self.raw_input = text
+			MEANING_CRITICAL = {
+					"+",  # C++, A+, B+ cells, O+ blood type
+					"&",  # AT&T, R&D, P&G, M&A
+					"/",  # and/or, input/output
+					"_",  # snake_case, file_names
+					"%",  # percentage semantics
+			}
+			
+			REMOVE_SYMBOLS = {
+					"@",
+					"#",
+					"$",
+					"^",
+					"*",
+					"=",
+					"|",
+					"\\",
+					"<",
+					">",
+					"~"
+			}
+			
+			cleaned = [ ]
+			for ch in self.raw_input:
+				if ch in MEANING_CRITICAL:
+					cleaned.append( ch )
+					continue
+				if ch in REMOVE_SYMBOLS:
+					continue
+				cat = unicodedata.category( ch )
+				if cat.startswith( "S" ):  # Symbol categories: Sc, Sk, Sm, So
+					if ch in MEANING_CRITICAL:
+						cleaned.append( ch )
+					continue
+				
+				cleaned.append( ch )
+			
+			self.parsed_text = "".join( cleaned )
+			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -651,7 +736,7 @@ class TextParser( Processor ):
 			exception.method = 'remove_special( self, text: str ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
-	
+			
 	def remove_html( self, text: str ) -> str | None:
 		"""
 
@@ -956,41 +1041,58 @@ class TextParser( Processor ):
 			exception.method = 'remove_numerals( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
-			
-	def remove_formatting( self, text: str ) -> str:
+	
+	def remove_images( self, text: str ) -> str:
 		"""
-
 			Purpose:
-			---------
-	        Removes formatting artifacts (Markdown, HTML, control characters) from pages.
-
-	        This function:
-	          - Strips HTML tags
-	          - Removes Markdown syntax (e.g., *, #, [], etc.)
-	          - Removes special characters for clean unformatted pages
-	          - Removes images
-	          - Collapses whitespace (newlines, tabs)
-
-	        Parameters:
-	        -----------
-	        pages : str
-	            The formatted path pages.
-
-	        Returns:
-	        --------
-	        str
-	            A cleaned_lines version of the pages with formatting removed.
-
-	    """
+			--------
+			Remove image references from text, including Markdown images, HTML <img> tags,
+			and standalone image URLs.
+	
+			Parameters:
+			-----------
+			text : str
+				Input text.
+	
+			Returns:
+			--------
+			str
+				Text with image references removed.
+	
+			Raises:
+			-------
+			RuntimeError
+				Raised when processing fails.
+		"""
+		throw_if( "text", text )
+		
 		try:
-			throw_if( 'text', text )
-			_html = BeautifulSoup( text, "raw_html.parser" ).get_text( separator=' ', strip=True )
-			_markdown = re.sub( r'\[.*?\]\(.*?\)', '', _html )
-			_special = re.sub( r'[`_*#~>-]', '', _markdown )
-			_images = re.sub( r'!\[.*?\]\(.*?\)', '', _special )
-			_lines = re.sub( r'[\r\n\t]+', ' ', _images )
-			_spaces = re.sub( r'\s+', ' ', _lines ).strip( )
-			return _spaces
+			self.raw_input = text
+			
+			# Remove Markdown images: ![alt](path)
+			without_markdown_images = re.sub(
+				r"!\[[^\]]*]\([^)]*\)",
+				" ",
+				self.raw_input
+			)
+			
+			# Remove HTML <img> tags
+			without_html_images = re.sub(
+				r"<img\b[^>]*>",
+				" ",
+				without_markdown_images,
+				flags=re.IGNORECASE
+			)
+			
+			# Remove standalone image URLs
+			self.parsed_text = re.sub(
+				r"https?://\S+\.(png|jpg|jpeg|gif|bmp|svg|webp)",
+				" ",
+				without_html_images,
+				flags=re.IGNORECASE
+			)
+			
+			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1495,7 +1597,7 @@ class TextParser( Processor ):
 				_compressed = self.compress_whitespace( _collapsed )
 				_normalized = self.normalize_text( _compressed )
 				_encoded = self.remove_encodings( _normalized )
-				_special = self.remove_special( _encoded )
+				_special = self.remove_symbols( _encoded )
 				_cleaned = self.remove_fragments( _special )
 				_recompress = self.compress_whitespace( _cleaned )
 				_lemmatized = self.lemmatize_text( _recompress )
@@ -1546,7 +1648,7 @@ class TextParser( Processor ):
 					_compressed = self.compress_whitespace( _collapsed )
 					_normalized = self.normalize_text( _compressed )
 					_encoded = self.remove_encodings( _normalized )
-					_special = self.remove_special( _encoded )
+					_special = self.remove_symbols( _encoded )
 					_cleaned = self.remove_fragments( _special )
 					_recompress = self.compress_whitespace( _cleaned )
 					_lemmatized = self.lemmatize_text( _recompress )
@@ -1699,7 +1801,7 @@ class TextParser( Processor ):
 					_compressed = self.compress_whitespace( _collapsed )
 					_normalized = self.normalize_text( _compressed )
 					_encoded = self.remove_encodings( _normalized )
-					_special = self.remove_special( _encoded )
+					_special = self.remove_symbols( _encoded )
 					_cleaned = self.remove_fragments( _special )
 					_recompress = self.compress_whitespace( _cleaned )
 					_lemmatized = self.lemmatize_text( _recompress )

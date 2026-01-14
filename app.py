@@ -1826,10 +1826,10 @@ with tabs[ 1 ]:
 		with st.expander( '🧠 Text Processing', expanded=True ):
 			remove_html = st.checkbox( 'Remove HTML' )
 			remove_markdown = st.checkbox( 'Remove Markdown' )
-			remove_special = st.checkbox( 'Remove Special Characters' )
+			remove_symbols = st.checkbox( 'Remove Symbols' )
 			remove_numbers = st.checkbox( 'Remove Numbers' )
 			remove_punctuation = st.checkbox( 'Remove Punctuation' )
-			remove_formatting = st.checkbox( 'Remove Formatting' )
+			remove_images = st.checkbox( 'Remove Images' )
 			remove_stopwords = st.checkbox( 'Remove Stopwords' )
 			remove_numerals = st.checkbox( 'Remove Numerals' )
 			remove_encodings = st.checkbox( 'Remove Encoding' )
@@ -1909,31 +1909,37 @@ with tabs[ 1 ]:
 		if apply_processing:
 			processed_text = raw_text
 			tp = TextParser( )
-
+			# 1 — Structural cleanup
 			if remove_html:
 				processed_text = tp.remove_html( processed_text )
 			if remove_markdown:
 				processed_text = tp.remove_markdown( processed_text )
-			if remove_special:
-				processed_text = tp.remove_special( processed_text )
-			if remove_numbers:
-				processed_text = tp.remove_numbers( processed_text )
-			if remove_formatting:
-				processed_text = tp.remove_formatting( processed_text )
-			if remove_punctuation:
-				processed_text = tp.remove_punctuation( processed_text )
-			if remove_stopwords:
-				processed_text = tp.remove_stopwords( processed_text )
-			if remove_numerals:
-				processed_text = tp.remove_numerals( processed_text )
+			if remove_images:
+				processed_text = tp.remove_images( processed_text )
 			if remove_encodings:
 				processed_text = tp.remove_encodings( processed_text )
+			# 2 — Noise / non-lexical characters
+			if remove_symbols:
+				processed_text = tp.remove_symbols( processed_text )
+			if remove_numbers:
+				processed_text = tp.remove_numbers( processed_text )
+			if remove_numerals:
+				processed_text = tp.remove_numerals( processed_text )
+			# 3 — Meaning-critical punctuation shaping
+			if remove_punctuation:
+				processed_text = tp.remove_punctuation( processed_text )
+			# 4 — Word normalization
 			if normalize_text:
 				processed_text = tp.normalize_text( processed_text )
-			if lemmatize_text:
-				processed_text = tp.lemmatize_text( processed_text )
+			# 5 — Lexical refinement
+			if remove_stopwords:
+				processed_text = tp.remove_stopwords( processed_text )
 			if remove_fragments:
 				processed_text = tp.remove_fragments( processed_text )
+			# 6 — Lemmatization
+			if lemmatize_text:
+				processed_text = tp.lemmatize_text( processed_text )
+			# 7 — Whitespace cleanup
 			if collapse_whitespace:
 				processed_text = tp.collapse_whitespace( processed_text )
 			if compress_whitespace:
