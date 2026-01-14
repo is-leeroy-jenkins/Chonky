@@ -290,13 +290,13 @@ with tabs[ 0 ]:
 		# Corpus Metrics
 		# -------------------------------
 		with st.expander( '📊 Corpus Metrics', expanded=False ):
-			c1, c2, c3, c4 = st.columns( 4 )
+			c1, c2, c3, c4 = st.columns( 4, border=True )
 			c1.metric( 'Characters', f'{char_count:,}' )
 			c2.metric( 'Tokens', f'{token_count:,}' )
 			c3.metric( 'Unique Tokens', f'{vocab_size:,}' )
 			c4.metric( 'TTR', f'{ttr:.3f}' )
 			
-			c5, c6, c7, c8 = st.columns( 4 )
+			c5, c6, c7, c8 = st.columns( 4, border=True )
 			c5.metric( 'Hapax Ratio', f'{hapax_ratio:.3f}' )
 			c6.metric( 'Avg Word Length', f'{avg_word_len:.2f}' )
 			c7.metric( 'Stopword Ratio', f'{stopword_ratio:.2%}' )
@@ -307,7 +307,7 @@ with tabs[ 0 ]:
 		# -------------------------------
 		with st.expander( '📖 Readability', expanded=False ):
 			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3 = st.columns( 3 )
+				r1, r2, r3 = st.columns( 3, border=True )
 				r1.metric( 'Flesch Reading Ease', f'{textstat.flesch_reading_ease( raw_text ):.1f}' )
 				r2.metric(
 					'Flesch–Kincaid Grade',
@@ -1894,7 +1894,7 @@ with tabs[ 1 ]:
 			col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
 
 		# ==============================================================
-		# Reset / Clear
+		# Buttons Events
 		# ==============================================================
 		if reset_processing:
 			st.session_state.processed_text = ''
@@ -1906,9 +1906,6 @@ with tabs[ 1 ]:
 			st.session_state.processed_text_view = ""
 			st.success( 'Processed text cleared.' )
 
-		# ==============================================================
-		# Apply Processing (Execution Order Matters)
-		# ==============================================================
 		if apply_processing:
 			processed_text = raw_text
 			tp = TextParser( )

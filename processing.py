@@ -480,10 +480,11 @@ class TextParser( Processor ):
 			result_chars = [ ]
 			for char in self.raw_input:
 				if char in self.PUNCTUATION:
-					continue
-				if unicodedata.category( char ).startswith( "P" ):
-					continue
-				result_chars.append( char )
+					result_chars.append( ' ')
+				elif unicodedata.category( char ).startswith( "P" ):
+					result_chars.append( ' ')
+				else:
+					result_chars.append( char )
 			self.cleaned_text = "".join( result_chars )
 			return self.cleaned_text
 		except Exception as e:
