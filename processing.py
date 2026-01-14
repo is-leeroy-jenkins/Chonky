@@ -49,7 +49,7 @@ import docx
 from pymupdf import Page, Document
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from boogr import Error
+from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
@@ -477,19 +477,70 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			sentence_delimiters: Set[ str ] = { ".",  "!", "?", ";" }
-			result_chars: list[ str ] = [ ]
-			for char in self.raw_input:
-				if char in sentence_delimiters:
-					result_chars.append( char )
+			# --------------------------------------------------------------
+			# Meaning-critical punctuation that MUST NOT be removed
+			# --------------------------------------------------------------
+			MEANING_CRITICAL = {
+					"'",  # contractions, possessives
+					"-",  # hyphenated words
+					"/",  # and/or, input/output
+					"_",  # snake_case identifiers
+			}
+			
+			# --------------------------------------------------------------
+			# Remove only punctuation that is *never* part of English words.
+			# Keep hyphens inside words: "well-being" OK, " - " removed.
+			# Keep apostrophes inside words: "can't" OK, " ' phrase " removed.
+			# Keep slashes used as morpheme separators.
+			# --------------------------------------------------------------
+			cleaned_chars = [ ]
+			length = len( self.raw_input )
+			for i, ch in enumerate( self.raw_input ):
+				# 1. KEEP meaning-critical punctuation unconditionally
+				if ch in MEANING_CRITICAL:
+					cleaned_chars.append( ch )
 					continue
-				if char in self.PUNCTUATION:
+				
+				# 2. KEEP periods inside abbreviations (U.S.A., e.g., i.e.)
+				if ch == ".":
+					prev = self.raw_input[ i - 1 ] if i > 0 else ""
+					nxt = self.raw_input[ i + 1 ] if i < length - 1 else ""
+					if prev.isalpha( ) and nxt == "":
+						# End-of-sentence full stop: remove
+						continue
+					if prev.isalpha( ) and (nxt == "." or nxt.isalpha( )):
+						cleaned_chars.append( ch )
+						continue
+					# Other periods removed
 					continue
-				if unicodedata.category( char ).startswith( "P" ):
+				
+				# 3. REMOVE all ASCII punctuation EXCEPT meaning-critical ones
+				if ch in string.punctuation:
+					# But DO NOT remove hyphens inside words: "well-being"
+					if ch == "-" and (
+							i > 0 and i < length - 1
+							and self.raw_input[ i - 1 ].isalpha( )
+							and self.raw_input[ i + 1 ].isalpha( )
+					):
+						cleaned_chars.append( ch )
+					# Everything else removed
 					continue
-				result_chars.append( char )
-				self.parsed_text = "".join( result_chars )
-				return self.parsed_text
+				
+				# 4. REMOVE common Unicode punctuation except quotes/dashes
+				if unicodedata.category( ch ).startswith( "P" ):
+					# Keep Unicode apostrophes (’), hyphens (–, —), ellipsis …
+					if ch in { "’",
+					           "‘",
+					           "–",
+					           "—" }:
+						cleaned_chars.append( ch )
+					continue
+				
+				# 5. Default: keep all non-punctuation characters
+				cleaned_chars.append( ch )
+			
+			self.parsed_text = "".join( cleaned_chars )
+			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'

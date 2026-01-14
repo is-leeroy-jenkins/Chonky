@@ -368,43 +368,43 @@ with tabs[ 0 ]:
 				metric_with_tooltip( "Lexical Density", f"{lexical_density:.2%}",
 					"Lexical Density: proportion of nouns, verbs, adjectives, adverbs", )
 			
-			# -------------------------------
-			# Readability
-			# -------------------------------
-			with st.expander( "📖 Readability", expanded=False ):
-				if TEXTSTAT_AVAILABLE:
-					r1, r2, r3 = st.columns( 3 )
-					
-					with r1:
-						metric_with_tooltip(
-							"Flesch Reading Ease",
-							f"{textstat.flesch_reading_ease( raw_text ):.1f}",
-							"Higher scores = easier to read. Based on sentence length and syllable count.",
-						)
-					
-					with r2:
-						metric_with_tooltip(
-							"Flesch–Kincaid Grade",
-							f"{textstat.flesch_kincaid_grade( raw_text ):.1f}",
-							"Estimated U.S. grade level needed to comprehend the text.",
-						)
-					
-					with r3:
-						metric_with_tooltip(
-							"Gunning Fog",
-							f"{textstat.gunning_fog( raw_text ):.1f}",
-							"Higher scores mean more complex text; based on sentence length and complex words.",
-						)
-				else:
-					st.caption( "Install `textstat` to enable readability metrics." )
-			# -------------------------------
-			# Top Tokens
-			# -------------------------------
-			with st.expander( "🔤 Top Tokens", expanded=False ):
-				top_tokens = counts.most_common( 10 )
-				st.table( [ {
-						            "token": tok,
-						            "count": cnt } for tok, cnt in top_tokens ] )
+		# -------------------------------
+		# Readability
+		# -------------------------------
+		with st.expander( "📖 Readability", expanded=False ):
+			if TEXTSTAT_AVAILABLE:
+				r1, r2, r3 = st.columns( 3 )
+				
+				with r1:
+					metric_with_tooltip(
+						"Flesch Reading Ease",
+						f"{textstat.flesch_reading_ease( raw_text ):.1f}",
+						"Higher scores = easier to read. Based on sentence length and syllable count.",
+					)
+				
+				with r2:
+					metric_with_tooltip(
+						"Flesch–Kincaid Grade",
+						f"{textstat.flesch_kincaid_grade( raw_text ):.1f}",
+						"Estimated U.S. grade level needed to comprehend the text.",
+					)
+				
+				with r3:
+					metric_with_tooltip(
+						"Gunning Fog",
+						f"{textstat.gunning_fog( raw_text ):.1f}",
+						"Higher scores mean more complex text; based on sentence length and complex words.",
+					)
+			else:
+				st.caption( "Install `textstat` to enable readability metrics." )
+		# -------------------------------
+		# Top Tokens
+		# -------------------------------
+		with st.expander( "🔤 Top Tokens", expanded=False ):
+			top_tokens = counts.most_common( 10 )
+			st.table( [ {
+					            "token": tok,
+					            "count": cnt } for tok, cnt in top_tokens ] )
 	
 	# ------------------------------------------------------------------
 	# SINGLE metrics render (correct placement)
