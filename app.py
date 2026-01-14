@@ -75,15 +75,33 @@ from loaders import (
 	ArXivLoader
 )
 
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
 try:
 	import textstat
 	TEXTSTAT_AVAILABLE = True
 except ImportError:
 	TEXTSTAT_AVAILABLE = False
 	
+	
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+REQUIRED_CORPORA = [
+    "brown",
+    "gutenberg",
+    "reuters",
+    "webtext",
+    "inaugural",
+    "state_union",
+    "punkt",
+    "stopwords",
+]
+
+for corpus in REQUIRED_CORPORA:
+    try:
+        nltk.data.find(f"corpora/{corpus}")
+    except LookupError:
+        nltk.download(corpus)
 # ================================================================================
 # Contants / Helpers / Utilities
 # ============================================================================
