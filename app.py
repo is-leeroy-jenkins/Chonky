@@ -1972,21 +1972,36 @@ with tabs[ 1 ]:
 	# RIGHT COLUMN — Text Views
 	# ------------------------------------------------------------------
 	with right:
-		st.text_area(
-			'Raw Text',
-			value=st.session_state.raw_text_view or 'No text loaded yet.',
-			height=150,
-			disabled=False,
-			key='raw_text_view',
-		)
+		# --------------------------------------------------------------
+		# Raw Text (read-only)
+		# --------------------------------------------------------------
+		st.text_area( 'Raw Text', st.session_state.raw_text or 'No text loaded yet.',
+			height=200, disabled=True, key='raw_text_view' )
 		
-		st.text_area(
-			'Processed Text',
-			value=st.session_state.processed_text_view or "",
-			height=500,
-			key='processed_text_view',
-		)
+		# --------------------------------------------------------------
+		# Processed Text Statistics (EXPANDER)
+		# --------------------------------------------------------------
+		with st.expander( '📊 Processed Text Statistics', expanded=False ):
+			processed = st.session_state.get( 'processed_text' )
+			
+			if isinstance( processed, str ) and processed.strip( ):
+				tokens = processed.split( )
+				char_count = len( processed )
+				token_count = len( tokens )
+				vocab_size = len( set( tokens ) )
+				
+				c1, c2, c3 = st.columns( 3 )
+				c1.metric( 'Characters', f'{char_count:,}' )
+				c2.metric( 'Tokens', f'{token_count:,}' )
+				c3.metric( 'Unique Tokens', f'{vocab_size:,}' )
+			else:
+				st.caption( 'No processed text available yet.' )
 		
+		# --------------------------------------------------------------
+		# Processed Text
+		# --------------------------------------------------------------
+		st.text_area( 'Processed Text', st.session_state.processed_text or "",
+			height=600, key='processed_text_view' )
 
 # ==========================================================================================
 # Tab 3 — Structural Views
