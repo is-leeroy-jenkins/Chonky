@@ -49,7 +49,7 @@ import docx
 from pymupdf import Page, Document
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from boogr import Error, ErrorDialog
+from boogr import Error
 from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
