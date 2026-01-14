@@ -1875,15 +1875,23 @@ with tabs[ 1 ]:
 				st.caption( 'Available when HTML documents are loaded.' )
 		
 		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
+		
 		# ==============================================================
-		# Actions
+		# Actions (Apply / Reset / Clear / Save)
 		# ==============================================================
-		col_apply, col_reset, col_clear = st.columns( 3 )
-
-		apply_processing = col_apply.button( 'Apply', disabled=not has_text )
-		reset_processing = col_reset.button( 'Reset', disabled=not has_text )
-		clear_processing = col_clear.button( 'Clear', disabled=not has_text )
+		col_apply, col_reset, col_clear, col_save = st.columns( 4 )
+		
+		apply_processing = col_apply.button( 'Apply', disabled=not has_text, )
+		reset_processing = col_reset.button( 'Reset', disabled=not has_text, )
+		clear_processing = col_clear.button( 'Clear', disabled=not has_text, )
+		can_save_processed = ( isinstance( st.session_state.get( 'processed_text' ), str )
+				and st.session_state.get( 'processed_text' ).strip( ) )
+		
+		if can_save_processed:
+			col_save.download_button( 'Save', data=st.session_state.processed_text,
+				file_name='processed_text.txt', mime='text/plain', key='processed_text_save' )
+		else:
+			col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
 
 		# ==============================================================
 		# Reset / Clear
@@ -2067,7 +2075,7 @@ with tabs[ 4 ]:
 	
 	if st.session_state.tokens:
 		processor = TextParser( )
-		df_frequency = processor.create_conditional_frequency( tokens )
+		df_frequency = processor.create_frequency_distribution( tokens )
 		st.session_state.df_frequency = df_frequency
 		st.dataframe( df_frequency )
 	
@@ -2105,11 +2113,7 @@ with tabs[ 5 ]:
 	# ---------------------------
 	# Chunking Controls
 	# ---------------------------
-	mode = st.selectbox(
-		'Chunking Mode',
-		options=chunk_modes,
-		help='Select how documents should be chunked',
-	)
+	mode = st.selectbox( 'Chunking Mode', options=chunk_modes, help='Select how documents are chunked' )
 	
 	col_a, col_b = st.columns( 2 )
 	

@@ -634,7 +634,7 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_dots = re.sub( r'\.{2,}', ' ', text )
+			_dots = re.sub( r'\...{1,}', ' ', text )
 			_bullets = re.sub( r'•{2,}', ' ', _dots )
 			_dashes = re.sub( r'--{2,}', ' ', _bullets )
 			_leftbracket = re.sub( r'\[{1,}', ' ', _dashes )
