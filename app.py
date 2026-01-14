@@ -169,17 +169,24 @@ def metric_with_tooltip(label: str, value: str, tooltip: str):
 	    Left column = the metric itself
 	    Right column = hoverable ℹ️ icon
     """
-    col_metric, col_info = st.columns([0.5, 0.5])
-
+    col_metric, col_info = st.columns([0.97, 0.03])
+    
     with col_metric:
-        st.metric(label, value)
+	    st.metric( label, value )
 
     with col_info:
-	    if label not in [ 'Characters', 'Tokens', 'Unique Tokens', 'Avg Length' ]:
+	    if label not in [ 'Characters',
+	                      'Tokens',
+	                      'Unique Tokens',
+	                      'Avg Length' ]:
 	        st.markdown(
 	            f"""
-	            <span style="cursor: help;"
-	                  title="{tooltip}" align="left">ℹ️</span>
+	            <span style="
+	                cursor: help;
+	                font-size: 0.70rem;
+	                color:#888;
+	                vertical-align: super;
+	            " title="{tooltip}">ℹ️ </span>
 	            """,
 	            unsafe_allow_html=True,
 	        )
@@ -1842,7 +1849,7 @@ with tabs[ 0 ]:
 			st.write( f'Documents: {len( docs )}' )
 			
 			for i, d in enumerate( docs[ :5 ] ):
-				with st.expander( f'Document {i + 1}', expanded=False ):
+				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
 					st.text_area(
 						'Content',
@@ -2169,10 +2176,8 @@ with tabs[ 3 ]:
 		processor = TextParser( )
 		tokens = word_tokenize( processed_text )
 		vocab = processor.create_vocabulary( tokens )
-		
 		st.write( f'Token Count: {len( tokens )}' )
 		st.dataframe( pd.DataFrame( tokens, columns=[ 'Token' ] )  )
-		
 		st.write( f'Vocabulary Size: {len( vocab )}' )
 		st.dataframe( pd.DataFrame( vocab, columns=[ 'Word' ] ) )
 		st.session_state.tokens = tokens
