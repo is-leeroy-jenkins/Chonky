@@ -55,10 +55,6 @@ import nltk
 import pandas as pd
 import streamlit as st
 import streamlit_extras
-from streamlit_pandas import dataframe
-from streamlit_charts import scatter, area_chart
-from streamlit_excel_table import excel_table
-from streamlit_charts import bar_chart
 from PIL import Image
 from langchain_core.documents import Document
 
@@ -396,7 +392,7 @@ with tabs[ 0 ]:
 		# -------------------------------
 		with st.expander( "📖 Readability", expanded=False ):
 			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3 = st.columns( 3 )
+				r1, r2, r3, r4 = st.columns( 4 )
 				
 				with r1:
 					metric_with_tooltip(
@@ -418,6 +414,13 @@ with tabs[ 0 ]:
 						f"{textstat.gunning_fog( raw_text ):.1f}",
 						"Higher scores mean more complex text; based on sentence length and complex words.",
 					)
+					
+				with r4:
+					metric_with_tooltip(
+						"Coleman-Liau Index",
+						f"{textstat.coleman_liau_index( raw_text ):.1f}",
+						"The average number of letters/100 words and sentences/100 words",
+					)
 			else:
 				st.caption( "Install `textstat` to enable readability metrics." )
 		# -------------------------------
@@ -432,7 +435,7 @@ with tabs[ 0 ]:
 				          "count" ]
 			)
 			
-			area_chart(
+			st.area_chart(
 				data=df,
 				x="token",
 				y="count"
