@@ -412,7 +412,7 @@ with tabs[ 0 ]:
 					metric_with_tooltip(
 						"Gunning Fog",
 						f"{textstat.gunning_fog( raw_text ):.1f}",
-						"Higher scores mean more complex text; based on sentence length and complex words.",
+						"Weighted average of the number of words per sentence, and the number of long words per word",
 					)
 					
 				with r4:
@@ -1947,20 +1947,31 @@ with tabs[ 1 ]:
 		# Common Text Processing (TextParser)
 		# ==============================================================
 		with st.expander( '🧠 Text Processing', expanded=True ):
-			remove_html = st.checkbox( 'Remove HTML' )
-			remove_markdown = st.checkbox( 'Remove Markdown' )
-			remove_symbols = st.checkbox( 'Remove Symbols' )
-			remove_numbers = st.checkbox( 'Remove Numbers' )
-			remove_punctuation = st.checkbox( 'Remove Punctuation' )
-			remove_images = st.checkbox( 'Remove Images' )
-			remove_stopwords = st.checkbox( 'Remove Stopwords' )
-			remove_numerals = st.checkbox( 'Remove Numerals' )
+			remove_html = st.checkbox( 'Remove HTML',
+				help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
+			remove_markdown = st.checkbox( 'Remove Markdown',
+				help=r'Removes symobls used in .md files #, ##, ###, -, etc' )
+			remove_symbols = st.checkbox( 'Remove Symbols',
+				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~' )
+			remove_numbers = st.checkbox( 'Remove Numbers',
+				help='Removes numeric digits 0 thour 9' )
+			remove_punctuation = st.checkbox( 'Remove Punctuation',
+				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence delimiters' )
+			remove_images = st.checkbox( 'Remove Images',
+				help=r'Remove image references from text, including Markdown images, HTML <img> tags, and  image URLs' )
+			remove_stopwords = st.checkbox( 'Remove Stopwords',
+				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
+			remove_numerals = st.checkbox( 'Remove Numerals',
+				help='Removes roman numbers I, II, IV, XI, etc' )
 			remove_encodings = st.checkbox( 'Remove Encoding' )
 			normalize_text = st.checkbox( 'Normalize (lowercase)' )
 			lemmatize_text = st.checkbox( 'Lemmatize' )
-			remove_fragments = st.checkbox( 'Remove Fragments' )
-			collapse_whitespace = st.checkbox( 'Collapse Whitespace' )
-			compress_whitespace = st.checkbox( 'Compress Whitespace' )
+			remove_fragments = st.checkbox( 'Remove Fragments',
+				help='Removes words less than 3 characters in length' )
+			collapse_whitespace = st.checkbox( 'Collapse Whitespace',
+				help='Removes extra lines' )
+			compress_whitespace = st.checkbox( 'Compress Whitespace',
+				help='Removes extra spaces' )
 
 		# ==============================================================
 		# Word-Specific Processing (WordParser)

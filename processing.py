@@ -489,13 +489,7 @@ class TextParser( Processor ):
 				protected_text = protected_text.replace( delimiter, token )
 			
 			# Remove all punctuation (Unicode-aware)
-			without_punctuation = re.sub(
-				r"[^\w\s]",
-				" ",
-				protected_text,
-				flags=re.UNICODE
-			)
-			
+			without_punctuation = re.sub( r"[^\w\s]", " ", protected_text, flags=re.UNICODE )
 			restored_text = without_punctuation
 			for delimiter, token in sentence_delimiters.items( ):
 				restored_text = restored_text.replace( token, delimiter )
@@ -703,7 +697,7 @@ class TextParser( Processor ):
 
 			Purpose:
 			--------
-			Removes HTML tags from the path path path.
+			Removes HTML tags from the path.
 
 			This function:
 			  - Parses the path as HTML
