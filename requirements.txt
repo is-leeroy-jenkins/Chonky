@@ -25,6 +25,7 @@ pydantic
 pytube
 pandas
 pinecone
+pygwalker
 sentence-transformers
 scipy
 scikit-learn

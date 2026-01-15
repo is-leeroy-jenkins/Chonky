@@ -102,6 +102,7 @@ for corpus in REQUIRED_CORPORA:
         nltk.data.find(f"corpora/{corpus}")
     except LookupError:
         nltk.download(corpus)
+	    
 # ================================================================================
 # Contants / Helpers / Utilities
 # ============================================================================
@@ -379,7 +380,7 @@ with tabs[ 0 ]:
 			
 			with col7:
 				metric_with_tooltip( "Stopword Ratio", f"{stopword_ratio:.2%}",
-					"Percentage of words that provide little/no semantic context", )
+					"Stopword Ratio: Percentage of words that provide little  semantic context", )
 			
 			with col8:
 				metric_with_tooltip( "Lexical Density", f"{lexical_density:.2%}",
