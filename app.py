@@ -141,7 +141,6 @@ SESSION_STATE_DEFAULTS = {
 		'vocabulary': None,
 		'token_counts': None,
 		# SQLite / Excel
-		'sqlite_tables': [ ],
 		'active_table': None,
 		# Chunking
 		'chunks': None,
