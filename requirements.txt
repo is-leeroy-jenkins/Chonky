@@ -3,7 +3,6 @@ beautifulsoup4
 chromadb
 docx
 docx2txt
-freesimplegui
 gensim
 ipywidgets
 ipython
