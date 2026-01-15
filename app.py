@@ -73,7 +73,8 @@ from loaders import (
 	WikiLoader,
 	GithubLoader,
 	WebLoader,
-	ArXivLoader
+	ArXivLoader,
+	XmlLoader
 )
 
 try:
@@ -289,8 +290,7 @@ with tabs[ 0 ]:
 		try:
 			tokens = [ t.lower( ) for t in word_tokenize( raw_text ) if t.isalpha( ) ]
 		except LookupError:
-			st.error(
-				'NLTK resources missing.\n\n'
+			st.error( 'NLTK resources missing.\n\n'
 				'Run:\n'
 				'`python -m nltk.downloader punkt stopwords`'
 			)
@@ -326,7 +326,7 @@ with tabs[ 0 ]:
 			# -----------------------------
 			# Absolute Metrics (with tooltips)
 			# -----------------------------
-			col1, col2, col3, col4 = st.columns( 4 )
+			col1, col2, col3, col4 = st.columns( 4, border=True )
 			with col1:
 				metric_with_tooltip( 'Characters', f'{char_count:,}',
 					'Total number of characters in the raw text.', )
@@ -343,7 +343,7 @@ with tabs[ 0 ]:
 				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
 					'Type–Token Ratio: unique_words ÷ total_words', )
 				
-			col5, col6, col7, col8 = st.columns( 4 )
+			col5, col6, col7, col8 = st.columns( 4, border=True )
 			with col5:
 				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
 					'Hapax Ratio: proportion of words that occur only once (lexical rarity).'  )
@@ -365,7 +365,7 @@ with tabs[ 0 ]:
 		# -------------------------------
 		with st.expander( '📖 Readability', expanded=False ):
 			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3, r4 = st.columns( 4 )
+				r1, r2, r3, r4 = st.columns( 4, border=True )
 				
 				with r1:
 					metric_with_tooltip(
@@ -2212,9 +2212,9 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Absolute Metrics
 				# ----------------------------
-				st.markdown( 'Absolute Metrics' )
+				st.markdown( '#### Metrics:' )
 				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0 )
-				a1, a2, a3, a4 = st.columns( 4 )
+				a1, a2, a3, a4 = st.columns( 4, border=True )
 				a1.metric( 'Characters', f'{proc_chars:,}' )
 				a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
 				a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
@@ -2225,8 +2225,8 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Delta Metrics
 				# ----------------------------
-				st.markdown( 'Δ Deltas' )
-				d1, d2, d3, d4 = st.columns( 4 )
+				st.markdown( '#### Deltas:' )
+				d1, d2, d3, d4 = st.columns( 4, border=True )
 				char_delta = proc_chars - raw_chars
 				token_delta = len( proc_tokens ) - len( raw_tokens )
 				vocab_delta = proc_vocab - raw_vocab
