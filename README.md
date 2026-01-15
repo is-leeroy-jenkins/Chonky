@@ -28,7 +28,7 @@ feature extraction, and document analysis.
 - **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
 
 
-![]()
+![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
 
 
 ## 🧰 Setup Instructions
