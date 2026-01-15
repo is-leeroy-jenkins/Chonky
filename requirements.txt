@@ -16,6 +16,7 @@ langchain-openai
 lxml
 matplotlib
 nltk
+numpy==1.26.4
 openpyxl
 openai
 PyMuPDF
@@ -23,7 +24,7 @@ python-docx
 pathlib
 pydantic
 pytube
-pandas==1.26.4
+pandas
 pinecone
 pygwalker
 sentence-transformers
