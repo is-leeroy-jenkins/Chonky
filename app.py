@@ -54,7 +54,6 @@ import math
 import nltk
 import pandas as pd
 import streamlit as st
-import streamlit_extras
 from PIL import Image
 from langchain_core.documents import Document
 
