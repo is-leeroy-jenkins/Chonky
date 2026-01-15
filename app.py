@@ -790,6 +790,135 @@ with tabs[ 0 ]:
 				
 				st.success( f"Loaded {len( docs )} CSV document(s)." )
 		
+		# -------------------------- XML Loader Expander
+		with st.expander( "🧬 XML Loader", expanded=False ):
+			from typing import List
+			from lxml import etree
+			from langchain.schema import Document
+			
+			# ------------------------------------------------------------------
+			# Session-backed loader instance
+			# ------------------------------------------------------------------
+			if "xml_loader" not in st.session_state:
+				st.session_state.xml_loader = XmlLoader( )
+			
+			loader: XmlLoader = st.session_state.xml_loader
+			
+			# ------------------------------------------------------------------
+			# File selection
+			# ------------------------------------------------------------------
+			xml_file = st.file_uploader(
+				label="Select XML file",
+				type=[ "xml" ],
+				accept_multiple_files=False,
+				key="xml_file_uploader"
+			)
+			
+			# ------------------------------------------------------------------
+			# Semantic (Unstructured) Loading
+			# ------------------------------------------------------------------
+			st.subheader( "Semantic XML Loading (Unstructured)" )
+			
+			col1, col2 = st.columns( 2 )
+			
+			with col1:
+				chunk_size = st.number_input(
+					"Chunk Size",
+					min_value=100,
+					max_value=5000,
+					value=1000,
+					step=100
+				)
+			
+			with col2:
+				overlap_amount = st.number_input(
+					"Chunk Overlap",
+					min_value=0,
+					max_value=1000,
+					value=200,
+					step=50
+				)
+			
+			if st.button( "Load XML (Semantic)", use_container_width=True ):
+				if xml_file is None:
+					st.warning( "Please select an XML file." )
+				else:
+					with st.spinner( "Loading XML via UnstructuredXMLLoader..." ):
+						docs: List[ Document ] | None = loader.load( xml_file.name )
+						if docs:
+							st.success( f"Loaded {len( docs )} semantic document elements." )
+							st.session_state[ "xml_documents" ] = docs
+			
+			if st.button( "Split Semantic Documents", use_container_width=True ):
+				with st.spinner( "Splitting documents..." ):
+					split_docs = loader.split(
+						size=int( chunk_size ),
+						amount=int( overlap_amount )
+					)
+					if split_docs:
+						st.success( f"Produced {len( split_docs )} document chunks." )
+						st.session_state[ "xml_split_documents" ] = split_docs
+			
+			# ------------------------------------------------------------------
+			# Structured XML Tree Loading
+			# ------------------------------------------------------------------
+			st.divider( )
+			st.subheader( "Structured XML Tree Loading (XPath)" )
+			
+			if st.button( "Load XML Tree", use_container_width=True ):
+				if xml_file is None:
+					st.warning( "Please select an XML file." )
+				else:
+					with st.spinner( "Parsing XML into ElementTree..." ):
+						tree = loader.load_tree( xml_file.name )
+						if tree is not None:
+							st.success( "XML tree loaded successfully." )
+							st.session_state[ "xml_tree_loaded" ] = True
+							st.session_state[ "xml_namespaces" ] = loader.xml_namespaces
+			
+			# ------------------------------------------------------------------
+			# XPath Query Interface
+			# ------------------------------------------------------------------
+			if loader.xml_root is not None:
+				st.markdown( "**XPath Query**" )
+				
+				xpath_expr = st.text_input(
+					"XPath Expression",
+					value="//*",
+					help="Use namespace prefixes if applicable."
+				)
+				
+				if st.button( "Run XPath Query", use_container_width=True ):
+					with st.spinner( "Executing XPath..." ):
+						elements = loader.get_elements( xpath_expr )
+						if elements is not None:
+							st.success( f"Returned {len( elements )} elements." )
+							st.session_state[ "xml_xpath_results" ] = elements
+				
+				# Preview results
+				if "xml_xpath_results" in st.session_state:
+					preview_count = min( 10, len( st.session_state[ "xml_xpath_results" ] ) )
+					st.caption( f"Previewing first {preview_count} elements" )
+					
+					for el in st.session_state[ "xml_xpath_results" ][ :preview_count ]:
+						st.code(
+							etree.tostring( el, pretty_print=True, encoding="unicode" ),
+							language="xml"
+						)
+			
+			# ------------------------------------------------------------------
+			# Debug / Introspection
+			# ------------------------------------------------------------------
+			with st.expander( "ℹ Loader State" ):
+				st.json( {
+						"file_path": loader.file_path,
+						"documents_loaded": loader.documents is not None,
+						"xml_tree_loaded": loader.xml_tree is not None,
+						"namespaces": loader.xml_namespaces,
+						"chunk_size": loader.chunk_size,
+						"overlap_amount": loader.overlap_amount,
+				} )
+		
 		# --------------------------- PDF Loader
 		with st.expander( '📕 PDF Loader', expanded=False ):
 			pdf = st.file_uploader(

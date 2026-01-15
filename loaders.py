@@ -70,7 +70,8 @@ from langchain_community.document_loaders import (
     GoogleDriveLoader,
     UnstructuredPowerPointLoader,
     OutlookMessageLoader,
-    OneDriveLoader
+    OneDriveLoader,
+    UnstructuredXMLLoader
 )
 
 from langchain_community.document_loaders.parsers import PyPDFParser
@@ -81,6 +82,7 @@ from pathlib import Path
 import re
 from typing import Optional, List, Dict, Any
 import wikipedia
+from lxml import etree
 
 def throw_if( name: str, value: Any ) -> None:
 	'''
@@ -597,6 +599,249 @@ class CsvLoader( Loader ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+class XmlLoader(Loader):
+    """
+    Purpose:
+    --------
+    Load XML files using two explicit and independent paths:
+
+    1. Unstructured semantic loading via LangChain's UnstructuredXMLLoader,
+       producing LangChain Document objects suitable for RAG and embeddings.
+
+    2. Structured XML loading via lxml, producing an ElementTree suitable for
+       XPath queries and schema-aware processing.
+
+    Attributes:
+    ----------
+    file_path : Optional[str]
+        Path to the XML file.
+
+    documents : Optional[List[Document]]
+        Documents produced by UnstructuredXMLLoader.
+
+    loader : Optional[UnstructuredXMLLoader]
+        Active unstructured loader instance.
+
+    splitter : Optional[RecursiveCharacterTextSplitter]
+        Text splitter for document chunking.
+
+    chunk_size : Optional[int]
+        Chunk size for splitting documents.
+
+    overlap_amount : Optional[int]
+        Overlap size for splitting documents.
+
+    xml_tree : Optional[etree._ElementTree]
+        Parsed XML tree produced by lxml.
+
+    xml_root : Optional[etree._Element]
+        Root element of the parsed XML tree.
+
+    xml_namespaces : Optional[Dict[str, str]]
+        Namespace mapping extracted from the XML root.
+
+    Public Methods:
+    ---------------
+    load
+    split
+    load_tree
+    get_elements
+    """
+
+    file_path: Optional[str]
+    documents: Optional[List[Document]]
+    loader: Optional[UnstructuredXMLLoader]
+    splitter: Optional[RecursiveCharacterTextSplitter]
+    chunk_size: Optional[int]
+    overlap_amount: Optional[int]
+    xml_tree: Optional[etree._ElementTree]
+    xml_root: Optional[etree._Element]
+    xml_namespaces: Optional[Dict[str, str]]
+
+    def __init__(self) -> None:
+        super( ).__init__( )
+        self.file_path = None
+        self.documents = None
+        self.loader = None
+        self.splitter = None
+        self.chunk_size = None
+        self.overlap_amount = None
+        self.xml_tree = None
+        self.xml_root = None
+        self.xml_namespaces = None
+
+    def __dir__(self) -> List[str]:
+        """
+        
+	        Returns:
+	        --------
+	        
+	        List[str]
+	            List of available members.
+	            
+        """
+        return [
+            "loader",
+            "documents",
+            "splitter",
+            "file_path",
+            "expanded",
+            "candidates",
+            "resolved",
+            "chunk_size",
+            "overlap_amount",
+            "xml_tree",
+            "xml_root",
+            "xml_namespaces",
+            "verify_exists",
+            "resolve_paths",
+            "split_documents",
+            "load",
+            "split",
+            "load_tree",
+            "get_elements",
+        ]
+
+    def load(self, filepath: str) -> List[Document] | None:
+        """
+	        
+	        Purpose:
+	        --------
+	        Load an XML file using LangChain's UnstructuredXMLLoader to produce
+	        semantic Document objects.
+	
+	        Parameters:
+	        -----------
+	        filepath : str
+	            Path to the XML file.
+	
+	        Returns:
+	        --------
+	        List[Document] | None
+	            Parsed LangChain Document objects.
+	            
+        """
+        try:
+            self.file_path = self.verify_exists(filepath)
+            self.loader = UnstructuredXMLLoader( file_path=self.file_path, mode="elements" )
+            self.documents = self.loader.load()
+            return self.documents
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "chonky"
+            exception.cause = "XmlLoader"
+            exception.method = "load(self, filepath: str)"
+            error = ErrorDialog(exception)
+            error.show()
+
+    def split(self, size: int=1000, amount: int=200) -> List[Document] | None:
+        """
+	        
+	        Purpose:
+	        --------
+	        Split loaded unstructured Documents into smaller chunks.
+	
+	        Parameters:
+	        -----------
+	        size : int
+	            Maximum number of characters per chunk.
+	
+	        amount : int
+	            Number of overlapping characters between chunks.
+	
+	        Returns:
+	        --------
+	        List[Document] | None
+	            Split Document chunks.
+            
+        """
+        try:
+            if self.documents is None:
+                raise ValueError("No documents loaded via load().")
+            self.chunk_size = size
+            self.overlap_amount = amount
+            split_docs = self.split_documents( docs=self.documents, chunk=self.chunk_size,
+	            overlap=self.overlap_amount )
+
+            return split_docs
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "chonky"
+            exception.cause = "XmlLoader"
+            exception.method = "split(self, size: int = 1000, amount: int = 200)"
+            error = ErrorDialog(exception)
+            error.show()
+
+    def load_tree(self, filepath: str) -> etree._ElementTree | None:
+        """
+	        
+	        Purpose:
+	        --------
+	        Parse an XML file into a structured lxml ElementTree and store it
+	        on the instance.
+	
+	        Parameters:
+	        -----------
+	        filepath : str
+	            Path to the XML file.
+	
+	        Returns:
+	        --------
+	        etree._ElementTree | None
+	            Parsed XML tree.
+            
+        """
+        try:
+            self.file_path = self.verify_exists(filepath)
+            parser = etree.XMLParser(recover=True, remove_comments=True, remove_blank_text=True )
+            self.xml_tree = etree.parse(self.file_path, parser)
+            self.xml_root = self.xml_tree.getroot()
+            self.xml_namespaces = {
+                prefix if prefix is not None else "default": uri
+                for prefix, uri in (self.xml_root.nsmap or {}).items()
+            }
+
+            return self.xml_tree
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "chonky"
+            exception.cause = "XmlLoader"
+            exception.method = "load_tree(self, filepath: str)"
+            error = ErrorDialog(exception)
+            error.show()
+
+    def get_elements(self, xpath: str) -> List[etree._Element] | None:
+        """
+        
+	        Purpose:
+	        --------
+	        Retrieve XML elements using an XPath expression against the
+	        loaded XML tree.
+	
+	        Parameters:
+	        -----------
+	        xpath : str
+	            XPath expression.
+	
+	        Returns:
+	        --------
+	        List[etree._Element] | None
+	            Matching XML elements.
+            
+        """
+        try:
+            if self.xml_root is None:
+                raise ValueError("XML tree not loaded. Call load_tree() first.")
+            elements = self.xml_root.xpath( xpath, namespaces=self.xml_namespaces )
+            return list(elements)
+        except Exception as e:
+            exception = Error(e)
+            exception.module = "chonky"
+            exception.cause = "XmlLoader"
+            exception.method = "get_elements(self, xpath: str)"
+            error = ErrorDialog(exception)
+            error.show()
+		    
 class WebLoader( Loader ):
 	'''
 
