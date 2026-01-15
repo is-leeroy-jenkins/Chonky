@@ -478,10 +478,10 @@ class TextParser( Processor ):
 			throw_if( 'text', text )
 			# Define sentence delimiters to preserve
 			sentence_delimiters = {
-					".": "__PERIOD__",
+					". ": "__PERIOD__",
 					"!": "__EXCLAMATION__",
 					"?": "__QUESTION__",
-					";": "__SEMICOLON__"
+					"; ": "__SEMICOLON__"
 			}
 			
 			protected_text = text
