@@ -280,7 +280,6 @@ with tabs[ 0 ]:
 	# Metrics container (single owner)
 	# ------------------------------------------------------------------
 	metrics_container = st.container( )
-	
 	def render_metrics_panel( ):
 		raw_text = st.session_state.get( 'raw_text' )
 		if not isinstance( raw_text, str ) or not raw_text.strip( ):
@@ -288,11 +287,7 @@ with tabs[ 0 ]:
 			return
 		
 		try:
-			tokens = [
-					t.lower( )
-					for t in word_tokenize( raw_text )
-					if t.isalpha( )
-			]
+			tokens = [ t.lower( ) for t in word_tokenize( raw_text ) if t.isalpha( ) ]
 		except LookupError:
 			st.error(
 				'NLTK resources missing.\n\n'
@@ -309,13 +304,11 @@ with tabs[ 0 ]:
 		token_count = len( tokens )
 		vocab = set( tokens )
 		vocab_size = len( vocab )
-		counts = Counter( tokens )
-		
+		counts = Counter( tokens )		
 		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
 		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
 		avg_word_len = sum( len( t ) for t in tokens ) / token_count
 		ttr = vocab_size / token_count
-		
 		stopword_ratio = 0.0
 		lexical_density = 0.0
 		
@@ -329,100 +322,81 @@ with tabs[ 0 ]:
 		# -------------------------------
 		# Corpus Metrics
 		# -------------------------------
-		with st.expander( "📊 Corpus Metrics", expanded=False ):
+		with st.expander( '📊 Corpus Metrics', expanded=False ):
 			# -----------------------------
 			# Absolute Metrics (with tooltips)
 			# -----------------------------
 			col1, col2, col3, col4 = st.columns( 4 )
-			
 			with col1:
-				metric_with_tooltip(
-					"Characters",
-					f"{char_count:,}",
-					"Total number of characters in the raw text.",
-				)
+				metric_with_tooltip( 'Characters', f'{char_count:,}',
+					'Total number of characters in the raw text.', )
 			
 			with col2:
-				metric_with_tooltip(
-					"Tokens",
-					f"{token_count:,}",
-					"Token Count: total number of tokenized words after cleanup.",
-				)
+				metric_with_tooltip( 'Tokens', f'{token_count:,}',
+					'Token Count: total number of tokenized words after cleanup.', )
 			
 			with col3:
-				metric_with_tooltip(
-					"Unique Tokens",
-					f"{vocab_size:,}",
-					"Vocabulary Size: number of distinct word types in the text.",
-				)
+				metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
+					'Vocabulary Size: number of distinct word types in the text.', )
 			
 			with col4:
-				metric_with_tooltip(
-					"TTR",
-					f"{ttr:.3f}",
-					"Type–Token Ratio: unique_words ÷ total_words",
-				)
-			
-			# -----------------------------
-			# Derived Metrics (with tooltips)
-			# -----------------------------
+				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
+					'Type–Token Ratio: unique_words ÷ total_words', )
+				
 			col5, col6, col7, col8 = st.columns( 4 )
-			
 			with col5:
-				metric_with_tooltip(
-					"Hapax Ratio",
-					f"{hapax_ratio:.3f}",
-					"Hapax Ratio: proportion of words that occur only once (lexical rarity).",
-				)
+				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
+					'Hapax Ratio: proportion of words that occur only once (lexical rarity).'  )
 			
 			with col6:
-				metric_with_tooltip( "Avg Length", f"{avg_word_len:.2f}",
-					"Average number of characters per token (after cleanup).", )
+				metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
+					'Average number of characters per token (after cleanup).', )
 			
 			with col7:
-				metric_with_tooltip( "Stopword Ratio", f"{stopword_ratio:.2%}",
-					"Stopword Ratio: Percentage of words that provide little  semantic context", )
+				metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
+					'Stopword Ratio: Percentage of words that provide little  semantic context', )
 			
 			with col8:
-				metric_with_tooltip( "Lexical Density", f"{lexical_density:.2%}",
-					"Lexical Density: proportion of nouns, verbs, adjectives, adverbs", )
+				metric_with_tooltip( 'Lexical Density', f'{lexical_density:.2%}',
+					'Lexical Density: proportion of nouns, verbs, adjectives, adverbs', )
 			
 		# -------------------------------
 		# Readability
 		# -------------------------------
-		with st.expander( "📖 Readability", expanded=False ):
+		with st.expander( '📖 Readability', expanded=False ):
 			if TEXTSTAT_AVAILABLE:
 				r1, r2, r3, r4 = st.columns( 4 )
 				
 				with r1:
 					metric_with_tooltip(
-						"Flesch Reading Ease",
-						f"{textstat.flesch_reading_ease( raw_text ):.1f}",
-						"Higher scores = easier to read. Based on sentence length and syllable count.",
+						'Flesch Reading Ease',
+						f'{textstat.flesch_reading_ease( raw_text ):.1f}',
+						'Higher scores = easier to read. Based on sentence length and syllable count.',
 					)
 				
 				with r2:
 					metric_with_tooltip(
-						"Flesch–Kincaid Grade",
-						f"{textstat.flesch_kincaid_grade( raw_text ):.1f}",
-						"Estimated U.S. grade level needed to comprehend the text.",
+						'Flesch–Kincaid Grade',
+						f'{textstat.flesch_kincaid_grade( raw_text ):.1f}',
+						'Estimated U.S. grade level needed to comprehend the text.',
 					)
 				
 				with r3:
 					metric_with_tooltip(
-						"Gunning Fog",
-						f"{textstat.gunning_fog( raw_text ):.1f}",
-						"Weighted average of the number of words per sentence, and the number of long words per word",
+						'Gunning Fog',
+						f'{textstat.gunning_fog( raw_text ):.1f}',
+						'Weighted average of the number of words per sentence, and the number of long words per word',
 					)
 					
 				with r4:
 					metric_with_tooltip(
-						"Coleman-Liau Index",
-						f"{textstat.coleman_liau_index( raw_text ):.1f}",
-						"The average number of letters/100 words and sentences/100 words",
+						'Coleman-Liau Index',
+						f'{textstat.coleman_liau_index( raw_text ):.1f}',
+						'The average number of letters/100 words and sentences/100 words',
 					)
 			else:
-				st.caption( "Install `textstat` to enable readability metrics." )
+				st.caption( 'Install `textstat` to enable readability metrics.' )
+				
 		# -------------------------------
 		# Top Tokens
 		# -------------------------------
@@ -791,73 +765,48 @@ with tabs[ 0 ]:
 				st.success( f"Loaded {len( docs )} CSV document(s)." )
 		
 		# -------------------------- XML Loader Expander
-		with st.expander( "🧬 XML Loader", expanded=False ):
-			from typing import List
-			from lxml import etree
-			from langchain.schema import Document
+		with st.expander( '🧬 XML Loader', expanded=False ):
 			
 			# ------------------------------------------------------------------
 			# Session-backed loader instance
 			# ------------------------------------------------------------------
-			if "xml_loader" not in st.session_state:
+			if 'xml_loader' not in st.session_state:
 				st.session_state.xml_loader = XmlLoader( )
 			
-			loader: XmlLoader = st.session_state.xml_loader
-			
-			# ------------------------------------------------------------------
-			# File selection
-			# ------------------------------------------------------------------
-			xml_file = st.file_uploader(
-				label="Select XML file",
-				type=[ "xml" ],
-				accept_multiple_files=False,
-				key="xml_file_uploader"
-			)
-			
-			# ------------------------------------------------------------------
-			# Semantic (Unstructured) Loading
-			# ------------------------------------------------------------------
-			st.subheader( "Semantic XML Loading (Unstructured)" )
+			loader  = st.session_state.xml_loader
+			xml_file = st.file_uploader( label='Select XML file', type=[ 'xml' ],
+				accept_multiple_files=False, key='xml_file_uploader' )
+			st.subheader( 'Semantic XML Loading (Unstructured)' )
 			
 			col1, col2 = st.columns( 2 )
 			
 			with col1:
-				chunk_size = st.number_input(
-					"Chunk Size",
-					min_value=100,
-					max_value=5000,
-					value=1000,
-					step=100
-				)
+				chunk_size = st.number_input( 'Chunk Size', min_value=100,
+					max_value=5000, value=1000, step=100 )
 			
 			with col2:
-				overlap_amount = st.number_input(
-					"Chunk Overlap",
-					min_value=0,
-					max_value=1000,
-					value=200,
-					step=50
-				)
+				overlap_amount = st.number_input( 'Chunk Overlap', min_value=0, max_value=1000,
+					value=200, step=50 )
 			
-			if st.button( "Load XML (Semantic)", use_container_width=True ):
+			if st.button( 'Load XML (Semantic)', use_container_width=True ):
 				if xml_file is None:
-					st.warning( "Please select an XML file." )
+					st.warning( 'Please select an XML file.' )
 				else:
-					with st.spinner( "Loading XML via UnstructuredXMLLoader..." ):
-						docs: List[ Document ] | None = loader.load( xml_file.name )
+					with st.spinner( 'Loading XML via UnstructuredXMLLoader...' ):
+						docs = loader.load( xml_file.name )
 						if docs:
-							st.success( f"Loaded {len( docs )} semantic document elements." )
-							st.session_state[ "xml_documents" ] = docs
+							st.success( f'Loaded {len( docs )} semantic document elements.' )
+							st.session_state[ 'xml_documents' ] = docs
 			
-			if st.button( "Split Semantic Documents", use_container_width=True ):
-				with st.spinner( "Splitting documents..." ):
+			if st.button( 'Split Semantic Documents', use_container_width=True ):
+				with st.spinner( 'Splitting documents...' ):
 					split_docs = loader.split(
 						size=int( chunk_size ),
 						amount=int( overlap_amount )
 					)
 					if split_docs:
-						st.success( f"Produced {len( split_docs )} document chunks." )
-						st.session_state[ "xml_split_documents" ] = split_docs
+						st.success( f'Produced {len( split_docs )} document chunks.' )
+						st.session_state[ 'xml_split_documents' ] = split_docs
 			
 			# ------------------------------------------------------------------
 			# Structured XML Tree Loading
