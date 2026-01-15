@@ -27,7 +27,8 @@ feature extraction, and document analysis.
 - **Custom Pipelines**: Utilities for JSONL export, batch cleaning, and document segmentation.
 - **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
 
-
+___
+###### Demo
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
 
 
