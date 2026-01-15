@@ -56,7 +56,6 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 from langchain_core.documents import Document
-
 import config as cfg
 from processing import Processor, TextParser, WordParser, PdfParser
 from loaders import (
@@ -88,14 +87,14 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
 REQUIRED_CORPORA = [
-    "brown",
-    "gutenberg",
-    "reuters",
-    "webtext",
-    "inaugural",
-    "state_union",
-    "punkt",
-    "stopwords",
+    'brown',
+    'gutenberg',
+    'reuters',
+    'webtext',
+    'inaugural',
+    'state_union',
+    'punkt',
+    'stopwords',
 ]
 
 for corpus in REQUIRED_CORPORA:
@@ -213,7 +212,6 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 # ======================================================================================
 # Page Configuration
 # ======================================================================================
-
 st.set_page_config( page_title='Chonky', layout='wide', page_icon=cfg.ICON )
 
 st.markdown( "" )
@@ -221,7 +219,6 @@ st.markdown( "" )
 # ======================================================================================
 # Session State Initialization
 # ======================================================================================
-
 for key, default in SESSION_STATE_DEFAULTS.items( ):
 	if key not in st.session_state:
 		st.session_state[ key ] = default
@@ -272,7 +269,7 @@ tabs = st.tabs(
 )
 
 # ======================================================================================
-# Tab 1 — Loading (PER-EXPANDER CLEAR / RESET, NO SIDEBAR)
+# Tab 1 — Loaders
 # ======================================================================================
 
 with tabs[ 0 ]:
@@ -339,12 +336,12 @@ with tabs[ 0 ]:
 					'Vocabulary Size: number of distinct word types in the text.', )
 			
 			with col4:
-				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
-					'Type–Token Ratio: unique_words ÷ total_words', )
+				metric_with_tooltip( 'TTR', f'{ttr:.3f}%',
+					'Type–Token Ratio: unique words ÷ total words', )
 				
 			col5, col6, col7, col8 = st.columns( 4, border=True )
 			with col5:
-				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
+				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}%',
 					'Hapax Ratio: proportion of words that occur only once (lexical rarity).'  )
 			
 			with col6:
@@ -367,31 +364,25 @@ with tabs[ 0 ]:
 				r1, r2, r3, r4 = st.columns( 4, border=True )
 				
 				with r1:
-					metric_with_tooltip(
-						'Flesch Reading Ease',
+					metric_with_tooltip( 'Flesch Reading Ease',
 						f'{textstat.flesch_reading_ease( raw_text ):.1f}',
-						'Higher scores = easier to read. Based on sentence length and syllable count.',
-					)
+						'Higher scores = easier to read. Based on sentence length and syllable count.', )
 				
 				with r2:
-					metric_with_tooltip(
-						'Flesch–Kincaid Grade',
+					metric_with_tooltip( 'Flesch–Kincaid Grade',
 						f'{textstat.flesch_kincaid_grade( raw_text ):.1f}',
-						'Estimated U.S. grade level needed to comprehend the text.',
-					)
+						'Estimated U.S. grade level needed to comprehend the text.', )
 				
 				with r3:
-					metric_with_tooltip(
-						'Gunning Fog',
+					metric_with_tooltip( 'Gunning Fog',
 						f'{textstat.gunning_fog( raw_text ):.1f}',
 						'Weighted average of the number of words per sentence, and the number of long words per word',
 					)
 					
 				with r4:
-					metric_with_tooltip(
-						'Coleman-Liau Index',
+					metric_with_tooltip( 'Coleman-Liau Index',
 						f'{textstat.coleman_liau_index( raw_text ):.1f}',
-						'The average number of letters/100 words and sentences/100 words',
+						'Average characters per 100 words and sentences per 100 words',
 					)
 			else:
 				st.caption( 'Install `textstat` to enable readability metrics.' )
@@ -399,42 +390,25 @@ with tabs[ 0 ]:
 		# -------------------------------
 		# Top Tokens
 		# -------------------------------
-		with st.expander( "🔤 Top Tokens", expanded=False ):
+		with st.expander( '🔤 Top Tokens', expanded=False ):
 			top_tokens = counts.most_common( 10 )
-			
-			df = pd.DataFrame(
-				top_tokens,
-				columns=[ "token",
-				          "count" ]
-			)
-			
-			st.area_chart(
-				data=df,
-				x="token",
-				y="count"
-			)
+			df = pd.DataFrame( top_tokens, columns=[ 'token',  'count' ] ).set_index( 'token' )
+			st.area_chart( df )
 	
 	# ------------------------------------------------------------------
-	# SINGLE metrics render (correct placement)
+	# SINGLE metrics 
 	# ------------------------------------------------------------------
 	with metrics_container:
 		render_metrics_panel( )
 
-	# ------------------------------------------------------------------
-	# Defensive session_state initialization (UNCHANGED)
-	# ------------------------------------------------------------------
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 	
 	# ------------------------------------------------------------------
-	# Layout (UNCHANGED)
+	# Left Layout 
 	# ------------------------------------------------------------------
 	left, right = st.columns( [ 1, 1.5 ] )
-	
-	# ------------------------------------------------------------------
-	# LEFT COLUMN — Loader Expanders
-	# ------------------------------------------------------------------
 	with left:
 		# --------------------------- Text Loader
 		with st.expander( '📄 Text Loader', expanded=False ):
@@ -502,7 +476,7 @@ with tabs[ 0 ]:
 				st.success( f'Loaded {len( docs )} text document(s).' )
 		
 		# --------------------------- NLTK Loader (BUILT-IN + LOCAL)
-		with st.expander( "📚 Corpora Loader", expanded=False ):
+		with st.expander( '📚 Corpora Loader', expanded=False ):
 			import nltk
 			from nltk.corpus import (
 				brown,
@@ -513,34 +487,34 @@ with tabs[ 0 ]:
 				state_union,
 			)
 			
-			st.markdown( "#### NLTK Corpora" )
+			st.markdown( '###### NLTK Corpora' )
 			
 			corpus_name = st.selectbox(
-				"Select corpus",
+				'Select corpus',
 				[
-						"Brown",
-						"Gutenberg",
-						"Reuters",
-						"WebText",
-						"Inaugural",
-						"State of the Union",
+						'Brown',
+						'Gutenberg',
+						'Reuters',
+						'WebText',
+						'Inaugural',
+						'State of the Union',
 				],
-				key="nltk_corpus_name",
+				key='nltk_corpus_name',
 			)
 			
 			file_ids = [ ]
 			try:
-				if corpus_name == "Brown":
+				if corpus_name == 'Brown':
 					file_ids = brown.fileids( )
-				elif corpus_name == "Gutenberg":
+				elif corpus_name == 'Gutenberg':
 					file_ids = gutenberg.fileids( )
-				elif corpus_name == "Reuters":
+				elif corpus_name == 'Reuters':
 					file_ids = reuters.fileids( )
-				elif corpus_name == "WebText":
+				elif corpus_name == 'WebText':
 					file_ids = webtext.fileids( )
-				elif corpus_name == "Inaugural":
+				elif corpus_name == 'Inaugural':
 					file_ids = inaugural.fileids( )
-				elif corpus_name == "State of the Union":
+				elif corpus_name == 'State of the Union':
 					file_ids = state_union.fileids( )
 			except LookupError:
 				st.error(
@@ -550,54 +524,46 @@ with tabs[ 0 ]:
 				)
 			
 			selected_files = st.multiselect(
-				"Select files (leave empty to load all)",
+				'Select files (leave empty to load all)',
 				options=file_ids,
-				key="nltk_file_ids",
+				key='nltk_file_ids',
 			)
 			
 			st.divider( )
 			
-			st.markdown( "#### Local Corpus" )
+			st.markdown( '###### Local Corpus' )
 			
 			local_corpus_dir = st.text_input(
-				"Local directory",
-				placeholder="path/to/text/files",
-				key="nltk_local_dir",
+				'Local directory',
+				placeholder='path/to/text/files',
+				key='nltk_local_dir',
 			)
 			
 			# ------------------------------------------------------------------
 			# Load / Clear / Save controls
 			# ------------------------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
-			load_nltk = col_load.button( "Load", key="nltk_load" )
-			clear_nltk = col_clear.button( "Clear", key="nltk_clear" )
-			
-			# Build the current "NLTK-only" export payload
-			_docs = st.session_state.get( "documents" ) or [ ]
+			load_nltk = col_load.button( 'Load', key='nltk_load' )
+			clear_nltk = col_clear.button( 'Clear', key='nltk_clear' )
+			_docs = st.session_state.get( 'documents' ) or [ ]
 			_nltk_docs = [
 					d for d in _docs
-					if getattr( d, "metadata", { } ).get( "loader" ) == "NLTKLoader"
+					if getattr( d, 'metadata', { } ).get( 'loader' ) == 'NLTKLoader'
 			]
 			_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs ) if _nltk_docs else ""
 			_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
 			
 			col_save.download_button(
-				"Save",
+				'Save',
 				data=_nltk_text or "",
 				file_name=_export_name,
-				mime="text/plain",
-				disabled=not bool( _nltk_text.strip( ) ),
-			)
+				mime='text/plain',
+				disabled=not bool( _nltk_text.strip( ) ) )
 			
-			# ------------------------------------------------------
-			# Clear logic (CORRECTED)
-			# ------------------------------------------------------
-			if clear_nltk and st.session_state.get( "documents" ):
+			if clear_nltk and st.session_state.get( 'documents' ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "NLTKLoader"
-				]
+						if d.metadata.get( 'loader' ) != 'NLTKLoader' ]
 				
 				# 🔑 rebuild raw_text after clear
 				st.session_state.raw_text = (
@@ -605,11 +571,8 @@ with tabs[ 0 ]:
 						if st.session_state.documents else None
 				)
 				
-				st.info( "NLTKLoader documents removed." )
+				st.info( 'NLTKLoader documents removed.' )
 			
-			# ------------------------------------------------------
-			# Load logic (CORRECTED)
-			# ------------------------------------------------------
 			if load_nltk:
 				docs = [ ]
 				
@@ -619,26 +582,26 @@ with tabs[ 0 ]:
 					
 					for fid in files_to_load:
 						try:
-							if corpus_name == "Brown":
-								text = " ".join( brown.words( fid ) )
-							elif corpus_name == "Gutenberg":
+							if corpus_name == 'Brown':
+								text = ' '.join( brown.words( fid ) )
+							elif corpus_name == 'Gutenberg':
 								text = gutenberg.raw( fid )
-							elif corpus_name == "Reuters":
+							elif corpus_name == 'Reuters':
 								text = reuters.raw( fid )
-							elif corpus_name == "WebText":
+							elif corpus_name == 'WebText':
 								text = webtext.raw( fid )
-							elif corpus_name == "Inaugural":
+							elif corpus_name == 'Inaugural':
 								text = inaugural.raw( fid )
-							elif corpus_name == "State of the Union":
+							elif corpus_name == 'State of the Union':
 								text = state_union.raw( fid )
 							
 							docs.append(
 								Document(
 									page_content=text,
 									metadata={
-											"loader": "NLTKLoader",
-											"corpus": corpus_name,
-											"file_id": fid,
+											'loader': 'NLTKLoader',
+											'corpus': corpus_name,
+											'file_id': fid,
 									},
 								)
 							)
@@ -649,16 +612,16 @@ with tabs[ 0 ]:
 				if local_corpus_dir and os.path.isdir( local_corpus_dir ):
 					for fname in os.listdir( local_corpus_dir ):
 						path = os.path.join( local_corpus_dir, fname )
-						if os.path.isfile( path ) and fname.lower( ).endswith( ".txt" ):
-							with open( path, "r", encoding="utf-8", errors="ignore" ) as f:
+						if os.path.isfile( path ) and fname.lower( ).endswith( '.txt' ):
+							with open( path, 'r', encoding='utf-8', errors='ignore' ) as f:
 								text = f.read( )
 							
 							docs.append(
 								Document(
 									page_content=text,
 									metadata={
-											"loader": "NLTKLoader",
-											"source": path,
+											'loader': 'NLTKLoader',
+											'source': path,
 									},
 								)
 							)
@@ -672,11 +635,10 @@ with tabs[ 0 ]:
 					
 					# 🔑 rebuild raw_text after load / append
 					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in st.session_state.documents
-					)
+						d.page_content for d in st.session_state.documents )
 					
-					st.session_state.active_loader = "NLTKLoader"
-					st.success( f"Loaded {len( docs )} document(s) from NLTK." )
+					st.session_state.active_loader = 'NLTKLoader'
+					st.success( f'Loaded {len( docs )} document(s) from NLTK.' )
 					st.rerun( )
 		
 		# --------------------------- CSV Loader
