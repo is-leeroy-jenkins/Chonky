@@ -54,6 +54,11 @@ import math
 import nltk
 import pandas as pd
 import streamlit as st
+import streamlit_extras
+from streamlit_pandas import dataframe
+from streamlit_charts import scatter, area_chart
+from streamlit_excel_table import excel_table
+from streamlit_charts import bar_chart
 from PIL import Image
 from langchain_core.documents import Document
 
@@ -420,9 +425,18 @@ with tabs[ 0 ]:
 		# -------------------------------
 		with st.expander( "🔤 Top Tokens", expanded=False ):
 			top_tokens = counts.most_common( 10 )
-			st.table( [ {
-					            "token": tok,
-					            "count": cnt } for tok, cnt in top_tokens ] )
+			
+			df = pd.DataFrame(
+				top_tokens,
+				columns=[ "token",
+				          "count" ]
+			)
+			
+			area_chart(
+				data=df,
+				x="token",
+				y="count"
+			)
 	
 	# ------------------------------------------------------------------
 	# SINGLE metrics render (correct placement)

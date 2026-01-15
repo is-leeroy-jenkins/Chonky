@@ -23,7 +23,7 @@ python-docx
 pathlib
 pydantic
 pytube
-pandas
+pandas==1.26.4
 pinecone
 pygwalker
 sentence-transformers
