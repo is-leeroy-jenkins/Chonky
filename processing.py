@@ -83,6 +83,7 @@ from typing import List, Optional, Dict, Tuple, Any, Set
 import tiktoken
 from tiktoken.core import Encoding
 import unicodedata
+from lxml import etree
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
@@ -724,6 +725,59 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_html( self, text: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def remove_xml( self, text: str ) -> str:
+		"""
+		
+			Purpose:
+			--------
+			Remove XML tags from a string while preserving inner text content using
+			lxml for robust, fast, and XPath-capable parsing.
+	
+			This function safely parses XML fragments by wrapping them in a synthetic
+			root element, then extracts all textual content (element text and tails)
+			while discarding tags and attributes.
+	
+			Parameters:
+			-----------
+			text : str
+				Input text containing XML markup.
+	
+			Returns:
+			--------
+			str
+				Text with XML tags removed and inner text preserved.
+	
+			Raises:
+			-------
+			RuntimeError
+				Raised when XML parsing fails.
+			
+		"""
+		if text is None:
+			raise ValueError( "text cannot be None" )
+		
+		try:
+			wrapped_text = f"<root>{text}</root>"
+			parser = etree.XMLParser( recover=True, remove_comments=True,
+				remove_blank_text=False )
+			
+			root = etree.fromstring( wrapped_text.encode( "utf-8" ), parser )
+			text_parts = [ ]
+			for element in root.iter( ):
+				if element.text:
+					text_parts.append( element.text )
+				if element.tail:
+					text_parts.append( element.tail )
+			
+			return "".join( text_parts )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'Text'
+			exception.method = 'remove_xml( self, text: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 	

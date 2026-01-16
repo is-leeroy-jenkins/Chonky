@@ -5,7 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="76694280-cb71-48cd-94ba-bb095c0f94bb" name="Changes" comment="updates;">
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,15 +94,7 @@
       <workItem from="1768483955862" duration="16764000" />
       <workItem from="1768504734283" duration="1221000" />
       <workItem from="1768514123538" duration="17013000" />
-      <workItem from="1768583735451" duration="11652000" />
-    </task>
-    <task id="LOCAL-00023" summary="updates;">
-      <option name="closed" value="true" />
-      <created>1768322655032</created>
-      <option name="number" value="00023" />
-      <option name="presentableId" value="LOCAL-00023" />
-      <option name="project" value="LOCAL" />
-      <updated>1768322655032</updated>
+      <workItem from="1768583735451" duration="12619000" />
     </task>
     <task id="LOCAL-00024" summary="updates;">
       <option name="closed" value="true" />
@@ -487,7 +480,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768604110437</updated>
     </task>
-    <option name="localTasksCounter" value="72" />
+    <task id="LOCAL-00072" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1768604148621</created>
+      <option name="number" value="00072" />
+      <option name="presentableId" value="LOCAL-00072" />
+      <option name="project" value="LOCAL" />
+      <updated>1768604148621</updated>
+    </task>
+    <option name="localTasksCounter" value="73" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
