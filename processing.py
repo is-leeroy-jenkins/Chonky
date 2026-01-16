@@ -756,9 +756,7 @@ class TextParser( Processor ):
 				Raised when XML parsing fails.
 			
 		"""
-		if text is None:
-			raise ValueError( "text cannot be None" )
-		
+		throw_if( 'text', text )
 		try:
 			wrapped_text = f"<root>{text}</root>"
 			parser = etree.XMLParser( recover=True, remove_comments=True,
