@@ -23,6 +23,7 @@ python-docx
 pathlib
 pydantic
 pytube
+pypdf
 pandas
 pinecone
 pygwalker

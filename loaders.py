@@ -1126,7 +1126,7 @@ class PdfLoader( Loader ):
 		         'text-img' ]
 	
 	def load( self, filepath: str, mode: str='single', extract: str='plain',
-			include: bool=True, format: str='markdown-img' ) -> List[ Document ]:
+			include: bool=False, format: str='text' ) -> List[ Document ]:
 		"""
 
 			Purpose:

@@ -436,7 +436,7 @@ class TextParser( Processor ):
 			self.raw_input = text
 			lines = [ ]
 			for line in self.raw_input.splitlines( ):
-				lines.append( re.sub( r"[ \t]+", " ", line ).strip( ) )
+				lines.append( re.sub( r"[ \t\s{2,1}]+", " ", line ).strip( ) )
 			
 			self.parsed_text = "\n".join( lines )
 			return self.parsed_text
@@ -1277,7 +1277,7 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = nltk.sent_tokenize( text )
+			_tokens = nltk.word_tokenize( text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_data = [ ]
 			for index, chunk in enumerate( _sentences ):

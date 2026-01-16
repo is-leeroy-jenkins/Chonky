@@ -54,6 +54,9 @@ import math
 import nltk
 import pandas as pd
 import streamlit as st
+from streamlit_extras.dataframe_explorer import dataframe_explorer
+from streamlit_extras.chart_container import chart_container
+from streamlit_extras.grid import grid
 from PIL import Image
 from langchain_core.documents import Document
 import config as cfg
@@ -82,8 +85,8 @@ except ImportError:
 	TEXTSTAT_AVAILABLE = False
 	
 	
-import nltk
-from nltk.corpus import stopwords
+from nltk import sent_tokenize
+from nltk.corpus import stopwords, wordnet, words
 from nltk.tokenize import word_tokenize
 
 REQUIRED_CORPORA = [
@@ -145,6 +148,8 @@ SESSION_STATE_DEFAULTS = {
 		'active_table': None,
 		# Chunking
 		'chunks': None,
+		'chunk_modes': None,
+		"chunked_documents": None,
 		# Vectorization
 		'embeddings': None,
 		'embedding_model': None,
@@ -155,7 +160,9 @@ SESSION_STATE_DEFAULTS = {
 		'df_tables': None,
 		'df_schema': None,
 		'df_preview': None,
-		'df_count': None
+		'df_count': None,
+		# Data
+		'data_connection': None
 }
 
 def clear_if_active( loader_name: str ) -> None:
@@ -170,10 +177,11 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.tokens = None
 		st.session_state.vocabulary = None
 		st.session_state.token_counts = None
-		st.session_state.chunks = NOne
+		st.session_state.chunks = None
+		st.session_state.chunk_modes = None
+		st.session_state.chunked_documents = None
 		st.session_state.embeddings = None
 		st.session_state.embedding_model = None
-		st.session_state.sqlite_tables = None
 		st.session_state.active_table = None
 		st.session_state.df_frequency = None
 		st.session_state.df_tables = None
@@ -263,7 +271,6 @@ tabs = st.tabs(
 			'Tokens & Vocabulary',
 			'Analysis & Statistics',
 			'Vectorization & Chunking',
-			'Export',
 			'Data'
 	]
 )
@@ -271,7 +278,6 @@ tabs = st.tabs(
 # ======================================================================================
 # Tab 1 — Loaders
 # ======================================================================================
-
 with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	# Metrics container (single owner)
@@ -412,12 +418,8 @@ with tabs[ 0 ]:
 	with left:
 		# --------------------------- Text Loader
 		with st.expander( '📄 Text Loader', expanded=False ):
-			files = st.file_uploader(
-				'Upload TXT files',
-				type=[ 'txt' ],
-				accept_multiple_files=True,
-				key='txt_upload',
-			)
+			files = st.file_uploader( 'Upload TXT files', type=[ 'txt' ],
+				accept_multiple_files=True, key='txt_upload' )
 			
 			# ------------------------------------------------------------------
 			# Buttons: Load / Clear / Save (same placement + interaction model)
@@ -430,17 +432,11 @@ with tabs[ 0 ]:
 			can_save = (
 					st.session_state.get( 'active_loader' ) == 'TextLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+					and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='text_loader_output.txt',
-					mime='text/plain',
-					key='txt_save',
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='text_loader_output.txt', mime='text/plain', key='txt_save' )
 			else:
 				col_save.button( 'Save', key='txt_save_disabled', disabled=True )
 			
@@ -455,10 +451,10 @@ with tabs[ 0 ]:
 			# Load (unchanged behavior)
 			# ------------------------------------------------------------------
 			if load_txt and files:
-				docs = [ ]
+				documents = [ ]
 				for f in files:
 					text = f.read( ).decode( 'utf-8', errors='ignore' )
-					docs.append(
+					documents.append(
 						Document(
 							page_content=text,
 							metadata={
@@ -467,13 +463,13 @@ with tabs[ 0 ]:
 						)
 					)
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "TextLoader"
 				
-				st.success( f'Loaded {len( docs )} text document(s).' )
+				st.success( f'Loaded {len( documents )} text document(s).' )
 		
 		# --------------------------- NLTK Loader (BUILT-IN + LOCAL)
 		with st.expander( '📚 Corpora Loader', expanded=False ):
@@ -574,7 +570,7 @@ with tabs[ 0 ]:
 				st.info( 'NLTKLoader documents removed.' )
 			
 			if load_nltk:
-				docs = [ ]
+				documents = [ ]
 				
 				# Built-in corpora
 				if file_ids:
@@ -595,7 +591,7 @@ with tabs[ 0 ]:
 							elif corpus_name == 'State of the Union':
 								text = state_union.raw( fid )
 							
-							docs.append(
+							documents.append(
 								Document(
 									page_content=text,
 									metadata={
@@ -616,7 +612,7 @@ with tabs[ 0 ]:
 							with open( path, 'r', encoding='utf-8', errors='ignore' ) as f:
 								text = f.read( )
 							
-							docs.append(
+							documents.append(
 								Document(
 									page_content=text,
 									metadata={
@@ -626,19 +622,19 @@ with tabs[ 0 ]:
 								)
 							)
 				
-				if docs:
+				if documents:
 					if st.session_state.documents:
-						st.session_state.documents.extend( docs )
+						st.session_state.documents.extend( documents )
 					else:
-						st.session_state.documents = docs
-						st.session_state.raw_documents = list( docs )
+						st.session_state.documents = documents
+						st.session_state.raw_documents = list( documents )
 					
 					# 🔑 rebuild raw_text after load / append
 					st.session_state.raw_text = "\n\n".join(
 						d.page_content for d in st.session_state.documents )
 					
 					st.session_state.active_loader = 'NLTKLoader'
-					st.success( f'Loaded {len( docs )} document(s) from NLTK.' )
+					st.success( f'Loaded {len( documents )} document(s) from NLTK.' )
 					st.rerun( )
 		
 		# --------------------------- CSV Loader
@@ -715,15 +711,15 @@ with tabs[ 0 ]:
 						f.write( csv_file.read( ) )
 					
 					loader = CsvLoader( )
-					docs = loader.load( path, columns=None, delimiter=delimiter, quotechar=quotechar )
+					documents = loader.load( path, columns=None, delimiter=delimiter, quotechar=quotechar )
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "CsvLoader"
 				
-				st.success( f"Loaded {len( docs )} CSV document(s)." )
+				st.success( f"Loaded {len( documents )} CSV document(s)." )
 		
 		# -------------------------- XML Loader Expander
 		with st.expander( '🧬 XML Loader', expanded=False ):
@@ -754,10 +750,10 @@ with tabs[ 0 ]:
 					st.warning( 'Please select an XML file.' )
 				else:
 					with st.spinner( 'Loading XML via UnstructuredXMLLoader...' ):
-						docs = loader.load( xml_file.name )
-						if docs:
-							st.success( f'Loaded {len( docs )} semantic document elements.' )
-							st.session_state[ 'xml_documents' ] = docs
+						documents = loader.load( xml_file.name )
+						if documents:
+							st.success( f'Loaded {len( documents )} semantic document elements.' )
+							st.session_state[ 'xml_documents' ] = documents
 			
 			if st.button( 'Split Semantic Documents', use_container_width=True ):
 				with st.spinner( 'Splitting documents...' ):
@@ -880,8 +876,7 @@ with tabs[ 0 ]:
 			)
 			
 			# Save enabled only when PdfLoader is active and raw_text exists
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'PdfLoader'
+			can_save = ( st.session_state.get( 'active_loader' ) == 'PdfLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
 					and st.session_state.get( 'raw_text' ).strip( )
 			)
@@ -902,14 +897,14 @@ with tabs[ 0 ]:
 				)
 			
 			# --------------------------------------------------
-			# Clear (UNCHANGED behavior)
+			# Clear
 			# --------------------------------------------------
 			if clear_pdf:
 				clear_if_active( "PdfLoader" )
 				st.info( "PDF Loader state cleared." )
 			
 			# --------------------------------------------------
-			# Load (UNCHANGED behavior)
+			# Load
 			# --------------------------------------------------
 			if load_pdf and pdf:
 				with tempfile.TemporaryDirectory( ) as tmp:
@@ -918,21 +913,20 @@ with tabs[ 0 ]:
 						f.write( pdf.read( ) )
 					
 					loader = PdfLoader( )
-					docs = loader.load(
+					documents = loader.load(
 						path,
 						mode=mode,
 						extract=extract,
-						include=include,
 						format=fmt,
 					)
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
-				st.session_state.raw_text = '\n\n'.join( d.page_content for d in docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
+				st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents )
 				st.session_state.processed_text = None
 				st.session_state.active_loader = 'PdfLoader'
 				
-				st.success( f'Loaded {len( docs )} PDF document(s).' )
+				st.success( f'Loaded {len( documents )} PDF document(s).' )
 		
 		# --------------------------- Markdown Loader
 		with st.expander( '🧾 Markdown Loader', expanded=False ):
@@ -997,18 +991,18 @@ with tabs[ 0 ]:
 						f.write( md.read( ) )
 					
 					loader = MarkdownLoader( )
-					docs = loader.load( path )
+					documents = loader.load( path )
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in docs
+					d.page_content for d in documents
 				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "MarkdownLoader"
 				
 				st.success(
-					f"Loaded {len( docs )} Markdown document(s)."
+					f"Loaded {len( documents )} Markdown document(s)."
 				)
 		
 		# --------------------------- HTML Loader
@@ -1074,18 +1068,18 @@ with tabs[ 0 ]:
 						f.write( html.read( ) )
 					
 					loader = HtmlLoader( )
-					docs = loader.load( path )
+					documents = loader.load( path )
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in docs
+					d.page_content for d in documents
 				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "HtmlLoader"
 				
 				st.success(
-					f"Loaded {len( docs )} HTML document(s)."
+					f"Loaded {len( documents )} HTML document(s)."
 				)
 		
 		# --------------------------- JSON Loader
@@ -1156,22 +1150,22 @@ with tabs[ 0 ]:
 						f.write( js.read( ) )
 					
 					loader = JsonLoader( )
-					docs = loader.load(
+					documents = loader.load(
 						path,
 						is_text=True,
 						is_lines=is_lines,
 					)
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in docs
+					d.page_content for d in documents
 				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "JsonLoader"
 				
 				st.success(
-					f"Loaded {len( docs )} JSON document(s)."
+					f"Loaded {len( documents )} JSON document(s)."
 				)
 		
 		# --------------------------- PowerPoint Loader
@@ -1243,22 +1237,22 @@ with tabs[ 0 ]:
 						f.write( pptx.read( ) )
 					
 					loader = PowerPointLoader( )
-					docs = (
+					documents = (
 							loader.load( path )
 							if mode == "single"
 							else loader.load_multiple( path )
 					)
 				
-				st.session_state.documents = docs
-				st.session_state.raw_documents = list( docs )
+				st.session_state.documents = documents
+				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in docs
+					d.page_content for d in documents
 				)
 				st.session_state.processed_text = None
 				st.session_state.active_loader = "PowerPointLoader"
 				
 				st.success(
-					f"Loaded {len( docs )} PowerPoint document(s)."
+					f"Loaded {len( documents )} PowerPoint document(s)."
 				)
 		
 		# --------------------------- Excel Loader (FILE + SQLITE)
@@ -1359,7 +1353,7 @@ with tabs[ 0 ]:
 				# Open SQLite connection
 				conn = sqlite3.connect( sqlite_path )
 				
-				docs = [ ]
+				documents = [ ]
 				
 				for sheet, df in dfs.items( ):
 					if df.empty:
@@ -1381,7 +1375,7 @@ with tabs[ 0 ]:
 					# Convert DataFrame to text for NLP pipeline
 					text = df.to_csv( index=False )
 					
-					docs.append(
+					documents.append(
 						Document(
 							page_content=text,
 							metadata={
@@ -1396,21 +1390,21 @@ with tabs[ 0 ]:
 				
 				conn.close( )
 				
-				if docs:
+				if documents:
 					if st.session_state.documents:
-						st.session_state.documents.extend( docs )
+						st.session_state.documents.extend( documents )
 					else:
-						st.session_state.documents = docs
-						st.session_state.raw_documents = list( docs )
+						st.session_state.documents = documents
+						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = "\n\n".join(
-							d.page_content for d in docs
+							d.page_content for d in documents
 						)
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = "ExcelLoader"
 					
 					st.success(
-						f"Loaded {len( docs )} sheet(s) and stored in SQLite."
+						f"Loaded {len( documents )} sheet(s) and stored in SQLite."
 					)
 				else:
 					st.warning(
@@ -1487,31 +1481,31 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if arxiv_fetch and arxiv_query:
 				loader = ArXivLoader( )
-				docs = loader.load(
+				documents = loader.load(
 					arxiv_query,
 					max_chars=int( arxiv_max_chars ),
 				) or [ ]
 				
-				for d in docs:
+				for d in documents:
 					d.metadata[ 'loader' ] = 'ArXivLoader'
 					d.metadata[ 'source' ] = arxiv_query
 				
-				if docs:
+				if documents:
 					if st.session_state.documents:
-						st.session_state.documents.extend( docs )
+						st.session_state.documents.extend( documents )
 					else:
-						st.session_state.documents = docs
+						st.session_state.documents = documents
 						# Baseline snapshot only on first corpus load
-						st.session_state.raw_documents = list( docs )
+						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = '\n\n'.join(
-							x.page_content for x in docs
+							x.page_content for x in documents
 						)
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = 'ArXivLoader'
 					
 					st.success(
-						f'Fetched {len( docs )} arXiv document(s).'
+						f'Fetched {len( documents )} arXiv document(s).'
 					)
 		
 		# --------------------------- Wikipedia Loader (APPEND, PARAMETER-COMPLETE)
@@ -1594,32 +1588,32 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if wiki_fetch and wiki_query:
 				loader = WikiLoader( )
-				docs = loader.load(
+				documents = loader.load(
 					wiki_query,
 					max_docs=int( wiki_max_docs ),
 					max_chars=int( wiki_max_chars ),
 				) or [ ]
 				
-				for d in docs:
+				for d in documents:
 					d.metadata[ "loader" ] = "WikiLoader"
 					d.metadata[ "source" ] = wiki_query
 				
-				if docs:
+				if documents:
 					if st.session_state.documents:
-						st.session_state.documents.extend( docs )
+						st.session_state.documents.extend( documents )
 					else:
-						st.session_state.documents = docs
+						st.session_state.documents = documents
 						# Baseline snapshot only on first corpus load
-						st.session_state.raw_documents = list( docs )
+						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = "\n\n".join(
-							x.page_content for x in docs
+							x.page_content for x in documents
 						)
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = "WikiLoader"
 					
 					st.success(
-						f"Fetched {len( docs )} Wikipedia document(s)."
+						f"Fetched {len( documents )} Wikipedia document(s)."
 					)
 		
 		# --------------------------- GitHub Loader
@@ -1706,33 +1700,33 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if gh_fetch and gh_repo and gh_branch:
 				loader = GithubLoader( )
-				docs = loader.load(
+				documents = loader.load(
 					gh_url,
 					gh_repo,
 					gh_branch,
 					gh_filetype,
 				) or [ ]
 				
-				for d in docs:
+				for d in documents:
 					d.metadata[ 'loader' ] = 'GithubLoader'
 					d.metadata[ 'source' ] = f'{gh_repo}@{gh_branch}'
 				
-				if docs:
+				if documents:
 					if st.session_state.documents:
-						st.session_state.documents.extend( docs )
+						st.session_state.documents.extend( documents )
 					else:
-						st.session_state.documents = docs
+						st.session_state.documents = documents
 						# Baseline snapshot only on first corpus load
-						st.session_state.raw_documents = list( docs )
+						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = '\n\n'.join(
-							x.page_content for x in docs
+							x.page_content for x in documents
 						)
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = 'GithubLoader'
 					
 					st.success(
-						f'Fetched {len( docs )} GitHub document(s).'
+						f'Fetched {len( documents )} GitHub document(s).'
 					)
 		
 		# --------------------------- Web Loader
@@ -1799,11 +1793,11 @@ with tabs[ 0 ]:
 				
 				for url in [ u.strip( ) for u in urls.splitlines( )
 						if u.strip( ) ]:
-					docs = loader.load( url )
-					for d in docs:
+					documents = loader.load( url )
+					for d in documents:
 						d.metadata[ 'loader' ] = 'WebLoader'
 						d.metadata[ 'source' ] = url
-					new_docs.extend( docs )
+					new_docs.extend( documents )
 				
 				if new_docs:
 					if st.session_state.documents:
@@ -1900,35 +1894,35 @@ with tabs[ 0 ]:
 					prevent_outside=stay_on_domain,
 				)
 				
-				docs = loader.load( start_url )
+				documents = loader.load( start_url )
 				
-				for d in docs:
+				for d in documents:
 					d.metadata[ 'loader' ] = 'WebCrawler'
 					d.metadata[ 'source' ] = start_url
 				
 				if st.session_state.documents:
-					st.session_state.documents.extend( docs )
+					st.session_state.documents.extend( documents )
 				else:
-					st.session_state.documents = docs
-					st.session_state.raw_documents = list( docs )
-					st.session_state.raw_text = '\n\n'.join( d.page_content for d in docs )
+					st.session_state.documents = documents
+					st.session_state.raw_documents = list( documents )
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents )
 				
 				st.session_state.processed_text = None
 				st.session_state.active_loader = 'WebCrawler'
 				
-				st.success( f'Crawled {len( docs )} document(s).' )
+				st.success( f'Crawled {len( documents )} document(s).' )
 	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Document Preview (UNCHANGED)
 	# ------------------------------------------------------------------
 	with right:
-		docs = st.session_state.documents
-		if not docs:
+		documents = st.session_state.documents
+		if not documents:
 			st.info( 'No documents loaded.' )
 		else:
 			st.caption( f'Active Loader: {st.session_state.active_loader}' )
-			st.write( f'Documents: {len( docs )}' )
-			for i, d in enumerate( docs[ :5 ] ):
+			st.write( f'Documents: {len( documents )}' )
+			for i, d in enumerate( documents[ :5 ] ):
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
 					st.text_area(
@@ -1939,7 +1933,7 @@ with tabs[ 0 ]:
 					)
 
 # ======================================================================================
-# Tab — Processing / Preprocessing (Grouped Expanders)
+# Tab 2 — Processing / Preprocessing (Grouped Expanders)
 # ======================================================================================
 with tabs[ 1 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -2002,11 +1996,15 @@ with tabs[ 1 ]:
 				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
 			remove_numerals = st.checkbox( 'Remove Numerals',
 				help='Removes roman numbers I, II, IV, XI, etc' )
-			remove_encodings = st.checkbox( 'Remove Encoding' )
+			remove_encodings = st.checkbox( 'Remove Encoding',
+				help=r'Removes encoding artifacts and over-encoded byte strings' )
 			normalize_text = st.checkbox( 'Normalize (lowercase)' )
-			lemmatize_text = st.checkbox( 'Lemmatize' )
+			lemmatize_text = st.checkbox( 'Lemmatize',
+				help='Reduces words to their base or dictionary form' )
 			remove_fragments = st.checkbox( 'Remove Fragments',
 				help='Removes words less than 3 characters in length' )
+			remove_errors = st.checkbox( 'Remove Errors',
+				help='Removes misspelled words' )
 			collapse_whitespace = st.checkbox( 'Collapse Whitespace',
 				help='Removes extra lines' )
 			compress_whitespace = st.checkbox( 'Compress Whitespace',
@@ -2109,6 +2107,8 @@ with tabs[ 1 ]:
 				processed_text = tp.remove_stopwords( processed_text )
 			if remove_fragments:
 				processed_text = tp.remove_fragments( processed_text )
+			if remove_errors:
+				processed_text = tp.remove_errors( processed_text )
 			# 6 — Lemmatization
 			if lemmatize_text:
 				processed_text = tp.lemmatize_text( processed_text )
@@ -2173,7 +2173,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Absolute Metrics
 				# ----------------------------
-				st.markdown( '#### Metrics:' )
+				st.markdown( '##### Metrics:' )
 				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0 )
 				a1, a2, a3, a4 = st.columns( 4, border=True )
 				a1.metric( 'Characters', f'{proc_chars:,}' )
@@ -2186,7 +2186,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Delta Metrics
 				# ----------------------------
-				st.markdown( '#### Deltas:' )
+				st.markdown( '##### Deltas:' )
 				d1, d2, d3, d4 = st.columns( 4, border=True )
 				char_delta = proc_chars - raw_chars
 				token_delta = len( proc_tokens ) - len( raw_tokens )
@@ -2206,7 +2206,7 @@ with tabs[ 1 ]:
 			key="processed_text_view" )
 
 # ==========================================================================================
-# Tab 3 — Structural Views
+# Tab 3 — Scaffolding
 # ==========================================================================================
 with tabs[ 2 ]:
 	st.header( "" )
@@ -2219,10 +2219,8 @@ with tabs[ 2 ]:
 	df_count = st.session_state.get( 'df_count' )
 	df_schema = st.session_state.get( 'df_schema' )
 	df_preview = st.session_state.get( 'df_preview' )
-	chunks = st.session_state.get( 'chunks' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
-	sqlite_tables = st.session_state.get( 'sqlite_tables' )
 	active_table = st.session_state.get( 'active_table' )
 	
 	if st.session_state.processed_text:
@@ -2231,7 +2229,7 @@ with tabs[ 2 ]:
 		view = st.selectbox(
 			'View Type',
 			[ 'Lines',
-			  'Paragraphs',
+			  'Pages',
 			  'Sentences' ]
 		)
 		
@@ -2239,7 +2237,7 @@ with tabs[ 2 ]:
 			lines = processor.split_sentences( processed_text )
 			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
 		
-		elif view == 'Paragraphs':
+		elif view == 'Pages':
 			paragraphs = processed_text.split( '\n\n' )
 			st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ))
 		
@@ -2253,7 +2251,6 @@ with tabs[ 2 ]:
 # ==========================================================================================
 # Tab 4 — Tokens & Vocabulary
 # ==========================================================================================
-
 with tabs[ 3 ]:
 	st.header( "" )
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -2277,7 +2274,6 @@ with tabs[ 3 ]:
 # ==========================================================================================
 # Tab 5 — Analysis & Statistics
 # ==========================================================================================
-
 with tabs[ 4 ]:
 	st.header( "" )
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -2298,7 +2294,7 @@ with tabs[ 4 ]:
 		st.info( 'Generate tokens first' )
 
 # ==========================================================================================
-# Tab 6 — 🧩 Vectorization & Chunking (or Chunking tab index)
+# Tab 6 — 🧩 Vectorization & Chunking
 # ==========================================================================================
 with tabs[ 5 ]:
 	st.subheader( "" )
@@ -2306,23 +2302,23 @@ with tabs[ 5 ]:
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 	
-	docs = st.session_state.get( 'documents' )
+	documents = st.session_state.get( 'documents' )
+	chunks = st.session_state.get( 'chunks' )
+	chunk_modes = st.session_state.get( 'chunk_modes' )
+	chunked_documents = st.session_state.get( 'chunked_documents' )
+	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
 	
-	if not docs:
+	if  documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
-		st.stop( )
-	
-	if not loader_name:
+	elif loader_name is None:
 		st.warning( 'No active loader found.' )
-		st.stop( )
-	
-	chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
-	
-	if not chunk_modes:
+	else:
+		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
+		
+	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
-		st.stop( )
-	
+  
 	st.caption( f'Source Loader: {loader_name}' )
 	
 	# ---------------------------
@@ -2333,239 +2329,138 @@ with tabs[ 5 ]:
 	col_a, col_b = st.columns( 2 )
 	
 	with col_a:
-		chunk_size = st.number_input(
-			'Chunk Size',
-			min_value=100,
-			max_value=5000,
-			value=1000,
-			step=100,
-		)
+		chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000, value=1000,
+			step=100, key='chunk_size' )
 	
 	with col_b:
-		overlap = st.number_input(
-			'Overlap',
-			min_value=0,
-			max_value=2000,
-			value=200,
-			step=50,
-		)
+		overlap = st.number_input( 'Overlap', min_value=0, max_value=2000,
+			value=200, step=50, key='overlap' )
 	
 	col_run, col_reset = st.columns( 2 )
-	
-	run_chunking = col_run.button( 'Chunk' )
-	reset_chunking = col_reset.button( 'Reset' )
+	run_chunking = col_run.button( 'Chunk', key='chunk_button' )
+	reset_chunking = col_reset.button( 'Reset', key='reset_button' )
 	
 	# ---------------------------
 	# Actions
 	# ---------------------------
 	if reset_chunking:
-		# No mutation of source docs here unless you already snapshot originals
+		# No mutation of source documents here unless you already snapshot originals
 		st.info( 'Chunking controls reset.' )
 	
 	if run_chunking:
 		processor = TextParser( )
 		
 		if mode == 'chars':
-			chunked_docs = processor.chunk_text( text=processed_text, size=chunk_size )
+			chunked_documents = processor.chunk_text( text=processed_text, size=chunk_size )
 		
 		elif mode == 'tokens':
-			chunked_docs = word_tokenize( processed_text )
+			chunked_documents = word_tokenize( processed_text )
 		else:
 			st.error( f'Unsupported chunking mode: {mode}' )
-			st.stop( )
 		
-		st.session_state.documents = chunked_docs
+		st.session_state.chunked_documents = chunked_documents
 		
 		st.success(
-			f'Chunking complete: {len( chunked_docs )} chunks generated '
-			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
-		)
-
-# ==========================================================================================
-# Tab 5 — Analysis & Statistics
-# ==========================================================================================
-with tabs[ 4 ]:
-	st.header( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-	tokens = st.session_state.get( 'tokens' )
-
-	if isinstance( tokens, list ) and tokens:
-		processor = TextParser( )
-
-		try:
-			df_frequency = processor.create_frequency_distribution( tokens )
-		except Exception as ex:
-			st.error( f'Failed to compute frequency distribution: {ex}' )
-			st.stop( )
-
-		st.session_state.df_frequency = df_frequency
-		st.dataframe( df_frequency, use_container_width=True )
-
-	else:
-		st.info( "Generate tokens first to view frequency statistics." )
-
-
-# ==========================================================================================
-# Tab 6 — Chunking
-# ==========================================================================================
-with tabs[ 5 ]:
-	st.subheader( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-
-	docs = st.session_state.get( 'documents' )
-	loader_name = st.session_state.get( 'active_loader' )
-
-	if not docs:
-		st.warning( 'No documents loaded. Please load documents first.' )
-		st.stop( )
-
-	if not loader_name:
-		st.warning( 'No active loader found.' )
-		st.stop( )
-
-	# Defensive: CHUNKABLE_LOADERS may not exist
-	try:
-		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
-	except Exception:
-		st.error( 'Chunking configuration is missing (CHUNKABLE_LOADERS).' )
-		st.stop( )
-
-	if not chunk_modes:
-		st.info( f'Chunking is not supported for loader: {loader_name}' )
-		st.stop( )
-
-	st.caption( f'Source Loader: {loader_name}' )
-
-	# ---------------------------
-	# Chunking Controls
-	# ---------------------------
-	mode = st.selectbox(
-		'Chunking Mode',
-		options=chunk_modes,
-		help='Select how documents should be chunked',
-	)
-
-	col_a, col_b = st.columns( 2 )
-
-	with col_a:
-		chunk_size = st.number_input(
-			'Chunk Size',
-			min_value=100,
-			max_value=5000,
-			value=1000,
-			step=100,
-		)
-
-	with col_b:
-		overlap = st.number_input(
-			'Overlap',
-			min_value=0,
-			max_value=2000,
-			value=200,
-			step=50,
-		)
-
-	col_run, col_reset = st.columns( 2 )
-
-	run_chunking = col_run.button( 'Chunk' )
-	reset_chunking = col_reset.button( 'Reset' )
-
-	# ---------------------------
-	# Actions
-	# ---------------------------
-	if reset_chunking:
-		st.info( 'Chunking controls reset.' )
-
-	if run_chunking:
-		processor = TextParser( )
-
-		try:
-			if mode == 'chars':
-				chunked_docs = processor.chunk_sentences( docs )
-
-			elif mode == 'tokens':
-				chunked_docs = processor.chunk_text( docs )
-
-			else:
-				st.error( f'Unsupported chunking mode: {mode}' )
-				st.stop( )
-
-		except Exception as ex:
-			st.error( f'Chunking failed: {ex}' )
-			st.stop( )
-
-		if not isinstance( chunked_docs, list ) or not chunked_docs:
-			st.error( 'Chunking produced no output.' )
-			st.stop( )
-
-		st.session_state.documents = chunked_docs
-
-		st.success(
-			f'Chunking complete: {len( chunked_docs )} chunks generated '
-			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
-		)
+			f'Chunking complete: {len( chunked_documents )} chunks generated '
+			f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
 
 # ======================================================================================
-# Tab — SQLite Preview
+# Tab — Data (Grid-based SQLite Explorer, Identifier-Safe)
 # ======================================================================================
-with tabs[ 7 ]:
-	st.subheader( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-	
-	sqlite_path = os.path.join( 'stores', 'sqlite', 'data.db' )
-	
-	if not os.path.exists( sqlite_path ):
-		st.info( 'No SQLite database found. Load Excel data first.' )
-	else:
-		conn = sqlite3.connect( sqlite_path )
-		
-		# --------------------------------------------------
-		# Tables
-		# --------------------------------------------------
-		df_tables = pd.read_sql(
-			"SELECT name FROM sqlite_master WHERE type='table';",
-			conn,
-		)
-		
-		if df_tables.empty:
-			st.info( 'Database exists but contains no tables.' )
-			conn.close( )
-		else:
-			st.markdown( '### Tables' )
-			st.dataframe( df_tables, use_container_width=True )
-			
-			table_name = st.selectbox(
-				'Select table',
-				df_tables[ 'name' ].tolist( ),
-			)
-			
-			# --------------------------------------------------
-			# Row Count
-			# --------------------------------------------------
-			df_count = pd.read_sql(
-				f'SELECT COUNT(*) AS rows FROM {table_name};',
-				conn,
-			)
-			st.metric( 'Row Count', int( df_count.iloc[ 0 ][ 'rows' ] ) )
-			
-			# --------------------------------------------------
-			# Schema
-			# --------------------------------------------------
-			st.markdown( '### Schema' )
-			df_schema = pd.read_sql( f'PRAGMA table_info({table_name});', conn )
-			st.dataframe( df_schema[ [ 'cid', 'name', 'type', 'notnull' ] ], use_container_width=True, )
-			
-			# --------------------------------------------------
-			# Preview Data
-			# --------------------------------------------------
-			st.markdown( '### Preview (First 100 Rows)' )
-			df_preview = pd.read_sql( f"SELECT * FROM {table_name} LIMIT 100;", conn )
-			st.dataframe( df_preview, use_container_width=True )
-			
-			conn.close( )
+with tabs[6]:
+
+    import os
+    import sqlite3
+    import pandas as pd
+    from streamlit_extras.grid import grid  # <-- REQUIRED
+
+    st.subheader("Data")
+
+    sqlite_path = os.path.join("stores", "sqlite", "data.db")
+
+    def q(identifier: str) -> str:
+        escaped = identifier.replace('"', '""')
+        return f'"{escaped}"'
+
+    if not os.path.exists(sqlite_path):
+        st.info("No SQLite database found. Load data first.")
+    else:
+        conn = sqlite3.connect(sqlite_path)
+        try:
+            df_tables = pd.read_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
+                conn,
+            )
+
+            if df_tables.empty:
+                st.info("Database exists but contains no tables.")
+            else:
+                table_names = df_tables["name"].tolist()
+
+                if "active_table" not in st.session_state:
+                    st.session_state.active_table = table_names[0]
+
+                if st.session_state.active_table not in table_names:
+                    st.session_state.active_table = table_names[0]
+
+                data_grid = grid(
+                    2,
+                    [2, 3, 1],
+                    1,
+                    1,
+                    vertical_align="top",
+                )
+
+                table_name = data_grid.selectbox(
+                    "Select Table",
+                    table_names,
+                    index=table_names.index(st.session_state.active_table),
+                )
+                st.session_state.active_table = table_name
+
+                df_count = pd.read_sql(
+                    f"SELECT COUNT(*) AS rows FROM {q(table_name)};",
+                    conn,
+                )
+                data_grid.metric("Row Count", int(df_count.iloc[0]["rows"]))
+
+                df_preview = pd.read_sql(
+                    f"SELECT * FROM {q(table_name)} LIMIT 250;",
+                    conn,
+                )
+                data_grid.dataframe(df_preview, use_container_width=True)
+
+                numeric_cols = df_preview.select_dtypes(include="number")
+                if not numeric_cols.empty:
+                    data_grid.line_chart(numeric_cols, use_container_width=True)
+                else:
+                    data_grid.write("No numeric columns available for charting.")
+
+                df_schema = pd.read_sql(
+                    f"PRAGMA table_info({q(table_name)});",
+                    conn,
+                )
+                data_grid.dataframe(
+                    df_schema[["cid", "name", "type", "notnull", "pk"]],
+                    use_container_width=True,
+                )
+
+                data_grid.button("Refresh", use_container_width=True)
+                data_grid.button("Export CSV", use_container_width=True)
+
+                with data_grid.expander("Show Filters", expanded=False):
+                    st.multiselect(
+                        "Columns",
+                        df_preview.columns.tolist(),
+                        default=df_preview.columns.tolist(),
+                    )
+                    st.slider(
+                        "Max Rows",
+                        min_value=10,
+                        max_value=1000,
+                        value=250,
+                        step=10,
+                    )
+        finally:
+            conn.close()
+

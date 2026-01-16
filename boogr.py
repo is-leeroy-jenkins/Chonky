@@ -47,6 +47,7 @@ import os
 import pydantic
 from pydantic import BaseModel
 import traceback
+import FreeSimpleGUI as sg
 from sys import exc_info
 from typing import List, Optional
 import html
