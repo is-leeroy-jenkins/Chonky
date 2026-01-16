@@ -267,11 +267,10 @@ tabs = st.tabs(
 	[
 			'Loading',
 			'Processing',
-			'Scaffolding',
+			'Data View',
 			'Tokens & Vocabulary',
-			'Analysis & Statistics',
 			'Vectorization & Chunking',
-			'Data'
+			'Database'
 	]
 )
 
@@ -320,6 +319,15 @@ with tabs[ 0 ]:
 			lexical_density = 1.0 - stopword_ratio
 		except LookupError:
 			pass
+		
+		# -------------------------------
+		# Top Tokens
+		# -------------------------------
+		with st.expander( '🔤 Top Tokens', expanded=False ):
+			top_tokens = counts.most_common( 10 )
+			df = pd.DataFrame( top_tokens, columns=[ 'token',
+			                                         'count' ] ).set_index( 'token' )
+			st.area_chart( df )
 			
 		# -------------------------------
 		# Corpus Metrics
@@ -342,12 +350,12 @@ with tabs[ 0 ]:
 					'Vocabulary Size: number of distinct word types in the text.', )
 			
 			with col4:
-				metric_with_tooltip( 'TTR', f'{ttr:.3f}%',
+				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
 					'Type–Token Ratio: unique words ÷ total words', )
 				
 			col5, col6, col7, col8 = st.columns( 4, border=True )
 			with col5:
-				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}%',
+				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
 					'Hapax Ratio: proportion of words that occur only once (lexical rarity).'  )
 			
 			with col6:
@@ -392,14 +400,6 @@ with tabs[ 0 ]:
 					)
 			else:
 				st.caption( 'Install `textstat` to enable readability metrics.' )
-				
-		# -------------------------------
-		# Top Tokens
-		# -------------------------------
-		with st.expander( '🔤 Top Tokens', expanded=False ):
-			top_tokens = counts.most_common( 10 )
-			df = pd.DataFrame( top_tokens, columns=[ 'token',  'count' ] ).set_index( 'token' )
-			st.area_chart( df )
 	
 	# ------------------------------------------------------------------
 	# SINGLE metrics 
@@ -1933,7 +1933,7 @@ with tabs[ 0 ]:
 					)
 
 # ======================================================================================
-# Tab 2 — Processing / Preprocessing (Grouped Expanders)
+# Tab — Processing / Preprocessing
 # ======================================================================================
 with tabs[ 1 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -1949,7 +1949,6 @@ with tabs[ 1 ]:
 	# ------------------------------------------------------------------
 	if has_text:
 		seed_hash = hash( raw_text )
-		
 		if st.session_state.get( "_processing_seed_hash" ) != seed_hash:
 			# New load detected → seed processed text AND the widget-backed view
 			st.session_state.processed_text = processed_text
@@ -1957,18 +1956,17 @@ with tabs[ 1 ]:
 			
 			# Keep raw view in sync as well (disabled widget still has state)
 			st.session_state.raw_text_view = raw_text
-			
 			st.session_state._processing_seed_hash = processed_text
 	else:
 		st.session_state.raw_text_view = ""
-
+		
 	if not has_text:
 		st.info( "No raw text available yet. Load documents to enable processing." )
 
 	# ------------------------------------------------------------------
 	# Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ] )
+	left, right = st.columns( [ 1, 1.5 ], border=True )
 	
 	# ------------------------------------------------------------------
 	# LEFT COLUMN — Controls (Grouped Expanders)
@@ -1991,7 +1989,7 @@ with tabs[ 1 ]:
 			remove_punctuation = st.checkbox( 'Remove Punctuation',
 				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence delimiters' )
 			remove_images = st.checkbox( 'Remove Images',
-				help=r'Remove image references from text, including Markdown images, HTML <img> tags, and  image URLs' )
+				help=r'Remove image from text, including Markdown images, HTML <img> tags, and  image URLs' )
 			remove_stopwords = st.checkbox( 'Remove Stopwords',
 				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
 			remove_numerals = st.checkbox( 'Remove Numerals',
@@ -2173,7 +2171,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Absolute Metrics
 				# ----------------------------
-				st.markdown( '##### Metrics:' )
+				st.text( 'Metrics:' )
 				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0 )
 				a1, a2, a3, a4 = st.columns( 4, border=True )
 				a1.metric( 'Characters', f'{proc_chars:,}' )
@@ -2181,12 +2179,12 @@ with tabs[ 1 ]:
 				a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
 				a4.metric( 'TTR', f'{ttr:.3f}' )
 				
-				st.divider( )
+				st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 				
 				# ----------------------------
 				# Delta Metrics
 				# ----------------------------
-				st.markdown( '##### Deltas:' )
+				st.text( 'Deltas:' )
 				d1, d2, d3, d4 = st.columns( 4, border=True )
 				char_delta = proc_chars - raw_chars
 				token_delta = len( proc_tokens ) - len( raw_tokens )
@@ -2206,7 +2204,7 @@ with tabs[ 1 ]:
 			key="processed_text_view" )
 
 # ==========================================================================================
-# Tab 3 — Scaffolding
+# Tab  — Data View
 # ==========================================================================================
 with tabs[ 2 ]:
 	st.header( "" )
@@ -2222,81 +2220,118 @@ with tabs[ 2 ]:
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
 	active_table = st.session_state.get( 'active_table' )
-	
 	if st.session_state.processed_text:
 		processor = TextParser( )
-		
 		view = st.selectbox(
 			'View Type',
 			[ 'Lines',
-			  'Pages',
-			  'Sentences' ]
-		)
+			  'Paragraphs',
+			  'Pages' ] )
 		
 		if view == 'Lines':
-			lines = processor.split_sentences( processed_text )
+			lines = processor.split_sentences( text=processed_text, size=15 )
 			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
-		
-		elif view == 'Pages':
-			paragraphs = processed_text.split( '\n\n' )
+		elif view == 'Paragraphs':
+			paragraphs = processor.split_sentences( text=processed_text, size=40 )
 			st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ))
-		
-		elif view == 'Sentences':
-			sentences = processor.split_sentences( processed_text )
+		elif view == 'Pages':
+			sentences = processor.split_sentences( text=processed_text, size=250 )
 			st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ))
-	
 	else:
 		st.info( 'Run preprocessing first' )
 
 # ==========================================================================================
-# Tab 4 — Tokens & Vocabulary
+# Tab - Tokens, Vocabulary
 # ==========================================================================================
 with tabs[ 3 ]:
-	st.header( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-	
-	if st.session_state.processed_text:
-		processor = TextParser( )
-		tokens = word_tokenize( processed_text )
-		vocab = processor.create_vocabulary( tokens )
-		st.write( f'Token Count: {len( tokens )}' )
-		st.dataframe( pd.DataFrame( tokens, columns=[ 'Token' ] )  )
-		st.write( f'Vocabulary Size: {len( vocab )}' )
-		st.dataframe( pd.DataFrame( vocab, columns=[ 'Word' ] ) )
-		st.session_state.tokens = tokens
-		st.session_state.vocabulary = vocab
-	
-	else:
-		st.info( 'Run preprocessing first' )
+    st.header("")
+    for key, default in SESSION_STATE_DEFAULTS.items():
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+    if st.session_state.processed_text:
+        processor = TextParser()
+
+        # --------------------------------------------------
+        # Tokenization & Vocabulary
+        # --------------------------------------------------
+        tokens = word_tokenize( processed_text )
+        vocab = processor.create_vocabulary( tokens )
+
+        # --------------------------------------------------
+        # Frequency Distribution
+        # --------------------------------------------------
+        df_frequency = processor.create_frequency_distribution(tokens)
+        st.session_state.df_frequency = df_frequency
+
+        # --------------------------------------------------
+        # Three-column layout
+        # --------------------------------------------------
+        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True )
+
+        # -----------------------
+        # Column 1 — Tokens
+        # -----------------------
+        with col_tokens:
+            st.write(f"Tokens: {len(tokens)}")
+            st.dataframe(
+                pd.DataFrame(tokens, columns=["Token"]),
+                use_container_width=True,
+            )
+
+        # -----------------------
+        # Column 2 — Vocabulary
+        # -----------------------
+        with col_vocab:
+            st.write(f"Vocabulary: {len(vocab)}")
+            st.dataframe(
+                pd.DataFrame(vocab, columns=["Word"]),
+                use_container_width=True,
+            )
+        
+        # -----------------------
+        # Column 3 — Frequency Histogram
+        # -----------------------
+        with col_freq:
+	        st.write( "Token Frequency Distribution" )
+	        
+	        if df_frequency is not None and not df_frequency.empty:
+		        # Identify numeric frequency column
+		        numeric_cols = df_frequency.select_dtypes( include="number" )
+		        
+		        if not numeric_cols.empty:
+			        freq_col = numeric_cols.columns[ 0 ]
+			        
+			        # Use top-N most frequent tokens for readability
+			        top_n = 30
+			        df_top = (
+					        df_frequency
+					        .sort_values( freq_col, ascending=False )
+					        .head( top_n )
+			        )
+			        
+			        st.bar_chart(
+				        df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
+				        use_container_width=True,
+			        )
+		        else:
+			        st.info( "No numeric frequency column available for charting." )
+	        else:
+		        st.info( "Frequency distribution unavailable." )
+        
+        # --------------------------------------------------
+        # Persist state
+        # --------------------------------------------------
+        st.session_state.tokens = tokens
+        st.session_state.vocabulary = vocab
+
+    else:
+        st.info("Run preprocessing first")
 
 # ==========================================================================================
-# Tab 5 — Analysis & Statistics
+# Tab  — 🧩 Vectorization & Chunking
 # ==========================================================================================
 with tabs[ 4 ]:
-	st.header( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-			
-	tokens = st.session_state.get( 'tokens' )
-	df_frequency = st.session_state.get( 'df_frequency' )
-	df_table = st.session_state.get( 'df_table' )
-	
-	if st.session_state.tokens:
-		processor = TextParser( )
-		df_frequency = processor.create_frequency_distribution( tokens )
-		st.session_state.df_frequency = df_frequency
-		st.dataframe( df_frequency )
-	
-	else:
-		st.info( 'Generate tokens first' )
-
-# ==========================================================================================
-# Tab 6 — 🧩 Vectorization & Chunking
-# ==========================================================================================
-with tabs[ 5 ]:
 	st.subheader( "" )
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
@@ -2365,9 +2400,9 @@ with tabs[ 5 ]:
 			f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
 
 # ======================================================================================
-# Tab — Data (Grid-based SQLite Explorer, Identifier-Safe)
+# Tab — Data View
 # ======================================================================================
-with tabs[6]:
+with tabs[ 5 ]:
 
     import os
     import sqlite3
