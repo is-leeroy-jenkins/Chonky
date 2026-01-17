@@ -864,8 +864,8 @@ with tabs[ 0 ]:
 			# Clear
 			# --------------------------------------------------
 			if clear_pdf:
-				clear_if_active( "PdfLoader" )
-				st.info( "PDF Loader state cleared." )
+				clear_if_active( 'PdfLoader' )
+				st.info( 'PDF Loader state cleared.' )
 			
 			# --------------------------------------------------
 			# Load
@@ -873,15 +873,10 @@ with tabs[ 0 ]:
 			if load_pdf and pdf:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, pdf.name )
-					with open( path, "wb" ) as f:
+					with open( path, 'wb' ) as f:
 						f.write( pdf.read( ) )
 					loader = PdfLoader( )
-					documents = loader.load(
-						path,
-						mode=mode,
-						extract=extract,
-						format=fmt,
-					)
+					documents = loader.load( path, mode=mode, extract=extract, format=fmt, )
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
