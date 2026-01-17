@@ -2461,7 +2461,7 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = (
-				'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
+					'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
 				'pd.DataFrame ]')
 			error = ErrorDialog( exception )
 			error.show( )

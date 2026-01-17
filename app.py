@@ -161,6 +161,7 @@ SESSION_STATE_DEFAULTS = {
 		'df_schema': None,
 		'df_preview': None,
 		'df_count': None,
+		'df_chunks': None,
 		# Data
 		'data_connection': None
 }
@@ -188,6 +189,7 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.df_schema = None
 		st.session_state.df_preview = None
 		st.session_state.df_count = None
+		st.session_state.df_chunks = None
 
 def metric_with_tooltip( label: str, value: str, tooltip: str ):
 	"""
@@ -201,10 +203,7 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 		st.metric( label, value )
 	
 	with col_info:
-		if label not in [ 'Characters',
-		                  'Tokens',
-		                  'Unique Tokens',
-		                  'Avg Length' ]:
+		if label not in [ 'Characters', 'Tokens', 'Unique Tokens', 'Avg Length' ]:
 			st.markdown(
 				f"""
 	            <span style="
@@ -326,7 +325,7 @@ with tabs[ 0 ]:
 		with st.expander( '🔤 Top Tokens', expanded=False ):
 			top_tokens = counts.most_common( 10 )
 			df = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
-			st.area_chart( df )
+			st.area_chart( df, color='#006300' )
 			
 		# -------------------------------
 		# Corpus Metrics
@@ -1772,7 +1771,7 @@ with tabs[ 0 ]:
 					
 					st.success( f'Fetched {len( new_docs )} web document(s).' )
 		
-		# --------------------------- Web Crawler (RECURSIVE)
+		# --------------------------- Web Crawler
 		with st.expander( '🕷️ Web Crawler', expanded=False ):
 			start_url = st.text_input(
 				'Start URL',
@@ -1883,12 +1882,8 @@ with tabs[ 0 ]:
 			for i, d in enumerate( documents[ :5 ] ):
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
-					st.text_area(
-						'Content',
-						d.page_content[ :5000 ],
-						height=500,
-						key=f'preview_doc_{i}',
-					)
+					st.text_area( 'Content', d.page_content[ :5000 ],
+						height=500, key=f'preview_doc_{i}' )
 
 # ======================================================================================
 # Tab — Processing / Parsing
@@ -1925,10 +1920,6 @@ with tabs[ 1 ]:
 	# Layout
 	# ------------------------------------------------------------------
 	left, right = st.columns( [ 1, 1.5 ], border=True )
-	
-	# ------------------------------------------------------------------
-	# LEFT COLUMN — Controls (Grouped Expanders)
-	# ------------------------------------------------------------------
 	with left:
 		active = st.session_state.get( 'active_loader' )
 
@@ -2165,29 +2156,45 @@ with tabs[ 2 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
-
+	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	dr_tables = st.session_state.get( 'df_tables' )
 	df_count = st.session_state.get( 'df_count' )
 	df_schema = st.session_state.get( 'df_schema' )
 	df_preview = st.session_state.get( 'df_preview' )
+	df_chunks = st.session_state.get( 'df_chunks' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
 	active_table = st.session_state.get( 'active_table' )
-	if st.session_state.processed_text:
-		processor = TextParser( )
-		view = st.selectbox( 'View Type', [ 'Lines', 'Paragraphs', 'Pages' ] )
-		if view == 'Lines':
-			lines = processor.split_sentences( text=processed_text, size=15 )
-			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
-		elif view == 'Paragraphs':
-			paragraphs = processor.split_sentences( text=processed_text, size=40 )
-			st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ))
-		elif view == 'Pages':
-			sentences = processor.split_sentences( text=processed_text, size=250 )
-			st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ))
-	else:
-		st.info( 'Run preprocessing first' )
+	with line_col:
+		if st.session_state.processed_text:
+			processor = TextParser( )
+			view = st.selectbox( 'View Type', [ 'Lines', 'Paragraphs', 'Pages' ] )
+			if view == 'Lines':
+				lines = processor.split_sentences( text=processed_text, size=15 )
+				st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ) )
+			elif view == 'Paragraphs':
+				paragraphs = processor.split_sentences( text=processed_text, size=40 )
+				st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ) )
+			elif view == 'Pages':
+				sentences = processor.split_sentences( text=processed_text, size=250 )
+				st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ) )
+		else:
+			st.info( 'Run preprocessing first' )
+			
+	with chunk_col:
+		if st.session_state.processed_text:
+			processor = TextParser( )
+			if view == 'Lines':
+				dimensions = [ 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
+				               'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15' ]
+				
+				lines = processor.split_sentences( text=processed_text, size=15 )
+				_chunks = lines.split( ' ' )
+				df_chunks = pd.DataFrame( lines, columns=dimensions )
+				st.dataframe( df_chunks )
+		else:
+			st.info( 'Run preprocessing first' )
 
 # ==========================================================================================
 # Tab - Tokens, Vocabulary
@@ -2210,7 +2217,7 @@ with tabs[ 3 ]:
         # --------------------------------------------------
         # Frequency Distribution
         # --------------------------------------------------
-        df_frequency = processor.create_frequency_distribution(tokens)
+        df_frequency = processor.create_frequency_distribution( tokens )
         st.session_state.df_frequency = df_frequency
 
         # --------------------------------------------------
@@ -2223,10 +2230,7 @@ with tabs[ 3 ]:
         # -----------------------
         with col_tokens:
             st.write(f"Tokens: {len(tokens)}")
-            st.dataframe(
-                pd.DataFrame(tokens, columns=["Token"]),
-                use_container_width=True,
-            )
+            st.dataframe( pd.DataFrame(tokens, columns=["Token"]), use_container_width=True )
 
         # -----------------------
         # Column 2 — Vocabulary
@@ -2255,11 +2259,11 @@ with tabs[ 3 ]:
 			        top_n = 100
 			        df_top = ( df_frequency.sort_values( freq_col, ascending=False ).head( top_n ) )
 			        st.bar_chart(  df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
-				        use_container_width=True, )
+				        use_container_width=True, color='#01438A' )
 		        else:
-			        st.info( "No numeric frequency column available for charting." )
+			        st.info( 'No numeric frequency column available for charting.' )
 	        else:
-		        st.info( "Frequency distribution unavailable." )
+		        st.info( 'Frequency distribution unavailable.' )
         
         # --------------------------------------------------
         # Persist state
@@ -2268,7 +2272,7 @@ with tabs[ 3 ]:
         st.session_state.vocabulary = vocab
 
     else:
-        st.info("Run preprocessing first")
+        st.info('Run preprocessing first')
 
 # ==========================================================================================
 # Tab  — 🧩 Vectorization & Chunking
