@@ -4,6 +4,9 @@ chromadb
 docx
 docx2txt
 gensim
+google
+google-genai
+groq
 ipywidgets
 ipython
 jupytext

@@ -46,3 +46,4 @@ import  os
 ICON = r'resources/images/favicon.ico'
 LOGO = r'resources/images/chonky.png'
 DB = r'stores/sqlite/data.db'
+OPENAI_API_KEY = os.getenv( 'OPENAI_API_KEY' )

@@ -325,7 +325,7 @@ with tabs[ 0 ]:
 		with st.expander( '🔤 Top Tokens', expanded=False ):
 			top_tokens = counts.most_common( 10 )
 			df = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
-			st.area_chart( df, color='#006300' )
+			st.area_chart( df, color='#01438A' )
 			
 		# -------------------------------
 		# Corpus Metrics
@@ -452,7 +452,7 @@ with tabs[ 0 ]:
 				
 				st.success( f'Loaded {len( documents )} text document(s).' )
 		
-		# --------------------------- NLTK Loader (BUILT-IN + LOCAL)
+		# --------------------------- NLTK Loader
 		with st.expander( '📚 Corpora Loader', expanded=False ):
 			import nltk
 			from nltk.corpus import (
@@ -1212,7 +1212,7 @@ with tabs[ 0 ]:
 					f"Loaded {len( documents )} PowerPoint document(s)."
 				)
 		
-		# --------------------------- Excel Loader (FILE + SQLITE)
+		# --------------------------- Excel Loader
 		with st.expander( '📊 Excel Loader', expanded=False ):
 			excel_file = st.file_uploader(
 				'Upload Excel file',
@@ -1368,7 +1368,7 @@ with tabs[ 0 ]:
 						"No data loaded (empty sheets or invalid selection)."
 					)
 		
-		# --------------------------- arXiv Loader (APPEND, PARAMETER-COMPLETE)
+		# --------------------------- arXiv Loader
 		with st.expander( '🧠 ArXiv Loader', expanded=False ):
 			arxiv_query = st.text_input(
 				'Query',
@@ -1465,7 +1465,7 @@ with tabs[ 0 ]:
 						f'Fetched {len( documents )} arXiv document(s).'
 					)
 		
-		# --------------------------- Wikipedia Loader (APPEND, PARAMETER-COMPLETE)
+		# --------------------------- Wikipedia Loader
 		with st.expander( '📚 Wikipedia Loader', expanded=False ):
 			wiki_query = st.text_input(
 				'Query',
@@ -1870,7 +1870,7 @@ with tabs[ 0 ]:
 				st.success( f'Crawled {len( documents )} document(s).' )
 	
 	# ------------------------------------------------------------------
-	# RIGHT COLUMN — Document Preview (UNCHANGED)
+	# RIGHT COLUMN — Document Preview
 	# ------------------------------------------------------------------
 	with right:
 		documents = st.session_state.documents
@@ -1994,7 +1994,7 @@ with tabs[ 1 ]:
 			else:
 				st.caption( 'Available when HTML documents are loaded.' )
 		
-		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+		st.divider( )
 		
 		# ==============================================================
 		# Actions (Apply / Reset / Clear / Save)
@@ -2116,7 +2116,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Absolute Metrics
 				# ----------------------------
-				st.text( 'Metrics:' )
+				st.text( 'Measures:' )
 				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0 )
 				a1, a2, a3, a4 = st.columns( 4, border=True )
 				a1.metric( 'Characters', f'{proc_chars:,}' )
@@ -2124,7 +2124,7 @@ with tabs[ 1 ]:
 				a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
 				a4.metric( 'TTR', f'{ttr:.3f}' )
 				
-				st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+				st.divider( )
 				
 				# ----------------------------
 				# Delta Metrics
@@ -2156,7 +2156,7 @@ with tabs[ 2 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
-	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True )
+	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='center' )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	dr_tables = st.session_state.get( 'df_tables' )
 	df_count = st.session_state.get( 'df_count' )
@@ -2166,10 +2166,12 @@ with tabs[ 2 ]:
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
 	active_table = st.session_state.get( 'active_table' )
+	
 	with line_col:
+		st.caption( '' )
 		if st.session_state.processed_text:
 			processor = TextParser( )
-			view = st.selectbox( 'View Type', [ 'Lines', 'Paragraphs', 'Pages' ] )
+			view = st.selectbox( label='', options=[ 'Lines', 'Paragraphs', 'Pages' ] )
 			if view == 'Lines':
 				lines = processor.split_sentences( text=processed_text, size=15 )
 				st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ) )
@@ -2183,6 +2185,8 @@ with tabs[ 2 ]:
 			st.info( 'Run preprocessing first' )
 			
 	with chunk_col:
+		st.markdown( '##### Vector Space' )
+		st.text( f'Token Vectors: {len( lines ) }')
 		if st.session_state.processed_text:
 			processor = TextParser( )
 			if view == 'Lines':
@@ -2190,8 +2194,8 @@ with tabs[ 2 ]:
 				               'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15' ]
 				
 				lines = processor.split_sentences( text=processed_text, size=15 )
-				_chunks = lines.split( ' ' )
-				df_chunks = pd.DataFrame( lines, columns=dimensions )
+				_chunks = [ l.split( ' ' )  for l in lines ]
+				df_chunks = pd.DataFrame( _chunks, columns=dimensions )
 				st.dataframe( df_chunks )
 		else:
 			st.info( 'Run preprocessing first' )
@@ -2223,7 +2227,8 @@ with tabs[ 3 ]:
         # --------------------------------------------------
         # Three-column layout
         # --------------------------------------------------
-        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='center'  )
+        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True,
+	        vertical_alignment='center'  )
 
         # -----------------------
         # Column 1 — Tokens
