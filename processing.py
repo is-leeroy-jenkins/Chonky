@@ -2251,7 +2251,7 @@ class PdfParser( Processor ):
 		         'export_text',
 		         'export_excel' ]
 	
-	def extract_lines( self, path: str, size: Optional[ int ]=None ) -> List[ str ] | None:
+	def extract_lines( self, path: str, count: Optional[ int ]=None ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -2262,7 +2262,7 @@ class PdfParser( Processor ):
 			Parameters:
 			----------
 			- path (str): Path to the PDF file
-			- max (Optional[int]): Max num of pages to process (None for all pages)
+			- count (Optional[int]): Max num of pages to process (None for all pages)
 
 			Returns:
 			--------
@@ -2274,7 +2274,7 @@ class PdfParser( Processor ):
 			self.file_path = path
 			with fitz.open( self.file_path ) as doc:
 				for i, page in enumerate( doc ):
-					if size is not None and i >= size:
+					if count is not None and i >= count:
 						break
 					if self.extract_tables:
 						page_lines = self._extract_tables( page )
@@ -2288,7 +2288,7 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = ('extract_lines( self, path: str, max: Optional[ int ]=None ) -> '
+			exception.method = ('extract_lines( self, path: str, count: Optional[ int ]=None ) -> '
 			                    'List[ str ]')
 			error = ErrorDialog( exception )
 			error.show( )
@@ -2391,7 +2391,7 @@ class PdfParser( Processor ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def extract_text( self, path: str, size: Optional[ int ]=None ) -> str | None:
+	def extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None:
 		"""
 
 			Purpose:
@@ -2401,7 +2401,7 @@ class PdfParser( Processor ):
 			Parameters:
 			-----------
 			- path (str): Path to the PDF file
-			- max (Optional[int]): Maximum num of pages to process
+			- count (Optional[int]): Maximum num of pages to process
 
 			Returns:
 			--------
@@ -2410,11 +2410,11 @@ class PdfParser( Processor ):
 		"""
 		try:
 			throw_if( 'path', path )
-			if size is not None and size > 0:
+			if count is not None and count > 0:
 				self.file_path = path
-				self.lines = self.extract_lines( self.file_path, size=size )
+				self.lines = self.extract_lines( self.file_path, size=count )
 				return '\n'.join( self.lines )
-			elif size is None or size <= 0:
+			elif count is None or count <= 0:
 				self.file_path = path
 				self.lines = self.extract_lines( self.file_path )
 				return '\n'.join( self.lines )
@@ -2422,11 +2422,11 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = 'extract_text( self, path: str, max: Optional[ int ]=None ) -> str:'
+			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None ) -> str:'
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def extract_tables( self, path: str, size: Optional[ int ]=None ) -> (
+	def extract_tables( self, path: str, count: Optional[ int ]=None ) -> (
 			List[ pd.DataFrame ] | None):
 		"""
 
@@ -2445,12 +2445,12 @@ class PdfParser( Processor ):
 		"""
 		try:
 			throw_if( 'path', path )
-			throw_if( 'max', size )
+			throw_if( 'count', count )
 			self.file_path = path
 			self.tables = [ ]
 			with fitz.open( self.file_path ) as doc:
 				for i, page in enumerate( doc ):
-					if size is not None and i >= size:
+					if count is not None and i >= count:
 						break
 					tf = page.find_tables( )
 					for t in getattr( tf, 'tables', [ ] ):

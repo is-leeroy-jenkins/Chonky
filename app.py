@@ -325,8 +325,7 @@ with tabs[ 0 ]:
 		# -------------------------------
 		with st.expander( '🔤 Top Tokens', expanded=False ):
 			top_tokens = counts.most_common( 10 )
-			df = pd.DataFrame( top_tokens, columns=[ 'token',
-			                                         'count' ] ).set_index( 'token' )
+			df = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
 			st.area_chart( df )
 			
 		# -------------------------------
@@ -340,32 +339,25 @@ with tabs[ 0 ]:
 			with col1:
 				metric_with_tooltip( 'Characters', f'{char_count:,}',
 					'Total number of characters in the raw text.', )
-			
 			with col2:
 				metric_with_tooltip( 'Tokens', f'{token_count:,}',
 					'Token Count: total number of tokenized words after cleanup.', )
-			
 			with col3:
 				metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
 					'Vocabulary Size: number of distinct word types in the text.', )
-			
 			with col4:
 				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
 					'Type–Token Ratio: unique words ÷ total words', )
-				
 			col5, col6, col7, col8 = st.columns( 4, border=True )
 			with col5:
 				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
 					'Hapax Ratio: proportion of words that occur only once (lexical rarity).'  )
-			
 			with col6:
 				metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
 					'Average number of characters per token (after cleanup).', )
-			
 			with col7:
 				metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
 					'Stopword Ratio: Percentage of words that provide little  semantic context', )
-			
 			with col8:
 				metric_with_tooltip( 'Lexical Density', f'{lexical_density:.2%}',
 					'Lexical Density: proportion of nouns, verbs, adjectives, adverbs', )
@@ -376,21 +368,18 @@ with tabs[ 0 ]:
 		with st.expander( '📖 Readability', expanded=False ):
 			if TEXTSTAT_AVAILABLE:
 				r1, r2, r3, r4 = st.columns( 4, border=True )
-				
 				with r1:
 					metric_with_tooltip( 'Flesch Reading Ease',
 						f'{textstat.flesch_reading_ease( raw_text ):.1f}',
 						'Higher scores = easier to read. Based on sentence length and syllable count.', )
-				
 				with r2:
 					metric_with_tooltip( 'Flesch–Kincaid Grade',
 						f'{textstat.flesch_kincaid_grade( raw_text ):.1f}',
 						'Estimated U.S. grade level needed to comprehend the text.', )
-				
 				with r3:
 					metric_with_tooltip( 'Gunning Fog',
 						f'{textstat.gunning_fog( raw_text ):.1f}',
-						'Weighted average of the number of words per sentence, and the number of long words per word',
+						'Weighted average of words per sentence, and the number of long words per word',
 					)
 					
 				with r4:
@@ -429,8 +418,7 @@ with tabs[ 0 ]:
 			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
 			
 			# Save is enabled only when THIS loader is active and raw_text exists
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'TextLoader'
+			can_save = ( st.session_state.get( 'active_loader' ) == 'TextLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
 					and st.session_state.get( 'raw_text' ).strip( ) )
 			
@@ -454,14 +442,8 @@ with tabs[ 0 ]:
 				documents = [ ]
 				for f in files:
 					text = f.read( ).decode( 'utf-8', errors='ignore' )
-					documents.append(
-						Document(
-							page_content=text,
-							metadata={
-									'source': f.name,
-									'loader': 'TextLoader' },
-						)
-					)
+					documents.append( Document( page_content=text,
+							metadata={ 'source': f.name, 'loader': 'TextLoader' }, ) )
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
@@ -849,7 +831,7 @@ with tabs[ 0 ]:
 			
 			include = st.checkbox(
 				'Include Images',
-				value=True,
+				value=False,
 				key='pdf_include',
 			)
 			
@@ -864,37 +846,19 @@ with tabs[ 0 ]:
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
-			load_pdf = col_load.button(
-				'Load',
-				key='pdf_load',
-			)
-			
-			clear_pdf = col_clear.button(
-				'Clear',
-				key='pdf_clear',
-			)
+			load_pdf = col_load.button( 'Load', key='pdf_load', )
+			clear_pdf = col_clear.button( 'Clear', key='pdf_clear', )
 			
 			# Save enabled only when PdfLoader is active and raw_text exists
 			can_save = ( st.session_state.get( 'active_loader' ) == 'PdfLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+					and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='pdf_loader_output.txt',
-					mime='text/plain',
-					key='pdf_save',
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save', )
 			else:
-				col_save.button(
-					'Save',
-					key='pdf_save_disabled',
-					disabled=True,
-				)
+				col_save.button( 'Save', key='pdf_save_disabled', disabled=True, )
 			
 			# --------------------------------------------------
 			# Clear
@@ -911,7 +875,6 @@ with tabs[ 0 ]:
 					path = os.path.join( tmp, pdf.name )
 					with open( path, "wb" ) as f:
 						f.write( pdf.read( ) )
-					
 					loader = PdfLoader( )
 					documents = loader.load(
 						path,
@@ -1933,7 +1896,7 @@ with tabs[ 0 ]:
 					)
 
 # ======================================================================================
-# Tab — Processing / Preprocessing
+# Tab — Processing / Parsing
 # ======================================================================================
 with tabs[ 1 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -1986,10 +1949,12 @@ with tabs[ 1 ]:
 				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~' )
 			remove_numbers = st.checkbox( 'Remove Numbers',
 				help='Removes numeric digits 0 thour 9' )
+			remove_xml = st.checkbox( 'Remove XML',
+				help=r'Removes xml tags ( ex. <xml> & <\xml> )' )
 			remove_punctuation = st.checkbox( 'Remove Punctuation',
 				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence delimiters' )
 			remove_images = st.checkbox( 'Remove Images',
-				help=r'Remove image from text, including Markdown images, HTML <img> tags, and  image URLs' )
+				help=r'Remove image from text, including Markdown, HTML <img> tags, and  image URLs' )
 			remove_stopwords = st.checkbox( 'Remove Stopwords',
 				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
 			remove_numerals = st.checkbox( 'Remove Numerals',
@@ -2025,7 +1990,7 @@ with tabs[ 1 ]:
 		remove_headers = join_hyphenated = False
 		with st.expander( '📕 PDF Processing', expanded=False ):
 			if active == 'PdfLoader':
-				remove_headers = st.checkbox( 'Remove Headers / Footers' )
+				remove_headers = st.checkbox( 'Remove Headers/Footers' )
 				join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
 			else:
 				st.caption( 'Available when PDF documents are loaded.' )
@@ -2049,7 +2014,6 @@ with tabs[ 1 ]:
 		# Actions (Apply / Reset / Clear / Save)
 		# ==============================================================
 		col_apply, col_reset, col_clear, col_save = st.columns( 4 )
-		
 		apply_processing = col_apply.button( 'Apply', disabled=not has_text, )
 		reset_processing = col_reset.button( 'Reset', disabled=not has_text, )
 		clear_processing = col_clear.button( 'Clear', disabled=not has_text, )
@@ -2087,6 +2051,8 @@ with tabs[ 1 ]:
 				processed_text = tp.remove_images( processed_text )
 			if remove_encodings:
 				processed_text = tp.remove_encodings( processed_text )
+			if remove_xml:
+				processed_text = tp.remove_xml( processed_text )
 			# 2 — Noise / non-lexical characters
 			if remove_symbols:
 				processed_text = tp.remove_symbols( processed_text )
@@ -2146,21 +2112,14 @@ with tabs[ 1 ]:
 	# RIGHT COLUMN — Text Views
 	# ------------------------------------------------------------------
 	with right:
-		# --------------------------------------------------------------
-		# Raw Text (read-only)
-		# --------------------------------------------------------------
 		st.text_area( 'Raw Text', st.session_state.raw_text or 'No text loaded yet.',
 			height=200, disabled=True, key='raw_text_view' )
 		
 		with st.expander( '📊 Processing Statistics:', expanded=False ):
 			raw = st.session_state.get( 'raw_text' )
 			processed = st.session_state.get( 'processed_text' )
-			
 			if ( isinstance( raw, str ) and raw.strip( ) 
 					and isinstance( processed, str ) and processed.strip( )):
-				# ----------------------------
-				# Tokenization (simple + safe)
-				# ----------------------------
 				raw_tokens = raw.split( )
 				proc_tokens = processed.split( )
 				raw_chars = len( raw )
@@ -2222,12 +2181,7 @@ with tabs[ 2 ]:
 	active_table = st.session_state.get( 'active_table' )
 	if st.session_state.processed_text:
 		processor = TextParser( )
-		view = st.selectbox(
-			'View Type',
-			[ 'Lines',
-			  'Paragraphs',
-			  'Pages' ] )
-		
+		view = st.selectbox( 'View Type', [ 'Lines', 'Paragraphs', 'Pages' ] )
 		if view == 'Lines':
 			lines = processor.split_sentences( text=processed_text, size=15 )
 			st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ))
@@ -2247,10 +2201,10 @@ with tabs[ 3 ]:
     st.header("")
     for key, default in SESSION_STATE_DEFAULTS.items():
         if key not in st.session_state:
-            st.session_state[key] = default
+            st.session_state[ key ] = default
 
     if st.session_state.processed_text:
-        processor = TextParser()
+        processor = TextParser( )
 
         # --------------------------------------------------
         # Tokenization & Vocabulary
@@ -2267,7 +2221,7 @@ with tabs[ 3 ]:
         # --------------------------------------------------
         # Three-column layout
         # --------------------------------------------------
-        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True )
+        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='center'  )
 
         # -----------------------
         # Column 1 — Tokens
@@ -2293,8 +2247,8 @@ with tabs[ 3 ]:
         # Column 3 — Frequency Histogram
         # -----------------------
         with col_freq:
-	        st.write( "Token Frequency Distribution" )
-	        
+	        st.markdown( "#### Frequency Distribution" )
+	        st.caption( 'Top 100 most frequent tokens')
 	        if df_frequency is not None and not df_frequency.empty:
 		        # Identify numeric frequency column
 		        numeric_cols = df_frequency.select_dtypes( include="number" )
@@ -2303,17 +2257,10 @@ with tabs[ 3 ]:
 			        freq_col = numeric_cols.columns[ 0 ]
 			        
 			        # Use top-N most frequent tokens for readability
-			        top_n = 30
-			        df_top = (
-					        df_frequency
-					        .sort_values( freq_col, ascending=False )
-					        .head( top_n )
-			        )
-			        
-			        st.bar_chart(
-				        df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
-				        use_container_width=True,
-			        )
+			        top_n = 100
+			        df_top = ( df_frequency.sort_values( freq_col, ascending=False ).head( top_n ) )
+			        st.bar_chart(  df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
+				        use_container_width=True, )
 		        else:
 			        st.info( "No numeric frequency column available for charting." )
 	        else:
