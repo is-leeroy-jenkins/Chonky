@@ -1,4 +1,5 @@
 arxiv
+altair==4.2.2
 beautifulsoup4
 chromadb
 docx

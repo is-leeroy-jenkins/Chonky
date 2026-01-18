@@ -41,14 +41,15 @@
   </summary>
   ******************************************************************************************
 '''
+from requests.models import Response
+
 import config as cfg
 from typing import List, Optional, Any, Union, Dict
 import tiktoken
-from groq import Groq
-from openai.types import CreateEmbeddingResponse
 from google import genai
+from groq import Groq
 from google.genai import types
-from google.genai.types import ( EmbedContentConfig, ContentEmbedding, HttpOptions )
+from google.genai.types import ( EmbedContentConfig, HttpOptions )
 from openai import OpenAI
 from boogr import ErrorDialog, Error
 import requests
@@ -59,7 +60,7 @@ def throw_if( name: str, value: object ):
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 
-class OpenAI( ):
+class GPT( ):
 	"""
 
 	    Purpose
@@ -88,7 +89,7 @@ class OpenAI( ):
 	client: Optional[ OpenAI ]
 	prompt: Optional[ str ]
 	response_format: Optional[ str ]
-	response: Optional[ CreateEmbeddingResponse ]
+	response: Optional[ Response ]
 	embedding: Optional[ List[ float ] ]
 	encoding_format: Optional[ str ]
 	dimensions: Optional[ int ]
@@ -96,7 +97,7 @@ class OpenAI( ):
 	def __init__( self  ):
 		super( ).__init__( )
 		self.api_key = cfg.OPENAI_API_KEY
-		self.client = OpenAI( api_key=cfg.OPENAI_API_KEY )
+		self.client = GPT( api_key=cfg.OPENAI_API_KEY )
 		self.encoding_format = None
 		self.model = None
 		self.embedding = None
@@ -267,6 +268,7 @@ class Gemini( ):
 	
 	def __init__( self, model: str='text-embedding-004', version: str='v1alpha', use_ai: bool=False ):
 		super( ).__init__( )
+		self.api_key = cfg.GEMINI_API_KEY
 		self.model = model
 		self.api_version = version
 		self.use_vertex = use_ai
