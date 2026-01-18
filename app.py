@@ -268,9 +268,9 @@ tabs = st.tabs(
 	[
 			'Loading',
 			'Processing',
-			'Data View',
 			'Tokens & Vocabulary',
-			'Vectorization & Chunking',
+			'Vectors & Chunking',
+			'Embeddings',
 			'Database'
 	]
 )
@@ -2151,9 +2151,84 @@ with tabs[ 1 ]:
 			key="processed_text_view" )
 
 # ==========================================================================================
-# Tab  — Data View
+# Tab - Tokens, Vocabulary
 # ==========================================================================================
 with tabs[ 2 ]:
+	for key, default in SESSION_STATE_DEFAULTS.items( ):
+		if key not in st.session_state:
+			st.session_state[ key ] = default
+	
+	if st.session_state.processed_text:
+		processor = TextParser( )
+		
+		# --------------------------------------------------
+		# Tokenization & Vocabulary
+		# --------------------------------------------------
+		tokens = word_tokenize( processed_text )
+		vocab = processor.create_vocabulary( tokens )
+		
+		# --------------------------------------------------
+		# Frequency Distribution
+		# --------------------------------------------------
+		df_frequency = processor.create_frequency_distribution( tokens )
+		st.session_state.df_frequency = df_frequency
+		
+		# --------------------------------------------------
+		# Three-column layout
+		# --------------------------------------------------
+		col_tokens, col_vocab, col_freq = st.columns( [ 1,  1, 2 ], border=True,
+			vertical_alignment='center' )
+		
+		# -----------------------
+		# Column 1 — Tokens
+		# -----------------------
+		with col_tokens:
+			st.write( f"Tokens: {len( tokens )}" )
+			st.dataframe( pd.DataFrame( tokens, columns=[ "Token" ] ), use_container_width=True )
+		
+		# -----------------------
+		# Column 2 — Vocabulary
+		# -----------------------
+		with col_vocab:
+			st.write( f"Vocabulary: {len( vocab )}" )
+			st.dataframe( pd.DataFrame( vocab, columns=[ "Word" ] ), use_container_width=True, )
+		
+		# -----------------------
+		# Column 3 — Frequency Histogram
+		# -----------------------
+		with col_freq:
+			st.markdown( "#### Frequency Distribution" )
+			st.caption( 'Top 100 most frequent tokens' )
+			if df_frequency is not None and not df_frequency.empty:
+				# Identify numeric frequency column
+				numeric_cols = df_frequency.select_dtypes( include="number" )
+				
+				if not numeric_cols.empty:
+					freq_col = numeric_cols.columns[ 0 ]
+					
+					# Use top-N most frequent tokens for readability
+					top_n = 100
+					df_top = (df_frequency.sort_values( freq_col, ascending=False ).head( top_n ))
+					st.bar_chart( df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
+						use_container_width=True, color='#01438A' )
+				else:
+					st.info( 'No numeric frequency column available for charting.' )
+			else:
+				st.info( 'Frequency distribution unavailable.' )
+		
+		# --------------------------------------------------
+		# Persist state
+		# --------------------------------------------------
+		st.session_state.tokens = tokens
+		st.session_state.vocabulary = vocab
+	
+	else:
+		st.info( 'Run preprocessing first' )
+
+# ==========================================================================================
+# Tab - 🧩 Vectorization & Chunking
+# ==========================================================================================
+with tabs[ 3 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
@@ -2171,120 +2246,31 @@ with tabs[ 2 ]:
 	lines = st.session_state.get( 'lines' )
 	
 	with line_col:
-		st.caption( 'Chunked Lines')
+		st.text( 'Chunked Data' )
 		if st.session_state.processed_text:
 			processor = TextParser( )
-			view = st.selectbox( label='', options=[ 'Lines', 'Paragraphs', 'Pages' ] )
-			if view == 'Lines':
-				lines = processor.split_sentences( text=processed_text, size=15 )
-				st.dataframe( pd.DataFrame( lines, columns=[ 'Line' ] ) )
-			elif view == 'Paragraphs':
-				paragraphs = processor.split_sentences( text=processed_text, size=40 )
-				st.dataframe( pd.DataFrame( paragraphs, columns=[ 'Paragraph' ] ) )
-			elif view == 'Pages':
-				sentences = processor.split_sentences( text=processed_text, size=250 )
-				st.dataframe( pd.DataFrame( sentences, columns=[ 'Sentence' ] ) )
+			lines = processor.split_sentences( text=processed_text, size=15 )
+			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
+				num_rows='dynamic', width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
-			
 	with chunk_col:
 		dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6',
 		               'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
 		st.text( f'Vector Space: { len( lines ) * len( dimensions ):,}')
-		st.text( f'Dimensions:   { len( dimensions ) }')
 		if st.session_state.processed_text:
 			processor = TextParser( )
-			if view == 'Lines':
-				lines = processor.split_sentences( text=processed_text, size=15 )
-				_chunks = [ l.split( ' ' )  for l in lines ]
-				df_chunks = pd.DataFrame( _chunks, columns=dimensions )
-				st.dataframe( df_chunks )
+			lines = processor.split_sentences( text=processed_text, size=15 )
+			_chunks = [ l.split( ' ' )  for l in lines ]
+			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
+			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.divider( )
 
 # ==========================================================================================
-# Tab - Tokens, Vocabulary
-# ==========================================================================================
-with tabs[ 3 ]:
-    st.header("")
-    for key, default in SESSION_STATE_DEFAULTS.items():
-        if key not in st.session_state:
-            st.session_state[ key ] = default
-
-    if st.session_state.processed_text:
-        processor = TextParser( )
-
-        # --------------------------------------------------
-        # Tokenization & Vocabulary
-        # --------------------------------------------------
-        tokens = word_tokenize( processed_text )
-        vocab = processor.create_vocabulary( tokens )
-
-        # --------------------------------------------------
-        # Frequency Distribution
-        # --------------------------------------------------
-        df_frequency = processor.create_frequency_distribution( tokens )
-        st.session_state.df_frequency = df_frequency
-
-        # --------------------------------------------------
-        # Three-column layout
-        # --------------------------------------------------
-        col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True,
-	        vertical_alignment='center'  )
-
-        # -----------------------
-        # Column 1 — Tokens
-        # -----------------------
-        with col_tokens:
-            st.write(f"Tokens: {len(tokens)}")
-            st.dataframe( pd.DataFrame(tokens, columns=["Token"]), use_container_width=True )
-
-        # -----------------------
-        # Column 2 — Vocabulary
-        # -----------------------
-        with col_vocab:
-            st.write(f"Vocabulary: {len(vocab)}")
-            st.dataframe(
-                pd.DataFrame(vocab, columns=["Word"]),
-                use_container_width=True,
-            )
-        
-        # -----------------------
-        # Column 3 — Frequency Histogram
-        # -----------------------
-        with col_freq:
-	        st.markdown( "#### Frequency Distribution" )
-	        st.caption( 'Top 100 most frequent tokens')
-	        if df_frequency is not None and not df_frequency.empty:
-		        # Identify numeric frequency column
-		        numeric_cols = df_frequency.select_dtypes( include="number" )
-		        
-		        if not numeric_cols.empty:
-			        freq_col = numeric_cols.columns[ 0 ]
-			        
-			        # Use top-N most frequent tokens for readability
-			        top_n = 100
-			        df_top = ( df_frequency.sort_values( freq_col, ascending=False ).head( top_n ) )
-			        st.bar_chart(  df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
-				        use_container_width=True, color='#01438A' )
-		        else:
-			        st.info( 'No numeric frequency column available for charting.' )
-	        else:
-		        st.info( 'Frequency distribution unavailable.' )
-        
-        # --------------------------------------------------
-        # Persist state
-        # --------------------------------------------------
-        st.session_state.tokens = tokens
-        st.session_state.vocabulary = vocab
-
-    else:
-        st.info('Run preprocessing first')
-
-# ==========================================================================================
-# Tab  — 🧩 Vectorization & Chunking
+# Tab  — 🧩 Embedding
 # ==========================================================================================
 with tabs[ 4 ]:
 	st.subheader( "" )
@@ -2393,13 +2379,7 @@ with tabs[ 5 ]:
                 if st.session_state.active_table not in table_names:
                     st.session_state.active_table = table_names[0]
 
-                data_grid = grid(
-                    2,
-                    [2, 3, 1],
-                    1,
-                    1,
-                    vertical_align="top",
-                )
+                data_grid = grid( 2, [2, 3, 1],  1, 1, vertical_align="center", )
 
                 table_name = data_grid.selectbox(
                     "Select Table",
@@ -2418,7 +2398,7 @@ with tabs[ 5 ]:
                     f"SELECT * FROM {q(table_name)} LIMIT 250;",
                     conn,
                 )
-                data_grid.dataframe(df_preview, use_container_width=True)
+                data_grid.dataframe( df_preview, use_container_width=True )
 
                 numeric_cols = df_preview.select_dtypes(include="number")
                 if not numeric_cols.empty:
