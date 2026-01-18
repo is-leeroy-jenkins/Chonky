@@ -125,6 +125,8 @@ CHUNKABLE_LOADERS = {
 
 BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 0 10px 0;'></div>"
 
+PROVIDERS = [ 'OpenAI', 'Gemini', 'Groq' ]
+
 def encode_image_base64( path: str ) -> str:
 	data = Path( path ).read_bytes( )
 	return base64.b64encode( data ).decode( "utf-8" )
@@ -233,32 +235,27 @@ for key, default in SESSION_STATE_DEFAULTS.items( ):
 		st.session_state[ key ] = default
 
 # ======================================================================================
-# Sidebar (Branding / Global Only)
+# Headers/Title
+# ======================================================================================
+col_logo, col_title = st.columns( [ 1, 5 ] )
+
+with col_logo:
+    st.image(  cfg.LOGO, width=100,  )
+
+with col_title:
+    st.markdown("Plumbling & Pipelines", text_alignment='left')
+
+# ======================================================================================
+# Sidebar
 # ======================================================================================
 with st.sidebar:
-	try:
-		logo_b64 = encode_image_base64( cfg.LOGO )
-		st.markdown(
-			f"""
-            <div style="
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                margin-bottom: 0.95rem;
-            ">
-                <img src="data:image/png;base64,{logo_b64}"
-                     style="max-height: 30px;" />
-            </div>
-            """,
-			unsafe_allow_html=True
-		)
-	except Exception:
-		st.write( "Bro" )
-	
-	st.header( 'Chonky' )
-	st.caption( 'Pipelines & Plumbling' )
+	st.header( 'Embedders' )
+	st.caption( '' )
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( "" )
+	st.selectbox( label='Providers', options=PROVIDERS, index=0 )
+	
+
 
 # ======================================================================================
 # Tabs
