@@ -147,6 +147,7 @@ SESSION_STATE_DEFAULTS = {
 		# SQLite / Excel
 		'active_table': None,
 		# Chunking
+		'lines': None,
 		'chunks': None,
 		'chunk_modes': None,
 		"chunked_documents": None,
@@ -190,6 +191,7 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.df_preview = None
 		st.session_state.df_count = None
 		st.session_state.df_chunks = None
+		st.session_state.lines = None
 
 def metric_with_tooltip( label: str, value: str, tooltip: str ):
 	"""
@@ -2152,10 +2154,10 @@ with tabs[ 1 ]:
 # Tab  — Data View
 # ==========================================================================================
 with tabs[ 2 ]:
-	st.header( "" )
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
+			
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='center' )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	dr_tables = st.session_state.get( 'df_tables' )
@@ -2166,9 +2168,10 @@ with tabs[ 2 ]:
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
 	active_table = st.session_state.get( 'active_table' )
+	lines = st.session_state.get( 'lines' )
 	
 	with line_col:
-		st.caption( '' )
+		st.caption( 'Chunked Lines')
 		if st.session_state.processed_text:
 			processor = TextParser( )
 			view = st.selectbox( label='', options=[ 'Lines', 'Paragraphs', 'Pages' ] )
@@ -2185,20 +2188,21 @@ with tabs[ 2 ]:
 			st.info( 'Run preprocessing first' )
 			
 	with chunk_col:
-		st.markdown( '##### Vector Space' )
-		st.text( f'Token Vectors: {len( lines ) }')
+		dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6',
+		               'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
+		st.text( f'Vector Space: { len( lines ) * len( dimensions ):,}')
+		st.text( f'Dimensions:   { len( dimensions ) }')
 		if st.session_state.processed_text:
 			processor = TextParser( )
 			if view == 'Lines':
-				dimensions = [ 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
-				               'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15' ]
-				
 				lines = processor.split_sentences( text=processed_text, size=15 )
 				_chunks = [ l.split( ' ' )  for l in lines ]
 				df_chunks = pd.DataFrame( _chunks, columns=dimensions )
 				st.dataframe( df_chunks )
 		else:
 			st.info( 'Run preprocessing first' )
+	
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
 # ==========================================================================================
 # Tab - Tokens, Vocabulary

@@ -59,7 +59,7 @@ def throw_if( name: str, value: object ):
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 
-class OpenAi( ):
+class OpenAI( ):
 	"""
 
 	    Purpose
@@ -370,6 +370,7 @@ class Grok:
 		         'text-embedding-3-large',
 		         'text-embedding-ada-002' ]
 	
+	
 	@property
 	def encoding_options( self ) -> List[ str ]:
 		return [ 'float', 'base64' ]
@@ -388,16 +389,16 @@ class Grok:
 				'encoding_format': self.encoding_format
 			}
 			
-			resp = requests.post( url=self.embeddings, headers=self.headers, json=payload )
-			if resp.status_code == 200:
-				self.response = resp.json( )
+			_response = requests.post( url=self.embeddings, headers=self.headers, json=payload )
+			if _response.status_code == 200:
+				self.response = _response.json( )
 				self.embedding = self.response[ 'data' ][ 0 ][ 'embedding' ]
 				return self.embedding
 			return None
 		except Exception as e:
 			exception = Error( e );
-			exception.module = 'groq'
-			exception.cause = 'Embedding'
+			exception.module = 'embeddings'
+			exception.cause = 'Grok'
 			exception.method = 'create( self, text, model, format )'
 			error = ErrorDialog( exception )
 			error.show( )
