@@ -1,16 +1,16 @@
 '''
   ******************************************************************************************
-      Assembly:                Name
-      Filename:                name.py
+      Assembly:                Chonky
+      Filename:                config.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
 
       Last Modified By:        Terry D. Eppler
       Last Modified On:        05-01-2025
   ******************************************************************************************
-  <copyright file="guro.py" company="Terry D. Eppler">
+  <copyright file="config.py" company="Terry D. Eppler">
 
-	     name.py
+	     config.py
 	     Copyright ©  2022  Terry Eppler
 
      Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +37,7 @@
 
   </copyright>
   <summary>
-    name.py
+    config.py
   </summary>
   ******************************************************************************************
 '''
@@ -47,3 +47,9 @@ ICON = r'resources/images/favicon.ico'
 LOGO = r'resources/images/chonky.png'
 DB = r'stores/sqlite/data.db'
 OPENAI_API_KEY = os.getenv( 'OPENAI_API_KEY' )
+GEMINI_API_KEY = os.getenv( 'GEMINI_API_KEY' )
+GROQ_API_KEY = os.getenv( 'GROQ_API_KEY' )
+GOOGLE_API_KEY = os.getenv( 'GOOGLE_API_KEY' )
+GOOGLE_CSE_ID = os.getenv( 'GOOGLE_CSE_ID' )
+GOOGLE_CLOUD_LOCATION = os.getenv( 'GOOGLE_CLOUD_LOCATION' )
+GOOGLE_CLOUD_PROJECT = os.getenv( 'GOOGLE_CLOUD_PROJECT' )

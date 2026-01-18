@@ -1,14 +1,14 @@
 '''
   ******************************************************************************************
 	  Assembly:                Chonky
-	  Filename:                processing.py
+	  Filename:                processors.py
 	  Author:                  Terry D. Eppler
 	  Created:                 05-31-2022
 
 	  Last Modified By:        Terry D. Eppler
 	  Last Modified On:        05-01-2025
   ******************************************************************************************
-  <copyright file="processing.py" company="Terry D. Eppler">
+  <copyright file="processors.py" company="Terry D. Eppler">
 
 		 Boo is a df analysis tool that integrates various Generative AI, Text-Processing, and
 		 Machine-Learning algorithms for federal analysts.
@@ -38,7 +38,7 @@
 
   </copyright>
   <summary>
-	processing.py
+	processors.py
   </summary>
   ******************************************************************************************
   '''

@@ -60,7 +60,7 @@ from streamlit_extras.grid import grid
 from PIL import Image
 from langchain_core.documents import Document
 import config as cfg
-from processing import Processor, TextParser, WordParser, PdfParser
+from processors import Processor, TextParser, WordParser, PdfParser
 from loaders import (
 	TextLoader,
 	CsvLoader,
@@ -2184,14 +2184,16 @@ with tabs[ 2 ]:
 		# -----------------------
 		with col_tokens:
 			st.write( f"Tokens: {len( tokens )}" )
-			st.dataframe( pd.DataFrame( tokens, columns=[ "Token" ] ), use_container_width=True )
+			st.data_editor( pd.DataFrame( tokens, columns=[ "Token" ] ),
+				num_rows='dynamic', width='stretch', height='stretch' )
 		
 		# -----------------------
 		# Column 2 — Vocabulary
 		# -----------------------
 		with col_vocab:
 			st.write( f"Vocabulary: {len( vocab )}" )
-			st.dataframe( pd.DataFrame( vocab, columns=[ "Word" ] ), use_container_width=True, )
+			st.data_editor( pd.DataFrame( vocab, columns=[ "Word" ] ),
+				num_rows='dynamic', width='stretch', height='stretch' )
 		
 		# -----------------------
 		# Column 3 — Frequency Histogram
@@ -2224,6 +2226,8 @@ with tabs[ 2 ]:
 	
 	else:
 		st.info( 'Run preprocessing first' )
+		
+	st.divider( )
 
 # ==========================================================================================
 # Tab - 🧩 Vectorization & Chunking
