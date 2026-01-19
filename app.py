@@ -1576,9 +1576,7 @@ with tabs[ 0 ]:
 						"No data loaded (empty sheets or invalid selection)."
 					)
 		
-		# ======================================================================================
 		# --------------------------- arXiv Loader
-		# ======================================================================================
 		with st.expander( "🧠 ArXiv Loader", expanded=False ):
 			arxiv_query = st.text_input(
 				"Query",
@@ -1653,9 +1651,7 @@ with tabs[ 0 ]:
 						"_loader_status" ] = f"Fetched {len( documents )} arXiv document(s)."
 					st.rerun( )
 		
-		# ======================================================================================
 		# --------------------------- Wikipedia Loader
-		# ======================================================================================
 		with st.expander( "📚 Wikipedia Loader", expanded=False ):
 			wiki_query = st.text_input(
 				"Query",
@@ -1741,9 +1737,7 @@ with tabs[ 0 ]:
 						"_loader_status" ] = f"Fetched {len( documents )} Wikipedia document(s)."
 					st.rerun( )
 		
-		# ======================================================================================
 		# --------------------------- GitHub Loader
-		# ======================================================================================
 		with st.expander( "🐙 GitHub Loader", expanded=False ):
 			gh_url = st.text_input(
 				"GitHub API URL",
@@ -1834,9 +1828,7 @@ with tabs[ 0 ]:
 						"_loader_status" ] = f"Fetched {len( documents )} GitHub document(s)."
 					st.rerun( )
 		
-		# ======================================================================================
 		# --------------------------- Web Loader
-		# ======================================================================================
 		with st.expander( "🔗 Web Loader", expanded=False ):
 			urls = st.text_area(
 				"Enter one URL per line",
@@ -1901,9 +1893,7 @@ with tabs[ 0 ]:
 						"_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
 					st.rerun( )
 		
-		# ======================================================================================
 		# --------------------------- Web Crawler
-		# ======================================================================================
 		with st.expander( "🕷️ Web Crawler", expanded=False ):
 			start_url = st.text_input(
 				"Start URL",
