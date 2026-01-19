@@ -542,7 +542,6 @@ with tabs[ 0 ]:
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
-				st.session_state.processed_text = None
 				st.session_state.active_loader = "TextLoader"
 				
 				st.success( f'Loaded {len( documents )} text document(s).' )
@@ -878,7 +877,6 @@ with tabs[ 0 ]:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = raw_text
-						st.session_state.processed_text = None
 						st.session_state.active_loader = 'XmlLoader'
 						st.session_state[ 'xml_documents' ] = documents
 						st.rerun( )
@@ -929,7 +927,6 @@ with tabs[ 0 ]:
 						)
 						
 						st.session_state.raw_text = xml_text
-						st.session_state.processed_text = None
 						st.session_state.active_loader = 'XmlLoader'
 						st.session_state[ "xml_tree_loaded" ] = True
 						st.session_state[ "xml_namespaces" ] = loader.xml_namespaces
@@ -1085,7 +1082,6 @@ with tabs[ 0 ]:
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = raw_text
-				st.session_state.processed_text = None
 				st.session_state.active_loader = "PdfLoader"
 				
 				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} PDF document(s)."
@@ -1486,7 +1482,6 @@ with tabs[ 0 ]:
 						if st.session_state.documents else None
 				)
 				
-				st.session_state.processed_text = None
 				st.session_state.active_loader = None
 				
 				st.info( "ExcelLoader documents removed." )
@@ -1621,7 +1616,6 @@ with tabs[ 0 ]:
 						if d.metadata.get( "loader" ) != "ArXivLoader"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "ArXivLoader documents removed."
 				st.rerun( )
 			
@@ -1706,7 +1700,6 @@ with tabs[ 0 ]:
 						if d.metadata.get( "loader" ) != "WikiLoader"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "WikiLoader documents removed."
 				st.rerun( )
 			
@@ -1730,7 +1723,6 @@ with tabs[ 0 ]:
 						st.session_state.raw_documents = list( documents )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.processed_text = None
 					st.session_state.active_loader = "WikiLoader"
 					
 					st.session_state[
@@ -1796,7 +1788,6 @@ with tabs[ 0 ]:
 						if d.metadata.get( "loader" ) != "GithubLoader"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "GithubLoader documents removed."
 				st.rerun( )
 			
@@ -1821,7 +1812,6 @@ with tabs[ 0 ]:
 						st.session_state.raw_documents = list( documents )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.processed_text = None
 					st.session_state.active_loader = "GithubLoader"
 					
 					st.session_state[
@@ -1863,7 +1853,6 @@ with tabs[ 0 ]:
 						if d.metadata.get( "loader" ) != "WebLoader"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "WebLoader documents removed."
 				st.rerun( )
 			
@@ -1886,7 +1875,6 @@ with tabs[ 0 ]:
 						st.session_state.raw_documents = list( new_docs )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.processed_text = None
 					st.session_state.active_loader = "WebLoader"
 					
 					st.session_state[
@@ -1943,7 +1931,6 @@ with tabs[ 0 ]:
 						if d.metadata.get( "loader" ) != "WebCrawler"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "WebCrawler documents removed."
 				st.rerun( )
 			
@@ -1967,7 +1954,6 @@ with tabs[ 0 ]:
 						st.session_state.raw_documents = list( documents )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.processed_text = None
 					st.session_state.active_loader = "WebCrawler"
 					
 					st.session_state[
@@ -2331,6 +2317,65 @@ with tabs[ 2 ]:
 		st.info( 'Run preprocessing first' )
 		
 	st.divider( )
+	
+	# --------------------------------------------------
+	# WordNet Synsets
+	# --------------------------------------------------
+	try:
+		from nltk.corpus import wordnet as wn
+		
+		st.markdown( "#### WordNet Synsets" )
+		st.caption(
+			"Semantic expansions derived from the current vocabulary using "
+			"NLTK WordNet synsets (nouns, verbs, adjectives, adverbs)."
+		)
+		
+		# Safety controls
+		MAX_TERMS = 50  # limit vocabulary scanned
+		MAX_SYSETS_PER_WORD = 5
+		
+		# Normalize and limit vocabulary
+		vocab_terms = sorted(
+			{
+					w.lower( )
+					for w in vocab
+					if isinstance( w, str ) and w.isalpha( )
+			}
+		)[ : MAX_TERMS ]
+		
+		rows = [ ]
+		for term in vocab_terms:
+			synsets = wn.synsets( term )
+			
+			for syn in synsets[ : MAX_SYSETS_PER_WORD ]:
+				rows.append(
+					{
+							"Word": term,
+							"POS": syn.pos( ),
+							"Synset": syn.name( ),
+							"Definition": syn.definition( ),
+							"Lemmas": ", ".join( l.name( ) for l in syn.lemmas( ) )
+					}
+				)
+		
+		if rows:
+			df_synsets = pd.DataFrame( rows )
+			
+			st.dataframe(
+				df_synsets,
+				use_container_width=True,
+				hide_index=True
+			)
+		else:
+			st.info( "No WordNet synsets found for the current vocabulary slice." )
+	
+	except LookupError:
+		st.warning(
+			"NLTK WordNet resource not available. "
+			"Run `nltk.download('wordnet')` and `nltk.download('omw-1.4')`."
+		)
+	except Exception as e:
+		st.error( f"WordNet synset expansion failed: {e}" )
 
 # ==========================================================================================
 # Tab - 🧩 Vectorization & Chunking
