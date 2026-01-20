@@ -157,12 +157,14 @@ SESSION_STATE_DEFAULTS = {
 		'raw_text': None,
 		'raw_text_view': None,
 		# Processing
+		'parser': None,
 		'processed_text': None,
 		'processed_text_view': None,
-		# Tokenization
+		# Tokenization/Vocabular
 		'tokens': None,
 		'vocabulary': None,
 		'token_counts': None,
+		'df_synsets': None,
 		# SQLite / Excel
 		'active_table': None,
 		# Chunking
@@ -349,15 +351,13 @@ with tabs[ 0 ]:
 		
 		char_count = len( text )
 		token_count = len( tokens )
-		vocab = set( tokens )
-		vocab_size = len( vocab )
+		vocabulary = set( tokens )
+		vocab_size = len( vocabulary )
 		counts = Counter( tokens )
-		
 		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
 		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
 		avg_word_len = sum( len( t ) for t in tokens ) / token_count
 		ttr = vocab_size / token_count
-		
 		stopword_ratio = 0.0
 		lexical_density = 0.0
 		
@@ -375,8 +375,7 @@ with tabs[ 0 ]:
 			top_tokens = counts.most_common( 10 )
 			df = pd.DataFrame(
 				top_tokens,
-				columns=[ 'token',
-				          'count' ]
+				columns=[ 'token', 'count' ]
 			).set_index( 'token' )
 			st.bar_chart( df, color='#01438A' )
 		
@@ -475,7 +474,7 @@ with tabs[ 0 ]:
 	with metrics_container:
 		render_metrics_panel( )
 
-	for key, default in nSESSION_STATE_DEFAULTS.items( ):
+	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 	
@@ -988,38 +987,11 @@ with tabs[ 0 ]:
 		
 		# --------------------------- PDF Loader
 		with st.expander( "📕 PDF Loader", expanded=False ):
-			pdf = st.file_uploader(
-				"Upload PDF",
-				type=[ "pdf" ],
-				key="pdf_upload",
-			)
-			
-			mode = st.selectbox(
-				"Mode",
-				[ "single",
-				  "elements" ],
-				key="pdf_mode",
-			)
-			
-			extract = st.selectbox(
-				"Extract",
-				[ "plain",
-				  "ocr" ],
-				key="pdf_extract",
-			)
-			
-			include = st.checkbox(
-				"Include Images",
-				value=False,
-				key="pdf_include",
-			)
-			
-			fmt = st.selectbox(
-				"Format",
-				[ "markdown-img",
-				  "text" ],
-				key="pdf_fmt",
-			)
+			pdf = st.file_uploader( "Upload PDF", type=[ "pdf" ], key="pdf_upload" )
+			mode = st.selectbox( "Mode", [ "single", "elements" ], key="pdf_mode" )
+			extract = st.selectbox( "Extract", [ "plain", "ocr" ], key="pdf_extract" )
+			include = st.checkbox( "Include Images", value=False, key="pdf_include" )
+			fmt = st.selectbox( "Format", [ "markdown-img", "text" ], key="pdf_fmt" )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save
@@ -1082,6 +1054,7 @@ with tabs[ 0 ]:
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = raw_text
+				st.session_state.processed_text = raw_text
 				st.session_state.active_loader = "PdfLoader"
 				
 				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} PDF document(s)."
@@ -1994,9 +1967,10 @@ with tabs[ 1 ]:
 	if has_text:
 		seed_hash = hash( raw_text )
 		if st.session_state.get( "_processing_seed_hash" ) != seed_hash:
-			# New load detected → seed processed text AND the widget-backed view
-			st.session_state.processed_text = processed_text
-			st.session_state.processed_text_view = processed_text
+			st.session_state.processed_text = ""
+			st.session_state.processed_text_view = ""
+			st.session_state.raw_text_view = raw_text
+			st.session_state._processing_seed_hash = seed_hash
 			
 			# Keep raw view in sync as well (disabled widget still has state)
 			st.session_state.raw_text_view = raw_text
@@ -2162,23 +2136,26 @@ with tabs[ 1 ]:
 			# ----------------------------------------------------------
 			# Format-specific FIRST
 			# ----------------------------------------------------------
+			parser = st.session_state.get( 'parser' )
 			if active == 'WordLoader':
-				parser = WordParser( )
 				if extract_tables and hasattr( parser, 'extract_tables' ):
+					parser = WordParser( )
 					processed_text = parser.extract_tables( processed_text )
 				if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
+					parser = WordParser( )
 					processed_text = parser.extract_paragraphs( processed_text )
 	
 			if active == 'PdfLoader':
-				parser = PdfParser( )
 				if remove_headers and hasattr( parser, 'remove_headers' ):
+					parser = PdfParser( )
 					processed_text = parser.remove_headers( processed_text )
 				if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
+					parser = PdfParser( )
 					processed_text = parser.join_hyphenated( processed_text )
 	
 			if active == 'HtmlLoader':
 				if strip_scripts:
-					processed_text = TextParser( ).remove_html( processed_text )
+					processed_text = tp.remove_html( processed_text )
 				
 			# Structural selectors can be refined later
 			st.session_state.processed_text = processed_text
@@ -2194,13 +2171,13 @@ with tabs[ 1 ]:
 		
 		with st.expander( '📊 Processing Statistics:', expanded=False ):
 			raw = st.session_state.get( 'raw_text' )
-			processed = st.session_state.get( 'processed_text' )
+			processed_text = st.session_state.get( 'processed_text' )
 			if ( isinstance( raw, str ) and raw.strip( ) 
-					and isinstance( processed, str ) and processed.strip( )):
+					and isinstance( processed_text , str ) and processed_text .strip( )):
 				raw_tokens = raw.split( )
-				proc_tokens = processed.split( )
+				proc_tokens = processed_text .split( )
 				raw_chars = len( raw )
-				proc_chars = len( processed )
+				proc_chars = len( processed_text  )
 				raw_vocab = len( set( raw_tokens ) )
 				proc_vocab = len( set( proc_tokens ) )
 				
@@ -2248,13 +2225,15 @@ with tabs[ 2 ]:
 			st.session_state[ key ] = default
 	
 	if st.session_state.processed_text:
+		vocabulary = st.session_state.get( 'vocabulary' )
+		tokens = st.session_state.get( 'tokens' )
 		processor = TextParser( )
 		
 		# --------------------------------------------------
 		# Tokenization & Vocabulary
 		# --------------------------------------------------
 		tokens = word_tokenize( processed_text )
-		vocab = processor.create_vocabulary( tokens )
+		vocabulary = processor.create_vocabulary( tokens )
 		
 		# --------------------------------------------------
 		# Frequency Distribution
@@ -2280,8 +2259,8 @@ with tabs[ 2 ]:
 		# Column 2 — Vocabulary
 		# -----------------------
 		with col_vocab:
-			st.write( f"Vocabulary: {len( vocab )}" )
-			st.data_editor( pd.DataFrame( vocab, columns=[ "Word" ] ),
+			st.write( f"Vocabulary: {len( vocabulary )}" )
+			st.data_editor( pd.DataFrame( vocabulary, columns=[ "Word" ] ),
 				num_rows='dynamic', width='stretch', height='stretch' )
 		
 		# -----------------------
@@ -2296,8 +2275,6 @@ with tabs[ 2 ]:
 				
 				if not numeric_cols.empty:
 					freq_col = numeric_cols.columns[ 0 ]
-					
-					# Use top-N most frequent tokens for readability
 					top_n = 100
 					df_top = (df_frequency.sort_values( freq_col, ascending=False ).head( top_n ))
 					st.bar_chart( df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
@@ -2311,18 +2288,20 @@ with tabs[ 2 ]:
 		# Persist state
 		# --------------------------------------------------
 		st.session_state.tokens = tokens
-		st.session_state.vocabulary = vocab
+		st.session_state.vocabulary = vocabulary
 	
 	else:
 		st.info( 'Run preprocessing first' )
 		
-	st.divider( )
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# --------------------------------------------------
-	# WordNet Synsets
+	# WordNet Synsets (Enhanced Explorer + Inline Controls)
 	# --------------------------------------------------
 	try:
 		from nltk.corpus import wordnet as wn
+		from streamlit_extras.dataframe_explorer import dataframe_explorer
+		import hashlib
 		
 		st.markdown( "#### WordNet Synsets" )
 		st.caption(
@@ -2330,44 +2309,205 @@ with tabs[ 2 ]:
 			"NLTK WordNet synsets (nouns, verbs, adjectives, adverbs)."
 		)
 		
+		# -------------------------------
 		# Safety controls
+		# -------------------------------
 		MAX_TERMS = 50  # limit vocabulary scanned
-		MAX_SYSETS_PER_WORD = 5
+		MAX_SYSETS_PER_WORD = 5  # limit synsets per term
 		
-		# Normalize and limit vocabulary
-		vocab_terms = sorted(
-			{
-					w.lower( )
-					for w in vocab
-					if isinstance( w, str ) and w.isalpha( )
-			}
-		)[ : MAX_TERMS ]
+		POS_MAP = {
+				"Noun": "n",
+				"Verb": "v",
+				"Adjective": "a",
+				"Adverb": "r",
+		}
 		
-		rows = [ ]
-		for term in vocab_terms:
-			synsets = wn.synsets( term )
+		vocabulary = st.session_state.get( 'vocabulary' )
+		def _get_vocab_terms( ) -> list[ str ]:
+			"""
 			
-			for syn in synsets[ : MAX_SYSETS_PER_WORD ]:
-				rows.append(
-					{
-							"Word": term,
-							"POS": syn.pos( ),
-							"Synset": syn.name( ),
-							"Definition": syn.definition( ),
-							"Lemmas": ", ".join( l.name( ) for l in syn.lemmas( ) )
-					}
-				)
-		
-		if rows:
-			df_synsets = pd.DataFrame( rows )
+				Purpose:
+				--------
+				Normalize and limit the vocabulary to a stable list of terms suitable for WordNet lookups.
+	
+				Returns:
+				--------
+				list[str]: Lowercased, alpha-only terms (bounded by MAX_TERMS).
+				
+			"""
+			if vocabulary is None or (hasattr( vocabulary, "empty" ) and vocabulary.empty):
+				return [ ]
 			
-			st.dataframe(
-				df_synsets,
-				use_container_width=True,
-				hide_index=True
+			terms = sorted(
+				{
+						w.lower( )
+						for w in vocabulary
+						if isinstance( w, str ) and w.isalpha( )
+				}
 			)
+			return terms[ :MAX_TERMS ]
+		
+		def _vocab_signature( terms: list[ str ] ) -> str:
+			"""
+				Purpose:
+				--------
+				Create a stable signature for cache invalidation based on the vocabulary slice and safety
+				controls.
+	
+				Parameters:
+				-----------
+				terms (list[str]): Vocabulary terms used for WordNet expansion.
+	
+				Returns:
+				--------
+				str: Deterministic signature.
+			"""
+			payload = "|".join( terms ) + f"|MAX_TERMS={MAX_TERMS}|MAX_SYSETS_PER_WORD={MAX_SYSETS_PER_WORD}"
+			return hashlib.md5( payload.encode( "utf-8" ) ).hexdigest( )
+		
+		# --------------------------------------------------
+		# Build / Cache (both views) once per vocabulary signature
+		# --------------------------------------------------
+		vocab_terms = _get_vocab_terms( )
+		
+		if not vocab_terms:
+			st.info( "Vocabulary is empty. Load and process text first." )
+			st.stop( )
+		
+		sig = _vocab_signature( vocab_terms )
+		
+		cache_key_sig = "wordnet_synsets_sig"
+		cache_key_syn = "df_wordnet_synsets"
+		cache_key_lem = "df_wordnet_lemmas"
+		
+		cache_miss = (
+				cache_key_sig not in st.session_state
+				or st.session_state[ cache_key_sig ] != sig
+				or cache_key_syn not in st.session_state
+				or cache_key_lem not in st.session_state
+		)
+		
+		if cache_miss:
+			rows_synsets: list[ dict ] = [ ]
+			rows_lemmas: list[ dict ] = [ ]
+			
+			for term in vocab_terms:
+				synsets = wn.synsets( term )[ :MAX_SYSETS_PER_WORD ]
+				
+				for syn in synsets:
+					lemmas = syn.lemmas( )
+					lemma_count = len( lemmas )
+					
+					hypernym_paths = syn.hypernym_paths( )
+					hypernym_depth = (
+							max( len( path ) for path in hypernym_paths )
+							if hypernym_paths else 0
+					)
+					
+					# Synset-level row
+					rows_synsets.append(
+						{
+								"Word": term,
+								"Part Of Speech": syn.pos( ),
+								"Synset": syn.name( ),
+								"Definition": syn.definition( ),
+								"Lemmas": ", ".join( l.name( ) for l in lemmas ),
+								"Lemma Count": lemma_count,
+								"Hypernym Depth": hypernym_depth,
+						}
+					)
+					
+					# Lemma-exploded rows
+					for lemma in lemmas:
+						rows_lemmas.append(
+						{
+								"Word": term,
+								"Part Of Speech": syn.pos( ),
+								"Synset": syn.name( ),
+								"Definition": syn.definition( ),
+								"Lemma": lemma.name( ),
+								"Lemma Count": lemma_count,
+								"Hypernym Depth": hypernym_depth,
+						} )
+			
+			st.session_state[ cache_key_sig ] = sig
+			st.session_state[ cache_key_syn ] = pd.DataFrame( rows_synsets ) if rows_synsets else pd.DataFrame( )
+			st.session_state[ cache_key_lem ] = pd.DataFrame( rows_lemmas ) if rows_lemmas else pd.DataFrame( )
+		
+		df_wordnet_synsets = st.session_state[ cache_key_syn ]
+		df_wordnet_lemmas = st.session_state[ cache_key_lem ]
+		
+		# --------------------------------------------------
+		# Inline Control Row (POS / Depth / Toggle)
+		# --------------------------------------------------
+		col_pos, col_depth, col_toggle = st.columns( [ 1.4, 2.8,  1.4 ], border=True )
+		
+		with col_pos:
+			pos_label = st.selectbox(
+				"Part of Speech",
+				options=[
+						"All",
+						"Noun",
+						"Verb",
+						"Adjective",
+						"Adverb",
+				],
+				index=0,
+				label_visibility="collapsed",
+			)
+		
+		with col_depth:
+			# Choose a reference DF for max depth computation (synsets is usually smaller/cleaner)
+			max_depth = 0
+			if (
+					not df_wordnet_synsets.empty
+					and "Hypernym Depth" in df_wordnet_synsets.columns
+			):
+				max_depth = int( df_wordnet_synsets[ "Hypernym Depth" ].max( ) )
+			
+			depth_range = st.slider(
+				"Hypernym Depth",
+				min_value=0,
+				max_value=max_depth if max_depth > 0 else 0,
+				value=(0, max_depth if max_depth > 0 else 0),
+				label_visibility="collapsed",
+			)
+		
+		with col_toggle:
+			explode_lemmas = st.toggle(
+				"Explode Lemmas",
+				value=False,
+			)
+		
+		# --------------------------------------------------
+		# Select view (synsets vs exploded lemmas)
+		# --------------------------------------------------
+		df_view = df_wordnet_lemmas if explode_lemmas else df_wordnet_synsets
+		
+		# --------------------------------------------------
+		# Apply POS filter
+		# --------------------------------------------------
+		if pos_label != "All" and not df_view.empty:
+			df_view = df_view[ df_view[ "Part Of Speech" ] == POS_MAP[ pos_label ] ]
+		
+		# --------------------------------------------------
+		# Apply hypernym depth filter
+		# --------------------------------------------------
+		if not df_view.empty and "Hypernym Depth" in df_view.columns:
+			min_depth, max_depth_selected = depth_range
+			df_view = df_view[
+				(df_view[ "Hypernym Depth" ] >= min_depth)
+				& (df_view[ "Hypernym Depth" ] <= max_depth_selected)
+				]
+		
+		# --------------------------------------------------
+		# Interactive Explorer + Display
+		# --------------------------------------------------
+		if not df_view.empty:
+			df_filtered = dataframe_explorer( df_view, case=False )
+			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
 		else:
-			st.info( "No WordNet synsets found for the current vocabulary slice." )
+			st.info( "No WordNet rows found for the selected filters." )
 	
 	except LookupError:
 		st.warning(
@@ -2376,6 +2516,53 @@ with tabs[ 2 ]:
 		)
 	except Exception as e:
 		st.error( f"WordNet synset expansion failed: {e}" )
+	
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
+	# --------------------------------------------------
+	# WordNet Semantic Relations
+	# --------------------------------------------------
+	try:
+		from nltk.corpus import wordnet as wn
+		
+		st.markdown( "#### WordNet Semantic Relations" )
+		st.caption(
+			"Hierarchical and part-whole relationships derived from WordNet "
+			"(hypernyms, hyponyms, meronyms, holonyms)."
+		)
+		
+		MAX_RELATIONS_PER_SYNSET = 3
+		
+		rows: list[ dict ] = [ ]
+		
+		for term in vocab_terms:
+			for syn in wn.synsets( term ):
+				def _add_related( label: str, related ):
+					for r in related[ :MAX_RELATIONS_PER_SYNSET ]:
+						rows.append(
+							{
+									"Word": term,
+									"Synset": syn.name( ),
+									"Relation": label,
+									"Related Synset": r.name( ),
+									"Definition": r.definition( ),
+							}
+						)
+				
+				_add_related( "Hypernym", syn.hypernyms( ) )
+				_add_related( "Hyponym", syn.hyponyms( ) )
+				_add_related( "Meronym", syn.part_meronyms( ) )
+				_add_related( "Holonym", syn.part_holonyms( ) )
+		
+		if rows:
+			df_wordnet_relations = pd.DataFrame( rows )
+			df_filtered = dataframe_explorer( df_wordnet_relations, case=False )
+			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
+		else:
+			st.info( "No semantic relations found for the current vocabulary slice." )
+	
+	except Exception as e:
+		st.error( f"WordNet semantic relations failed: {e}" )
 
 # ==========================================================================================
 # Tab - 🧩 Vectorization & Chunking
@@ -2422,7 +2609,7 @@ with tabs[ 3 ]:
 		else:
 			st.info( 'Run preprocessing first' )
 	
-	st.divider( )
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
 # ==========================================================================================
 # Tab  — 🧩 Embedding
