@@ -529,8 +529,6 @@ with tabs[ 0 ]:
 			col_load, col_clear, col_save = st.columns( 3 )
 			load_txt = col_load.button( 'Load', key='txt_load' )
 			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
-			
-			# Save is enabled only when THIS loader is active and raw_text exists
 			can_save = ( st.session_state.get( 'active_loader' ) == 'TextLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
 					and st.session_state.get( 'raw_text' ).strip( ) )
@@ -562,7 +560,6 @@ with tabs[ 0 ]:
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "TextLoader"
-				
 				st.success( f'Loaded {len( documents )} text document(s).' )
 		
 		# --------------------------- NLTK Loader
