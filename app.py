@@ -475,7 +475,7 @@ with tabs[ 0 ]:
 	with metrics_container:
 		render_metrics_panel( )
 
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
+	for key, default in nSESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
 			st.session_state[ key ] = default
 	
