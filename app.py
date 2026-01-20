@@ -2169,14 +2169,14 @@ with tabs[ 1 ]:
 		st.text_area( 'Raw Text', st.session_state.raw_text or 'No text loaded yet.',
 			height=200, disabled=True, key='raw_text_view' )
 		
+		raw_text = st.session_state.get( 'raw_text' )
 		with st.expander( '📊 Processing Statistics:', expanded=False ):
-			raw = st.session_state.get( 'raw_text' )
 			processed_text = st.session_state.get( 'processed_text' )
-			if ( isinstance( raw, str ) and raw.strip( ) 
+			if ( isinstance( raw_text, str ) and raw_textstrip( )
 					and isinstance( processed_text , str ) and processed_text .strip( )):
-				raw_tokens = raw.split( )
+				raw_tokens = raw_text.split( )
 				proc_tokens = processed_text .split( )
-				raw_chars = len( raw )
+				raw_chars = len( raw_text )
 				proc_chars = len( processed_text  )
 				raw_vocab = len( set( raw_tokens ) )
 				proc_vocab = len( set( proc_tokens ) )
