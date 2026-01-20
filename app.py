@@ -155,6 +155,7 @@ SESSION_STATE_DEFAULTS = {
 		'active_loader': None,
 		# Input
 		'raw_text': None,
+		'raw_tokens': None,
 		'raw_text_view': None,
 		# Processing
 		'parser': None,
@@ -321,495 +322,145 @@ tabs = st.tabs(
 # ======================================================================================
 # Tab 1 — Loaders
 # ======================================================================================
-with tabs[ 0 ]:
-	metrics_container = st.container( )
-	
-	def render_metrics_panel( ):
-		raw_text = st.session_state.get( 'raw_text' )
-		processed_text = st.session_state.get( 'processed_text' )
-		if isinstance( processed_text, str ) and processed_text.strip( ):
+with tabs[0]:
+	metrics_container = st.container()
+
+	def render_metrics_panel():
+		raw_text = st.session_state.get("raw_text")
+		processed_text = st.session_state.get("processed_text")
+
+		if isinstance(processed_text, str) and processed_text.strip():
 			text = processed_text
-		elif isinstance( raw_text, str ) and raw_text.strip( ):
+			seed = ("processed", processed_text)
+		elif isinstance(raw_text, str) and raw_text.strip():
 			text = raw_text
+			seed = ("raw", raw_text)
 		else:
-			st.info( 'Load a document to compute metrics.' )
+			st.info("Load a document to compute metrics.")
 			return
-		
-		try:
-			tokens = [ t.lower( ) for t in word_tokenize( text ) if t.isalpha( ) ]
-		except LookupError:
-			st.error(
-				'NLTK resources missing.\n\n'
-				'Run:\n'
-				'`python -m nltk.downloader punkt stopwords`'
-			)
-			return
-		
-		if not tokens:
-			st.warning( 'No valid alphabetic tokens found.' )
-			return
-		
-		char_count = len( text )
-		token_count = len( tokens )
-		vocabulary = set( tokens )
-		vocab_size = len( vocabulary )
-		counts = Counter( tokens )
-		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
+
+		# --------------------------------------------------
+		# Cache guard: recompute ONLY if text changes
+		# --------------------------------------------------
+		if st.session_state.get("_metrics_seed") != seed:
+			try:
+				tokens = [t.lower() for t in word_tokenize(text) if t.isalpha()]
+			except LookupError:
+				st.error(
+					"NLTK resources missing.\n\n"
+					"Run:\n"
+					"`python -m nltk.downloader punkt stopwords`"
+				)
+				return
+
+			if not tokens:
+				st.warning("No valid alphabetic tokens found.")
+				return
+
+			counts = Counter(tokens)
+			vocabulary = set(tokens)
+
+			st.session_state["_metrics_seed"] = seed
+			st.session_state["_metrics_tokens"] = tokens
+			st.session_state["_metrics_counts"] = counts
+			st.session_state["_metrics_vocab"] = vocabulary
+			st.session_state["_metrics_char_count"] = len(text)
+
+		# --------------------------------------------------
+		# Reuse cached metrics
+		# --------------------------------------------------
+		tokens = st.session_state["_metrics_tokens"]
+		counts = st.session_state["_metrics_counts"]
+		vocabulary = st.session_state["_metrics_vocab"]
+		char_count = st.session_state["_metrics_char_count"]
+
+		token_count = len(tokens)
+		vocab_size = len(vocabulary)
+		hapax_count = sum(1 for c in counts.values() if c == 1)
 		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
-		avg_word_len = sum( len( t ) for t in tokens ) / token_count
+		avg_word_len = sum(len(t) for t in tokens) / token_count
 		ttr = vocab_size / token_count
+
 		stopword_ratio = 0.0
 		lexical_density = 0.0
-		
 		try:
-			stop_words = set( stopwords.words( 'english' ) )
-			stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
+			stop_words = set(stopwords.words("english"))
+			stopword_ratio = sum(1 for t in tokens if t in stop_words) / token_count
 			lexical_density = 1.0 - stopword_ratio
 		except LookupError:
 			pass
-		
+
 		# -------------------------------
 		# Top Tokens
 		# -------------------------------
-		with st.expander( '🔤 Top Tokens', expanded=False ):
-			top_tokens = counts.most_common( 10 )
-			df = pd.DataFrame(
-				top_tokens,
-				columns=[ 'token', 'count' ]
-			).set_index( 'token' )
-			st.bar_chart( df, color='#01438A' )
-		
+		with st.expander("🔤 Top Tokens", expanded=False):
+			top_tokens = counts.most_common(10)
+			df = pd.DataFrame(top_tokens, columns=["token", "count"]).set_index("token")
+			st.bar_chart(df, color="#01438A")
+
 		# -------------------------------
 		# Corpus Metrics
 		# -------------------------------
-		with st.expander( '📊 Corpus Metrics', expanded=False ):
-			col1, col2, col3, col4 = st.columns( 4, border=True )
+		with st.expander("📊 Corpus Metrics", expanded=False):
+			col1, col2, col3, col4 = st.columns(4, border=True)
 			with col1:
-				metric_with_tooltip(
-					'Characters',
-					f'{char_count:,}',
-					'Total number of characters in the selected text.'
-				)
+				metric_with_tooltip("Characters", f"{char_count:,}",
+					"Total number of characters in the selected text.")
 			with col2:
-				metric_with_tooltip(
-					'Tokens',
-					f'{token_count:,}',
-					'Token Count: total number of tokenized words after cleanup.'
-				)
+				metric_with_tooltip("Tokens", f"{token_count:,}",
+					"Token Count: total number of tokenized words after cleanup.")
 			with col3:
-				metric_with_tooltip(
-					'Unique Tokens',
-					f'{vocab_size:,}',
-					'Vocabulary Size: number of distinct word types in the text.'
-				)
+				metric_with_tooltip("Unique Tokens", f"{vocab_size:,}",
+					"Vocabulary Size: number of distinct word types in the text.")
 			with col4:
-				metric_with_tooltip(
-					'TTR',
-					f'{ttr:.3f}',
-					'Type–Token Ratio: unique words ÷ total words.'
-				)
-			
-			col5, col6, col7, col8 = st.columns( 4, border=True )
+				metric_with_tooltip("TTR", f"{ttr:.3f}",
+					"Type–Token Ratio: unique words ÷ total words.")
+
+			col5, col6, col7, col8 = st.columns(4, border=True)
 			with col5:
-				metric_with_tooltip(
-					'Hapax Ratio',
-					f'{hapax_ratio:.3f}',
-					'Hapax Ratio: proportion of words that occur only once.'
-				)
+				metric_with_tooltip("Hapax Ratio", f"{hapax_ratio:.3f}",
+					"Hapax Ratio: proportion of words that occur only once.")
 			with col6:
-				metric_with_tooltip(
-					'Avg Length',
-					f'{avg_word_len:.2f}',
-					'Average number of characters per token.'
-				)
+				metric_with_tooltip("Avg Length", f"{avg_word_len:.2f}",
+					"Average number of characters per token.")
 			with col7:
-				metric_with_tooltip(
-					'Stopword Ratio',
-					f'{stopword_ratio:.2%}',
-					'Percentage of stopwords in the text.'
-				)
+				metric_with_tooltip("Stopword Ratio", f"{stopword_ratio:.2%}",
+					"Percentage of stopwords in the text.")
 			with col8:
-				metric_with_tooltip(
-					'Lexical Density',
-					f'{lexical_density:.2%}',
-					'Proportion of content-bearing words.'
-				)
-		
+				metric_with_tooltip("Lexical Density", f"{lexical_density:.2%}",
+					"Proportion of content-bearing words.")
+
 		# -------------------------------
 		# Readability
 		# -------------------------------
-		with st.expander( '📖 Readability', expanded=False ):
+		with st.expander("📖 Readability", expanded=False):
 			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3, r4 = st.columns( 4, border=True )
+				r1, r2, r3, r4 = st.columns(4, border=True)
 				with r1:
-					metric_with_tooltip(
-						'Flesch Reading Ease',
-						f'{textstat.flesch_reading_ease( text ):.1f}',
-						'Higher scores indicate easier readability.'
-					)
+					metric_with_tooltip("Flesch Reading Ease",
+						f"{textstat.flesch_reading_ease(text):.1f}",
+						"Higher scores indicate easier readability.")
 				with r2:
-					metric_with_tooltip(
-						'Flesch–Kincaid Grade',
-						f'{textstat.flesch_kincaid_grade( text ):.1f}',
-						'Estimated U.S. grade level required.'
-					)
+					metric_with_tooltip("Flesch–Kincaid Grade",
+						f"{textstat.flesch_kincaid_grade(text):.1f}",
+						"Estimated U.S. grade level required.")
 				with r3:
-					metric_with_tooltip(
-						'Gunning Fog',
-						f'{textstat.gunning_fog( text ):.1f}',
-						'Readability based on sentence length and complex words.'
-					)
+					metric_with_tooltip("Gunning Fog",
+						f"{textstat.gunning_fog(text):.1f}",
+						"Readability based on sentence length and complex words.")
 				with r4:
-					metric_with_tooltip(
-						'Coleman–Liau Index',
-						f'{textstat.coleman_liau_index( text ):.1f}',
-						'Readability based on characters and sentences.'
-					)
+					metric_with_tooltip("Coleman–Liau Index",
+						f"{textstat.coleman_liau_index(text):.1f}",
+						"Readability based on characters and sentences.")
 			else:
-				st.caption( 'Install `textstat` to enable readability metrics.' )
-	
+				st.caption("Install `textstat` to enable readability metrics.")
+
 	# ------------------------------------------------------------------
-	# SINGLE metrics 
+	# SINGLE metrics
 	# ------------------------------------------------------------------
 	with metrics_container:
-		render_metrics_panel( )
+		render_metrics_panel()
 
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
-	
-	# ------------------------------------------------------------------
-	# Left Layout 
-	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ] )
-	with left:
-		_loader_msg = st.session_state.pop( "_loader_status", None )
-		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
-			st.success( _loader_msg )
-			
-		def _rebuild_raw_text_from_documents( ) -> str | None:
-			docs = st.session_state.get( "documents" ) or [ ]
-			if not docs:
-				return None
-			text = "\n\n".join(
-				d.page_content for d in docs
-				if
-				hasattr( d, "page_content" ) and isinstance( d.page_content, str ) and d.page_content.strip( )
-			)
-			return text if text.strip( ) else None
-		
-		# --------------------------- Text Loader
-		with st.expander( '📄 Text Loader', expanded=False ):
-			files = st.file_uploader( 'Upload TXT files', type=[ 'txt' ],
-				accept_multiple_files=True, key='txt_upload' )
-			
-			# ------------------------------------------------------------------
-			# Buttons: Load / Clear / Save (same placement + interaction model)
-			# ------------------------------------------------------------------
-			col_load, col_clear, col_save = st.columns( 3 )
-			load_txt = col_load.button( 'Load', key='txt_load' )
-			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
-			
-			# Save is enabled only when THIS loader is active and raw_text exists
-			can_save = ( st.session_state.get( 'active_loader' ) == 'TextLoader'
-					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( ) )
-			
-			if can_save:
-				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
-					file_name='text_loader_output.txt', mime='text/plain', key='txt_save' )
-			else:
-				col_save.button( 'Save', key='txt_save_disabled', disabled=True )
-			
-			# ------------------------------------------------------------------
-			# Clear (unchanged behavior)
-			# ------------------------------------------------------------------
-			if clear_txt:
-				clear_if_active( 'TextLoader' )
-				st.info( 'Text Loader state cleared.' )
-			
-			# ------------------------------------------------------------------
-			# Load (unchanged behavior)
-			# ------------------------------------------------------------------
-			if load_txt and files:
-				documents = [ ]
-				for f in files:
-					text = f.read( ).decode( 'utf-8', errors='ignore' )
-					documents.append( Document( page_content=text,
-							metadata={ 'source': f.name, 'loader': 'TextLoader' }, ) )
-				
-				st.session_state.documents = documents
-				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
-				st.session_state.active_loader = "TextLoader"
-				
-				st.success( f'Loaded {len( documents )} text document(s).' )
-		
-		# --------------------------- NLTK Loader
-		with st.expander( '📚 Corpora Loader', expanded=False ):
-			import nltk
-			from nltk.corpus import (
-				brown,
-				gutenberg,
-				reuters,
-				webtext,
-				inaugural,
-				state_union,
-			)
-			
-			st.markdown( '###### NLTK Corpora' )
-			
-			corpus_name = st.selectbox(
-				'Select corpus',
-				[
-						'Brown',
-						'Gutenberg',
-						'Reuters',
-						'WebText',
-						'Inaugural',
-						'State of the Union',
-				],
-				key='nltk_corpus_name',
-			)
-			
-			file_ids = [ ]
-			try:
-				if corpus_name == 'Brown':
-					file_ids = brown.fileids( )
-				elif corpus_name == 'Gutenberg':
-					file_ids = gutenberg.fileids( )
-				elif corpus_name == 'Reuters':
-					file_ids = reuters.fileids( )
-				elif corpus_name == 'WebText':
-					file_ids = webtext.fileids( )
-				elif corpus_name == 'Inaugural':
-					file_ids = inaugural.fileids( )
-				elif corpus_name == 'State of the Union':
-					file_ids = state_union.fileids( )
-			except LookupError:
-				st.error(
-					"NLTK corpus not found. Run:\n\n"
-					"python -m nltk.downloader all\n\n"
-					"or download individual corpora."
-				)
-			
-			selected_files = st.multiselect(
-				'Select files (leave empty to load all)',
-				options=file_ids,
-				key='nltk_file_ids',
-			)
-			
-			st.divider( )
-			
-			st.markdown( '###### Local Corpus' )
-			
-			local_corpus_dir = st.text_input(
-				'Local directory',
-				placeholder='path/to/text/files',
-				key='nltk_local_dir',
-			)
-			
-			# ------------------------------------------------------------------
-			# Load / Clear / Save controls
-			# ------------------------------------------------------------------
-			col_load, col_clear, col_save = st.columns( 3 )
-			load_nltk = col_load.button( 'Load', key='nltk_load' )
-			clear_nltk = col_clear.button( 'Clear', key='nltk_clear' )
-			
-			_docs = st.session_state.get( 'documents' ) or [ ]
-			_nltk_docs = [
-					d for d in _docs
-					if d.metadata.get( 'loader' ) == 'NLTKLoader'
-			]
-			_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs )
-			_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
-			
-			col_save.download_button(
-				'Save',
-				data=_nltk_text,
-				file_name=_export_name,
-				mime='text/plain',
-				disabled=not bool( _nltk_text.strip( ) ),
-			)
-			
-			# ------------------------------------------------------------------
-			# Clear
-			# ------------------------------------------------------------------
-			if clear_nltk and st.session_state.get( 'documents' ):
-				st.session_state.documents = [
-						d for d in st.session_state.documents
-						if d.metadata.get( 'loader' ) != 'NLTKLoader'
-				]
-				
-				st.session_state.raw_text = (
-						"\n\n".join( d.page_content for d in st.session_state.documents )
-						if st.session_state.documents else None
-				)
-				
-				st.session_state.processed_text = None
-				st.session_state.active_loader = None
-				
-				st.info( 'NLTKLoader documents removed.' )
-			
-			# ------------------------------------------------------------------
-			# Load
-			# ------------------------------------------------------------------
-			if load_nltk:
-				documents = [ ]
-				
-				# Built-in corpora
-				if file_ids:
-					files_to_load = selected_files or file_ids
-					
-					for fid in files_to_load:
-						try:
-							if corpus_name == 'Brown':
-								text = ' '.join( brown.words( fid ) )
-							elif corpus_name == 'Gutenberg':
-								text = gutenberg.raw( fid )
-							elif corpus_name == 'Reuters':
-								text = reuters.raw( fid )
-							elif corpus_name == 'WebText':
-								text = webtext.raw( fid )
-							elif corpus_name == 'Inaugural':
-								text = inaugural.raw( fid )
-							elif corpus_name == 'State of the Union':
-								text = state_union.raw( fid )
-							
-							if text.strip( ):
-								documents.append(
-									Document(
-										page_content=text,
-										metadata={
-												'loader': 'NLTKLoader',
-												'corpus': corpus_name,
-												'file_id': fid,
-										},
-									)
-								)
-						except Exception:
-							continue
-				
-				# Local corpus
-				if local_corpus_dir and os.path.isdir( local_corpus_dir ):
-					for fname in os.listdir( local_corpus_dir ):
-						path = os.path.join( local_corpus_dir, fname )
-						if os.path.isfile( path ) and fname.lower( ).endswith( '.txt' ):
-							with open( path, 'r', encoding='utf-8', errors='ignore' ) as f:
-								text = f.read( )
-							
-							if text.strip( ):
-								documents.append(
-									Document(
-										page_content=text,
-										metadata={
-												'loader': 'NLTKLoader',
-												'source': path,
-										},
-									)
-								)
-				
-				if documents:
-					if st.session_state.get( 'documents' ):
-						st.session_state.documents.extend( documents )
-					else:
-						st.session_state.documents = documents
-						st.session_state.raw_documents = list( documents )
-					
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in st.session_state.documents
-					)
-					
-					st.session_state.processed_text = None
-					st.session_state.active_loader = 'NLTKLoader'
-					
-					st.success( f'Loaded {len( documents )} document(s) from NLTK.' )
-				else:
-					st.warning( 'No documents were loaded.' )
-		
-		# --------------------------- CSV Loader
-		with st.expander( "📑 CSV Loader", expanded=False ):
-			csv_file = st.file_uploader(
-				"Upload CSV",
-				type=[ "csv" ],
-				key="csv_upload",
-			)
-			
-			delimiter = st.text_input(
-				"Delimiter",
-				value="\n\n",
-				key="csv_delim",
-			)
-			
-			quotechar = st.text_input(
-				"Quote Character",
-				value='"',
-				key="csv_quote",
-			)
-			
-			# --------------------------------------------------
-			# Buttons: Load / Clear / Save
-			# --------------------------------------------------
-			col_load, col_clear, col_save = st.columns( 3 )
-			load_csv = col_load.button( "Load", key="csv_load" )
-			clear_csv = col_clear.button( "Clear", key="csv_clear" )
-			
-			can_save = (
-					st.session_state.get( "active_loader" ) == "CsvLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
-			)
-			
-			if can_save:
-				col_save.download_button(
-					"Save",
-					data=st.session_state.get( "raw_text" ),
-					file_name="csv_loader_output.txt",
-					mime="text/plain",
-					key="csv_save",
-				)
-			else:
-				col_save.button( "Save", key="csv_save_disabled", disabled=True )
-			
-			# --------------------------------------------------
-			# Clear
-			# --------------------------------------------------
-			if clear_csv:
-				clear_if_active( "CsvLoader" )
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
-				st.session_state[ "_loader_status" ] = "CSV Loader state cleared."
-				st.rerun( )
-			
-			# --------------------------------------------------
-			# Load
-			# --------------------------------------------------
-			if load_csv and csv_file:
-				with tempfile.TemporaryDirectory( ) as tmp:
-					path = os.path.join( tmp, csv_file.name )
-					with open( path, "wb" ) as f:
-						f.write( csv_file.read( ) )
-					
-					loader = CsvLoader( )
-					documents = loader.load(
-						path,
-						columns=None,
-						delimiter=delimiter,
-						quotechar=quotechar,
-					) or [ ]
-				
-				st.session_state.documents = documents
-				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-					if
-					hasattr( d, "page_content" ) and isinstance( d.page_content, str ) and d.page_content.strip( )
-				)
-				st.session_state.processed_text = None
-				st.session_state.active_loader = "CsvLoader"
-				
-				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} CSV document(s)."
-				st.rerun( )
 		
 		# -------------------------- XML Loader Expander
 		with st.expander( '🧬 XML Loader', expanded=False ):
@@ -2172,7 +1823,7 @@ with tabs[ 1 ]:
 		raw_text = st.session_state.get( 'raw_text' )
 		with st.expander( '📊 Processing Statistics:', expanded=False ):
 			processed_text = st.session_state.get( 'processed_text' )
-			if ( isinstance( raw_text, str ) and raw_textstrip( )
+			if ( isinstance( raw_text, str ) and raw_text.strip( )
 					and isinstance( processed_text , str ) and processed_text .strip( )):
 				raw_tokens = raw_text.split( )
 				proc_tokens = processed_text .split( )
