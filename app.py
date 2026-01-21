@@ -303,11 +303,9 @@ with st.sidebar:
 		)
 
 
-
 # ======================================================================================
 # Tabs
 # ======================================================================================
-
 tabs = st.tabs(
 	[
 			'Loading',
@@ -330,7 +328,7 @@ with tabs[ 0 ]:
 		processed_text = st.session_state.get( 'processed_text' )
 		
 		# ----------------------------------------------
-		# Select canonical text (existing behavior)
+		# Select canonical text
 		# ----------------------------------------------
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			text = processed_text
@@ -372,12 +370,10 @@ with tabs[ 0 ]:
 		char_count = len( text )
 		token_count = len( tokens )
 		vocab_size = len( vocabulary )
-		
 		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
 		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
 		avg_word_len = sum( len( t ) for t in tokens ) / token_count
 		ttr = vocab_size / token_count
-		
 		stopword_ratio = 0.0
 		lexical_density = 0.0
 		try:
@@ -1967,144 +1963,273 @@ with tabs[ 0 ]:
 						height=500, key=f'preview_doc_{i}' )
 
 # ======================================================================================
-# Tab 1 — Loaders
+# Tab — Processing / Parsing
 # ======================================================================================
-with tabs[0]:
-	metrics_container = st.container()
-
-	def render_metrics_panel():
-		raw_text = st.session_state.get('raw_text')
-		processed_text = st.session_state.get('processed_text')
-
-		if isinstance(processed_text, str) and processed_text.strip():
-			text = processed_text
-			seed = ('processed', processed_text)
-		elif isinstance(raw_text, str) and raw_text.strip():
-			text = raw_text
-			seed = ('raw', raw_text)
-		else:
-			st.info('Load a document to compute metrics.')
-			return
-
-		# --------------------------------------------------
-		# Cache guard: recompute ONLY if text changes
-		# --------------------------------------------------
-		if st.session_state.get('_metrics_seed') != seed:
-			try:
-				tokens = [t.lower() for t in word_tokenize(text) if t.isalpha()]
-			except LookupError:
-				st.error(
-					'NLTK resources missing.\n\n'
-					'Run:\n'
-					'`python -m nltk.downloader punkt stopwords`'
-				)
-				return
-
-			if not tokens:
-				st.warning('No valid alphabetic tokens found.')
-				return
-
-			counts = Counter(tokens)
-			vocabulary = set(tokens)
-
-			st.session_state['_metrics_seed'] = seed
-			st.session_state['_metrics_tokens'] = tokens
-			st.session_state['_metrics_counts'] = counts
-			st.session_state['_metrics_vocab'] = vocabulary
-			st.session_state['_metrics_char_count'] = len(text)
-
-		# --------------------------------------------------
-		# Reuse cached metrics
-		# --------------------------------------------------
-		tokens = st.session_state['_metrics_tokens']
-		counts = st.session_state['_metrics_counts']
-		vocabulary = st.session_state['_metrics_vocab']
-		char_count = st.session_state['_metrics_char_count']
-		token_count = len(tokens)
-		vocab_size = len(vocabulary)
-		hapax_count = sum(1 for c in counts.values() if c == 1)
-		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
-		avg_word_len = sum(len(t) for t in tokens) / token_count
-		ttr = vocab_size / token_count
-		stopword_ratio = 0.0
-		lexical_density = 0.0
-		try:
-			stop_words = set(stopwords.words('english'))
-			stopword_ratio = sum(1 for t in tokens if t in stop_words) / token_count
-			lexical_density = 1.0 - stopword_ratio
-		except LookupError:
-			pass
-
-		# -------------------------------
-		# Top Tokens
-		# -------------------------------
-		with st.expander('🔤 Top Tokens', expanded=False):
-			top_tokens = counts.most_common(10)
-			df = pd.DataFrame(top_tokens, columns=['token', 'count']).set_index('token')
-			st.bar_chart(df, color='#01438A')
-
-		# -------------------------------
-		# Corpus Metrics
-		# -------------------------------
-		with st.expander('📊 Corpus Metrics', expanded=False):
-			col1, col2, col3, col4 = st.columns(4, border=True)
-			with col1:
-				metric_with_tooltip('Characters', f'{char_count:,}',
-					'Total number of characters in the selected text.')
-			with col2:
-				metric_with_tooltip('Tokens', f'{token_count:,}',
-					'Token Count: total number of tokenized words after cleanup.')
-			with col3:
-				metric_with_tooltip('Unique Tokens', f'{vocab_size:,}',
-					'Vocabulary Size: number of distinct word types in the text.')
-			with col4:
-				metric_with_tooltip('TTR', f'{ttr:.3f}',
-					'Type–Token Ratio: unique words ÷ total words.')
-
-			col5, col6, col7, col8 = st.columns(4, border=True)
-			with col5:
-				metric_with_tooltip('Hapax Ratio', f'{hapax_ratio:.3f}',
-					'Hapax Ratio: proportion of words that occur only once.')
-			with col6:
-				metric_with_tooltip('Avg Length', f'{avg_word_len:.2f}',
-					'Average number of characters per token.')
-			with col7:
-				metric_with_tooltip('Stopword Ratio', f'{stopword_ratio:.2%}',
-					'Percentage of stopwords in the text.')
-			with col8:
-				metric_with_tooltip('Lexical Density', f'{lexical_density:.2%}',
-					'Proportion of content-bearing words.')
-
-		# -------------------------------
-		# Readability
-		# -------------------------------
-		with st.expander('📖 Readability', expanded=False):
-			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3, r4 = st.columns(4, border=True)
-				with r1:
-					metric_with_tooltip('Flesch Reading Ease',
-						f'{textstat.flesch_reading_ease(text):.1f}',
-						'Higher scores indicate easier readability.')
-				with r2:
-					metric_with_tooltip('Flesch–Kincaid Grade',
-						f'{textstat.flesch_kincaid_grade(text):.1f}',
-						'Estimated U.S. grade level required.')
-				with r3:
-					metric_with_tooltip('Gunning Fog',
-						f'{textstat.gunning_fog(text):.1f}',
-						'Readability based on sentence length and complex words.')
-				with r4:
-					metric_with_tooltip('Coleman–Liau Index',
-						f'{textstat.coleman_liau_index(text):.1f}',
-						'Readability based on characters and sentences.')
+with tabs[ 1 ]:
+	for key, default in SESSION_STATE_DEFAULTS.items( ):
+		if key not in st.session_state:
+			st.session_state[ key ] = default
+	
+	raw_text = st.session_state.get( 'raw_text' )
+	processed_text = st.session_state.get( 'processed_text' )
+	has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
+	
+	# ------------------------------------------------------------------
+	# Cascade: whenever raw_text changes, re-seed BOTH processed_text and the widget view
+	# ------------------------------------------------------------------
+	if has_text:
+		seed_hash = hash( raw_text )
+		if st.session_state.get( "_processing_seed_hash" ) != seed_hash:
+			st.session_state.processed_text = ""
+			st.session_state.processed_text_view = ""
+			st.session_state.raw_text_view = raw_text
+			st.session_state._processing_seed_hash = seed_hash
+			
+			# Keep raw view in sync as well (disabled widget still has state)
+			st.session_state.raw_text_view = raw_text
+			st.session_state._processing_seed_hash = processed_text
+	else:
+		st.session_state.raw_text_view = ""
+	
+	if not has_text:
+		st.info( "No raw text available yet. Load documents to enable processing." )
+	
+	# ------------------------------------------------------------------
+	# Layout
+	# ------------------------------------------------------------------
+	left, right = st.columns( [ 1,
+	                            1.5 ], border=True )
+	with left:
+		active = st.session_state.get( 'active_loader' )
+		
+		# ==============================================================
+		# Common Text Processing (TextParser)
+		# ==============================================================
+		with st.expander( '🧠 Text Processing', expanded=True ):
+			remove_html = st.checkbox( 'Remove HTML',
+				help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
+			remove_markdown = st.checkbox( 'Remove Markdown',
+				help=r'Removes symobls used in .md files #, ##, ###, -, etc' )
+			remove_symbols = st.checkbox( 'Remove Symbols',
+				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~' )
+			remove_numbers = st.checkbox( 'Remove Numbers',
+				help='Removes numeric digits 0 thour 9' )
+			remove_xml = st.checkbox( 'Remove XML',
+				help=r'Removes xml tags ( ex. <xml> & <\xml> )' )
+			remove_punctuation = st.checkbox( 'Remove Punctuation',
+				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence delimiters' )
+			remove_images = st.checkbox( 'Remove Images',
+				help=r'Remove image from text, including Markdown, HTML <img> tags, and  image URLs' )
+			remove_stopwords = st.checkbox( 'Remove Stopwords',
+				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
+			remove_numerals = st.checkbox( 'Remove Numerals',
+				help='Removes roman numbers I, II, IV, XI, etc' )
+			remove_encodings = st.checkbox( 'Remove Encoding',
+				help=r'Removes encoding artifacts and over-encoded byte strings' )
+			normalize_text = st.checkbox( 'Normalize (lowercase)' )
+			lemmatize_text = st.checkbox( 'Lemmatize',
+				help='Reduces words to their base or dictionary form' )
+			remove_fragments = st.checkbox( 'Remove Fragments',
+				help='Removes words less than 3 characters in length' )
+			remove_errors = st.checkbox( 'Remove Errors',
+				help='Removes misspelled words' )
+			collapse_whitespace = st.checkbox( 'Collapse Whitespace',
+				help='Removes extra lines' )
+			compress_whitespace = st.checkbox( 'Compress Whitespace',
+				help='Removes extra spaces' )
+		
+		# ==============================================================
+		# Word-Specific Processing (WordParser)
+		# ==============================================================
+		extract_tables = extract_paragraphs = False
+		with st.expander( '📄 Word Processing', expanded=False ):
+			if active == 'WordLoader':
+				extract_tables = st.checkbox( 'Extract Tables' )
+				extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
 			else:
-				st.caption('Install `textstat` to enable readability metrics.')
-
+				st.caption( 'Available when Word documents are loaded.' )
+		
+		# ==============================================================
+		# PDF-Specific Processing (PdfParser)
+		# ==============================================================
+		remove_headers = join_hyphenated = False
+		with st.expander( '📕 PDF Processing', expanded=False ):
+			if active == 'PdfLoader':
+				remove_headers = st.checkbox( 'Remove Headers/Footers' )
+				join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
+			else:
+				st.caption( 'Available when PDF documents are loaded.' )
+		
+		# ==============================================================
+		# HTML-Specific Processing (Structural)
+		# ==============================================================
+		strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
+		with st.expander( '🌐 HTML Processing', expanded=False ):
+			if active == 'HtmlLoader':
+				strip_scripts = st.checkbox( 'Strip <script> / <style>' )
+				keep_headings = st.checkbox( 'Keep Headings' )
+				keep_paragraphs = st.checkbox( 'Keep Paragraphs' )
+				keep_tables = st.checkbox( 'Keep Tables' )
+			else:
+				st.caption( 'Available when HTML documents are loaded.' )
+		
+		st.divider( )
+		
+		# ==============================================================
+		# Actions (Apply / Reset / Clear / Save)
+		# ==============================================================
+		col_apply, col_reset, col_clear, col_save = st.columns( 4 )
+		apply_processing = col_apply.button( 'Apply', disabled=not has_text, )
+		reset_processing = col_reset.button( 'Reset', disabled=not has_text, )
+		clear_processing = col_clear.button( 'Clear', disabled=not has_text, )
+		can_save_processed = (isinstance( st.session_state.get( 'processed_text' ), str )
+		                      and st.session_state.get( 'processed_text' ).strip( ))
+		
+		if can_save_processed:
+			col_save.download_button( 'Save', data=st.session_state.processed_text,
+				file_name='processed_text.txt', mime='text/plain', key='processed_text_save' )
+		else:
+			col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
+		
+		# ==============================================================
+		# Buttons Events
+		# ==============================================================
+		if reset_processing:
+			st.session_state.processed_text = ''
+			st.session_state.processed_text_view = ''
+			st.success( 'Processed text reset to raw text.' )
+		
+		if clear_processing:
+			st.session_state.processed_text = ""
+			st.session_state.processed_text_view = ""
+			st.success( 'Processed text cleared.' )
+		
+		
+		if apply_processing:
+			processed_text = raw_text
+			tp = TextParser( )
+			# 1 — Structural cleanup
+			if remove_html:
+				processed_text = tp.remove_html( processed_text )
+			if remove_markdown:
+				processed_text = tp.remove_markdown( processed_text )
+			if remove_images:
+				processed_text = tp.remove_images( processed_text )
+			if remove_encodings:
+				processed_text = tp.remove_encodings( processed_text )
+			if remove_xml:
+				processed_text = tp.remove_xml( processed_text )
+			# 2 — Noise / non-lexical characters
+			if remove_symbols:
+				processed_text = tp.remove_symbols( processed_text )
+			if remove_numbers:
+				processed_text = tp.remove_numbers( processed_text )
+			if remove_numerals:
+				processed_text = tp.remove_numerals( processed_text )
+			# 3 — Meaning-critical punctuation shaping
+			if remove_punctuation:
+				processed_text = tp.remove_punctuation( processed_text )
+			# 4 — Word normalization
+			if normalize_text:
+				processed_text = tp.normalize_text( processed_text )
+			# 5 — Lexical refinement
+			if remove_stopwords:
+				processed_text = tp.remove_stopwords( processed_text )
+			if remove_fragments:
+				processed_text = tp.remove_fragments( processed_text )
+			if remove_errors:
+				processed_text = tp.remove_errors( processed_text )
+			# 6 — Lemmatization
+			if lemmatize_text:
+				processed_text = tp.lemmatize_text( processed_text )
+			# 7 — Whitespace cleanup
+			if collapse_whitespace:
+				processed_text = tp.collapse_whitespace( processed_text )
+			if compress_whitespace:
+				processed_text = tp.compress_whitespace( processed_text )
+			
+			# ----------------------------------------------------------
+			# Format-specific FIRST
+			# ----------------------------------------------------------
+			parser = st.session_state.get( 'parser' )
+			if active == 'WordLoader':
+				if extract_tables and hasattr( parser, 'extract_tables' ):
+					parser = WordParser( )
+					processed_text = parser.extract_tables( processed_text )
+				if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
+					parser = WordParser( )
+					processed_text = parser.extract_paragraphs( processed_text )
+			
+			if active == 'PdfLoader':
+				if remove_headers and hasattr( parser, 'remove_headers' ):
+					parser = PdfParser( )
+					processed_text = parser.remove_headers( processed_text )
+				if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
+					parser = PdfParser( )
+					processed_text = parser.join_hyphenated( processed_text )
+			
+			if active == 'HtmlLoader':
+				if strip_scripts:
+					processed_text = tp.remove_html( processed_text )
+			
+			# Structural selectors can be refined later
+			st.session_state.processed_text = processed_text
+			st.session_state.processed_text_view = processed_text
+			st.success( 'Text processing applied.' )
+	
 	# ------------------------------------------------------------------
-	# SINGLE metrics
+	# RIGHT COLUMN — Text Views
 	# ------------------------------------------------------------------
-	with metrics_container:
-		render_metrics_panel()
+	with right:
+		st.text_area( 'Raw Text', st.session_state.raw_text or 'No text loaded yet.',
+			height=200, disabled=True, key='raw_text_view' )
+		
+		raw_text = st.session_state.get( 'raw_text' )
+		with st.expander( '📊 Processing Statistics:', expanded=False ):
+			processed_text = st.session_state.get( 'processed_text' )
+			if (isinstance( raw_text, str ) and raw_text.strip( )
+					and isinstance( processed_text, str ) and processed_text.strip( )):
+				raw_tokens = raw_text.split( )
+				proc_tokens = processed_text.split( )
+				raw_chars = len( raw_text )
+				proc_chars = len( processed_text )
+				raw_vocab = len( set( raw_tokens ) )
+				proc_vocab = len( set( proc_tokens ) )
+				
+				# ----------------------------
+				# Absolute Metrics
+				# ----------------------------
+				st.text( 'Measures:' )
+				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
+				a1, a2, a3, a4 = st.columns( 4, border=True )
+				a1.metric( 'Characters', f'{proc_chars:,}' )
+				a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
+				a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
+				a4.metric( 'TTR', f'{ttr:.3f}' )
+				
+				st.divider( )
+				
+				# ----------------------------
+				# Delta Metrics
+				# ----------------------------
+				st.text( 'Deltas:' )
+				d1, d2, d3, d4 = st.columns( 4, border=True )
+				char_delta = proc_chars - raw_chars
+				token_delta = len( proc_tokens ) - len( raw_tokens )
+				vocab_delta = proc_vocab - raw_vocab
+				compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
+				d1.metric( 'Δ Characters', f'{char_delta:+,}' )
+				d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
+				d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
+				d4.metric( 'Compression Ratio', f'{compression:.2%}' )
+			else:
+				st.caption( 'Load and process text to view absolute and delta statistics.' )
+		
+		# ----------------------------
+		# Processed Text (output)
+		# ----------------------------
+		st.text_area( "Processed Text", st.session_state.processed_text or "", height=700,
+			key="processed_text_view" )
 
 # ==========================================================================================
 # Tab - Tokens, Vocabulary
