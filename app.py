@@ -2761,7 +2761,13 @@ with tabs[ 3 ]:
 		if "word2vec_model" in st.session_state:
 			model = st.session_state.get( "word2vec_model" )
 			
-			if model is not None:
+			if model is None:
+				st.info( "Train Word2Vec to enable inspection." )
+			elif not hasattr( model, "wv" ):
+				st.warning( "Word2Vec model is not fully initialized." )
+			elif len( model.wv ) == 0:
+				st.warning( "Word2Vec vocabulary is empty. Adjust min_count or chunk size." )
+			else:
 				term = st.selectbox(
 					"Inspect Term",
 					options=sorted( model.wv.index_to_key ),
@@ -2776,8 +2782,6 @@ with tabs[ 3 ]:
 					use_container_width=True,
 					hide_index=True,
 				)
-			else:
-				st.info( "Train Word2Vec to inspect term similarities." )
 			
 			neighbors = model.wv.most_similar( term, topn=10 )
 			
