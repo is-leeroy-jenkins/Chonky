@@ -51,26 +51,29 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.github.ui.GithubSettingsConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "C:/Users/terry/source/repos/Chonky",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "terminal",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
-      <console-settings is-module-sdk="true" working-directory="$PROJECT_DIR$/../Boo">
+      <console-settings module-name="Chonky" is-module-sdk="true" working-directory="$PROJECT_DIR$">
         <option name="myUseModuleSdk" value="true" />
-        <option name="myWorkingDirectory" value="$PROJECT_DIR$/../Boo" />
+        <option name="myModuleName" value="Chonky" />
+        <option name="myWorkingDirectory" value="$PROJECT_DIR$" />
       </console-settings>
     </option>
   </component>
@@ -107,15 +110,13 @@
       <workItem from="1768951006746" duration="5898000" />
       <workItem from="1768999838688" duration="25786000" />
       <workItem from="1769084512196" duration="449000" />
-      <workItem from="1769085744327" duration="3307000" />
-    </task>
-    <task id="LOCAL-00051" summary="updates;">
-      <option name="closed" value="true" />
-      <created>1768491719470</created>
-      <option name="number" value="00051" />
-      <option name="presentableId" value="LOCAL-00051" />
-      <option name="project" value="LOCAL" />
-      <updated>1768491719470</updated>
+      <workItem from="1769085744327" duration="7162000" />
+      <workItem from="1769095204949" duration="965000" />
+      <workItem from="1769097477990" duration="141000" />
+      <workItem from="1769097676593" duration="606000" />
+      <workItem from="1769100042991" duration="1878000" />
+      <workItem from="1769103012737" duration="1690000" />
+      <workItem from="1769104760140" duration="1338000" />
     </task>
     <task id="LOCAL-00052" summary="updates;">
       <option name="closed" value="true" />
@@ -501,8 +502,21 @@
       <option name="project" value="LOCAL" />
       <updated>1769089871404</updated>
     </task>
-    <option name="localTasksCounter" value="100" />
+    <task id="LOCAL-00100" summary="updates;">
+      <option name="closed" value="true" />
+      <created>1769090419627</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
+      <option name="project" value="LOCAL" />
+      <updated>1769090419627</updated>
+    </task>
+    <option name="localTasksCounter" value="101" />
     <servers />
+  </component>
+  <component name="TerminalProjectNonSharedOptionsProvider">
+    <envs>
+      <env key="PYTHONPATH" value="C:\Users\terry\source\compilers\py\python;C:\Users\terry\source\compilers\py\python\Scripts;C:\Users\terry\source\compilers\py\anaconda;C:\Users\terry\source\compilers\py\anaconda\Scripts;C:\Users\terry\source\compilers\py\ipy;C:\Users\terry\source\compilers\py\ipy\Scripts;" />
+    </envs>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
