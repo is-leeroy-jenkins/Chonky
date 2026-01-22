@@ -16,6 +16,7 @@ jq
 langchain
 langchain-community
 langchain-openai
+langchain-text-splitters
 lxml
 matplotlib
 nltk
@@ -35,6 +36,7 @@ sentence-transformers
 scipy
 scikit-learn
 spacy
+sqlite-vec
 tiktoken
 transformers
 textblob

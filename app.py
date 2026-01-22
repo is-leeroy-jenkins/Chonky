@@ -66,6 +66,7 @@ from streamlit_extras.grid import grid
 import sqlite3
 import sys
 import statistics
+import time
 import tempfile
 from typing import List
 from langchain_core.documents import Document
@@ -99,23 +100,6 @@ from nltk import sent_tokenize
 from nltk.corpus import stopwords, wordnet, words
 from nltk.tokenize import word_tokenize
 
-REQUIRED_CORPORA = [
-    'brown',
-    'gutenberg',
-    'reuters',
-    'webtext',
-    'inaugural',
-    'state_union',
-    'punkt',
-    'stopwords',
-]
-
-for corpus in REQUIRED_CORPORA:
-    try:
-        nltk.data.find(f"corpora/{corpus}")
-    except LookupError:
-        nltk.download(corpus)
-	    
 # ================================================================================
 # Contants / Helpers / Utilities
 # ============================================================================
@@ -137,16 +121,18 @@ BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 
 
 PROVIDERS = [ 'OpenAI', 'Gemini', 'Groq' ]
 
-GPT_MODELS = [ 'text-embedding-3-small', 'text-embedding-3-large',  'text-embedding-ada-002' ]
+GPT_MODELS = [ 'text-embedding-3-small',
+               'text-embedding-3-large',
+               'text-embedding-ada-002' ]
 
-GEMINI_MODELS = [ 'text-embedding-004', 'text-multilingual-embedding-002' ]
+GEMINI_MODELS = [ 'text-embedding-004',
+                  'text-multilingual-embedding-002' ]
 
 GROK_MODELS = [ 'nomic-embed-text-v1.5', 'text-embedding-3-small',
                 'text-embedding-3-large', 'text-embedding-ada-002' ]
 
-def encode_image_base64( path: str ) -> str:
-	data = Path( path ).read_bytes( )
-	return base64.b64encode( data ).decode( "utf-8" )
+TABS = [ 'Document Loading', 'Text Processing', 'Semantic Analysis', 'Data Chunking',
+		'Tensor Embeddings', 'Vector Database' ]
 
 SESSION_STATE_DEFAULTS = {
 		# Ingestion
@@ -161,6 +147,10 @@ SESSION_STATE_DEFAULTS = {
 		'parser': None,
 		'processed_text': None,
 		'processed_text_view': None,
+		# Performance
+		'start_time': None,
+		'end_time': None,
+		'total_time': None,
 		# Tokenization/Vocabular
 		'tokens': None,
 		'vocabulary': None,
@@ -173,6 +163,10 @@ SESSION_STATE_DEFAULTS = {
 		'chunks': None,
 		'chunk_modes': None,
 		"chunked_documents": None,
+		'word2vec_model': None,
+		'word2vec_vectors': None,
+		'tfidf_matrix': None,
+		'tfidf_features': None,
 		# Vectorization
 		'embeddings': None,
 		'embedding_model': None,
@@ -188,6 +182,27 @@ SESSION_STATE_DEFAULTS = {
 		# Data
 		'data_connection': None
 }
+
+REQUIRED_CORPORA = [
+		'brown',
+		'gutenberg',
+		'reuters',
+		'webtext',
+		'inaugural',
+		'state_union',
+		'punkt',
+		'stopwords',
+]
+
+for corpus in REQUIRED_CORPORA:
+    try:
+        nltk.data.find(f'corpora/{corpus}')
+    except LookupError:
+        nltk.download(corpus)
+	    
+def encode_image_base64( path: str ) -> str:
+	data = Path( path ).read_bytes( )
+	return base64.b64encode( data ).decode( "utf-8" )
 
 def clear_if_active( loader_name: str ) -> None:
 	if st.session_state.active_loader == loader_name:
@@ -257,7 +272,6 @@ for key, default in SESSION_STATE_DEFAULTS.items( ):
 # Headers/Title
 # ======================================================================================
 col_logo, col_title = st.columns( [ 0.5, 5.5 ] )
-
 with col_logo:
     st.image(  cfg.LOGO, width=100,  )
 
@@ -273,52 +287,13 @@ with st.sidebar:
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( '' )
 
-	provider = st.selectbox(
-		label='Provider',
-		options=PROVIDERS,
-		index=0,
-		key='provider_options'
-	)
-
-	st.session_state['embedding_provider'] = provider
-	st.session_state['embedding_model'] = None
-
-	model_options = None
-
-	if provider == 'OpenAI':
-		model_options = GPT_MODELS
-	elif provider == 'Gemini':
-		model_options = GEMINI_MODELS
-	elif provider == 'Groq':
-		model_options = GROK_MODELS
-
-	# --------------------------------------------------
-	# Provider-specific model selector
-	# --------------------------------------------------
-	if model_options:
-		st.selectbox(
-			label='Embedding Model',
-			options=model_options,
-			key='embedding_model'
-		)
-
-
 # ======================================================================================
 # Tabs
 # ======================================================================================
-tabs = st.tabs(
-	[
-			'Loading',
-			'Processing',
-			'Tokens & Vocabulary',
-			'Vectors & Chunking',
-			'Embeddings',
-			'Database'
-	]
-)
+tabs = st.tabs( TABS )
 
 # ======================================================================================
-# Tab 1 — Loaders
+# Tab - Document Loading
 # ======================================================================================
 with tabs[ 0 ]:
 	metrics_container = st.container( )
@@ -1963,7 +1938,7 @@ with tabs[ 0 ]:
 						height=500, key=f'preview_doc_{i}' )
 
 # ======================================================================================
-# Tab — Processing / Parsing
+# Tab — Text Processing
 # ======================================================================================
 with tabs[ 1 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
@@ -1972,6 +1947,9 @@ with tabs[ 1 ]:
 	
 	raw_text = st.session_state.get( 'raw_text' )
 	processed_text = st.session_state.get( 'processed_text' )
+	start_time = st.session_state.get( 'start_time', 0.0 )
+	end_time = st.session_state.get( 'end_time', 0.0 )
+	total_time = st.session_state.get( 'total_time', 0.0 )
 	has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
 	
 	# ------------------------------------------------------------------
@@ -1997,8 +1975,7 @@ with tabs[ 1 ]:
 	# ------------------------------------------------------------------
 	# Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1,
-	                            1.5 ], border=True )
+	left, right = st.columns( [ 1, 1.5 ], border=True )
 	with left:
 		active = st.session_state.get( 'active_loader' )
 		
@@ -2079,9 +2056,9 @@ with tabs[ 1 ]:
 		# Actions (Apply / Reset / Clear / Save)
 		# ==============================================================
 		col_apply, col_reset, col_clear, col_save = st.columns( 4 )
-		apply_processing = col_apply.button( 'Apply', disabled=not has_text, )
-		reset_processing = col_reset.button( 'Reset', disabled=not has_text, )
-		clear_processing = col_clear.button( 'Clear', disabled=not has_text, )
+		apply_processing = col_apply.button( 'Apply', disabled=not has_text, key='processing_apply_button' )
+		reset_processing = col_reset.button( 'Reset', disabled=not has_text, key='processing_reset_button' )
+		clear_processing = col_clear.button( 'Clear', disabled=not has_text, key='processing_clear_button' )
 		can_save_processed = (isinstance( st.session_state.get( 'processed_text' ), str )
 		                      and st.session_state.get( 'processed_text' ).strip( ))
 		
@@ -2097,15 +2074,21 @@ with tabs[ 1 ]:
 		if reset_processing:
 			st.session_state.processed_text = ''
 			st.session_state.processed_text_view = ''
+			st.session_state.start_time = 0.0
+			st.session_state.end_time = 0.0
+			st.session_state.total_time = 0.0
 			st.success( 'Processed text reset to raw text.' )
 		
 		if clear_processing:
-			st.session_state.processed_text = ""
-			st.session_state.processed_text_view = ""
+			st.session_state.processed_text = ''
+			st.session_state.processed_text_view = ''
+			st.session_state.start_time = 0.0
+			st.session_state.end_time = 0.0
+			st.session_state.total_time = 0.0
 			st.success( 'Processed text cleared.' )
-		
-		
+			
 		if apply_processing:
+			start_time = time.perf_counter( )
 			processed_text = raw_text
 			tp = TextParser( )
 			# 1 — Structural cleanup
@@ -2148,6 +2131,13 @@ with tabs[ 1 ]:
 			if compress_whitespace:
 				processed_text = tp.compress_whitespace( processed_text )
 			
+
+			# Performance calculation
+			end_time = time.perf_counter( )
+			st.session_state.total_time = end_time - start_time
+			if st.session_state.total_time is None:
+				st.session_state.total_time = 0.0
+				
 			# ----------------------------------------------------------
 			# Format-specific FIRST
 			# ----------------------------------------------------------
@@ -2172,10 +2162,16 @@ with tabs[ 1 ]:
 				if strip_scripts:
 					processed_text = tp.remove_html( processed_text )
 			
+			# Performance calculation
+			end_time = time.perf_counter( )
+			st.session_state.total_time = end_time - start_time
+			if st.session_state.total_time is None:
+				st.session_state.total_time = 0.0
+			
 			# Structural selectors can be refined later
 			st.session_state.processed_text = processed_text
 			st.session_state.processed_text_view = processed_text
-			st.success( 'Text processing applied.' )
+			st.success( f'Text processing applied  {st.session_state.total_time:.1f}' )
 	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Text Views
@@ -2185,7 +2181,7 @@ with tabs[ 1 ]:
 			height=200, disabled=True, key='raw_text_view' )
 		
 		raw_text = st.session_state.get( 'raw_text' )
-		with st.expander( '📊 Processing Statistics:', expanded=False ):
+		with st.expander( f'📊 Processing Statistics:', expanded=False ):
 			processed_text = st.session_state.get( 'processed_text' )
 			if (isinstance( raw_text, str ) and raw_text.strip( )
 					and isinstance( processed_text, str ) and processed_text.strip( )):
@@ -2231,9 +2227,9 @@ with tabs[ 1 ]:
 		st.text_area( "Processed Text", st.session_state.processed_text or "", height=700,
 			key="processed_text_view" )
 
-# ==========================================================================================
-# Tab - Tokens, Vocabulary
-# ==========================================================================================
+# ======================================================================================
+# Tab - Semantic Analysis
+# ======================================================================================
 with tabs[ 2 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
@@ -2241,8 +2237,55 @@ with tabs[ 2 ]:
 	
 	if st.session_state.processed_text:
 		vocabulary = st.session_state.get( 'vocabulary' )
+		chunk_modes = st.session_state.get( 'chunk_modes' )
 		tokens = st.session_state.get( 'tokens' )
 		processor = TextParser( )
+		
+		# ---------------------------
+		# Chunking Controls
+		# ---------------------------
+		mode = st.selectbox( 'Chunking Mode', options=chunk_modes,
+			key='chunk_mode', help='Select how documents are chunked' )
+		
+		col_a, col_b = st.columns( 2 )
+		
+		with col_a:
+			chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000, value=1000,
+				step=100, key='chunk_count' )
+		
+		with col_b:
+			overlap = st.number_input( 'Overlap', min_value=0, max_value=2000,
+				value=200, step=50, key='overlap_input' )
+		
+		col_run, col_reset = st.columns( 2 )
+		run_chunking = col_run.button( 'Chunk', key='run_button' )
+		reset_chunking = col_reset.button( 'Reset', key='reset_control' )
+		
+		# ---------------------------
+		# Actions
+		# ---------------------------
+		if reset_chunking:
+			# No mutation of source documents here unless you already snapshot originals
+			st.info( 'Chunking controls reset.' )
+		
+		if run_chunking:
+			processor = TextParser( )
+			
+			if mode == 'chars':
+				chunked_documents = processor.chunk_text( text=processed_text, size=chunk_size )
+			
+			elif mode == 'tokens':
+				chunked_documents = word_tokenize( processed_text )
+			else:
+				st.error( f'Unsupported chunking mode: {mode}' )
+			
+			st.session_state.chunked_documents = chunked_documents
+			
+			st.success(
+				f'Chunking complete: {len( chunked_documents )} chunks generated '
+				f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
+		
+		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 		
 		# --------------------------------------------------
 		# Tokenization & Vocabulary
@@ -2309,6 +2352,8 @@ with tabs[ 2 ]:
 		st.info( 'Run preprocessing first' )
 		
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
+	
 	
 	# --------------------------------------------------
 	# WordNet Synsets (Enhanced Explorer + Inline Controls)
@@ -2579,9 +2624,9 @@ with tabs[ 2 ]:
 	except Exception as e:
 		st.error( f"WordNet semantic relations failed: {e}" )
 
-# ==========================================================================================
-# Tab - 🧩 Vectorization & Chunking
-# ==========================================================================================
+# ======================================================================================
+# Tab - Data Chunking
+# ======================================================================================
 with tabs[ 3 ]:
 	for key, default in SESSION_STATE_DEFAULTS.items( ):
 		if key not in st.session_state:
@@ -2625,15 +2670,6 @@ with tabs[ 3 ]:
 			st.info( 'Run preprocessing first' )
 	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
-# ==========================================================================================
-# Tab  — 🧩 Embedding
-# ==========================================================================================
-with tabs[ 4 ]:
-	st.subheader( "" )
-	for key, default in SESSION_STATE_DEFAULTS.items( ):
-		if key not in st.session_state:
-			st.session_state[ key ] = default
 	
 	documents = st.session_state.get( 'documents' )
 	chunks = st.session_state.get( 'chunks' )
@@ -2642,63 +2678,485 @@ with tabs[ 4 ]:
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
 	
-	if  documents is None:
+	if documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
 	elif loader_name is None:
 		st.warning( 'No active loader found.' )
 	else:
 		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
-		
+	
 	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
-  
+	
 	st.caption( f'Source Loader: {loader_name}' )
 	
-	# ---------------------------
-	# Chunking Controls
-	# ---------------------------
-	mode = st.selectbox( 'Chunking Mode', options=chunk_modes, help='Select how documents are chunked' )
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	
-	col_a, col_b = st.columns( 2 )
+	# ======================================================================================
+	# Statistical Language Models (Word2Vec / TF-IDF)
+	# ======================================================================================
+	st.markdown( "### 📊 Statistical Language Models" )
 	
-	with col_a:
-		chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000, value=1000,
-			step=100, key='chunk_size' )
+	if not isinstance( st.session_state.get( "chunked_documents" ), list ):
+		st.info( "Chunked documents required to train statistical models." )
+		st.stop( )
 	
-	with col_b:
-		overlap = st.number_input( 'Overlap', min_value=0, max_value=2000,
-			value=200, step=50, key='overlap' )
+	# --------------------------------------------------
+	# Prepare corpus (tokens per chunk)
+	# --------------------------------------------------
+	tokenized_chunks: list[ list[ str ] ] = [
+			word_tokenize( chunk.lower( ) )
+			for chunk in st.session_state.chunked_documents
+			if isinstance( chunk, str ) and chunk.strip( )
+	]
 	
-	col_run, col_reset = st.columns( 2 )
-	run_chunking = col_run.button( 'Chunk', key='chunk_button' )
-	reset_chunking = col_reset.button( 'Reset', key='reset_button' )
-	
-	# ---------------------------
-	# Actions
-	# ---------------------------
-	if reset_chunking:
-		# No mutation of source documents here unless you already snapshot originals
-		st.info( 'Chunking controls reset.' )
-	
-	if run_chunking:
-		processor = TextParser( )
+	# ==================================================
+	# 🧠 Word2Vec
+	# ==================================================
+	with st.expander( "🧠 Word2Vec (Corpus-Trained)", expanded=False ):
+		col_a, col_b, col_c = st.columns( 3 )
 		
-		if mode == 'chars':
-			chunked_documents = processor.chunk_text( text=processed_text, size=chunk_size )
+		vector_size = col_a.number_input( "Vector Size", 50, 500, 100, step=50 )
+		window = col_b.number_input( "Window", 2, 15, 5 )
+		min_count = col_c.number_input( "Min Count", 1, 10, 2 )
 		
-		elif mode == 'tokens':
-			chunked_documents = word_tokenize( processed_text )
+		architecture = st.radio(
+			"Architecture",
+			options=[ "CBOW",
+			          "Skip-Gram" ],
+			horizontal=True,
+		)
+		
+		train = st.button( "Train Word2Vec", use_container_width=True )
+		
+		if train:
+			with st.spinner( "Training Word2Vec model..." ):
+				from gensim.models import Word2Vec
+				
+				sg = 0 if architecture == "CBOW" else 1
+				
+				model = Word2Vec(
+					sentences=tokenized_chunks,
+					vector_size=vector_size,
+					window=window,
+					min_count=min_count,
+					sg=sg,
+					workers=4,
+				)
+				
+				st.session_state.word2vec_model = model
+				st.session_state.word2vec_vectors = {
+						word: model.wv[ word ] for word in model.wv.index_to_key
+				}
+				
+				st.success( f"Trained Word2Vec on {len( model.wv )} terms." )
+		
+		# --------------------------------------------------
+		# Nearest-neighbor inspection
+		# --------------------------------------------------
+		if "word2vec_model" in st.session_state:
+			model = st.session_state.word2vec_model
+			
+			term = st.selectbox(
+				"Inspect Term",
+				options=sorted( model.wv.index_to_key ),
+			)
+			
+			neighbors = model.wv.most_similar( term, topn=10 )
+			
+			st.data_editor(
+				pd.DataFrame( neighbors, columns=[ "Term",
+				                                   "Similarity" ] ),
+				use_container_width=True,
+				hide_index=True,
+			)
+	
+	# ==================================================
+	# 📐 TF-IDF
+	# ==================================================
+	with st.expander( "📐 TF-IDF (Term Importance)", expanded=False ):
+		from sklearn.feature_extraction.text import TfidfVectorizer
+		
+		max_features = st.slider( "Max Features", 100, 5000, 1000, step=100 )
+		ngram_range = st.selectbox( "n-gram Range", [ (1, 1),
+		                                              (1, 2),
+		                                              (1, 3) ] )
+		
+		compute = st.button( "Compute TF-IDF", use_container_width=True )
+		
+		if compute:
+			with st.spinner( "Computing TF-IDF matrix..." ):
+				vectorizer = TfidfVectorizer(
+					max_features=max_features,
+					ngram_range=ngram_range,
+					stop_words="english",
+				)
+				
+				tfidf = vectorizer.fit_transform( st.session_state.chunked_documents )
+				
+				st.session_state.tfidf_matrix = tfidf
+				st.session_state.tfidf_features = vectorizer.get_feature_names_out( )
+				
+				st.success(
+					f"TF-IDF matrix shape: {tfidf.shape[ 0 ]} documents × {tfidf.shape[ 1 ]} terms"
+				)
+		
+		# --------------------------------------------------
+		# Visualization
+		# --------------------------------------------------
+		if "tfidf_matrix" in st.session_state:
+			tfidf = st.session_state.tfidf_matrix
+			features = st.session_state.tfidf_features
+			
+			mean_scores = tfidf.mean( axis=0 ).A1
+			top_terms = pd.DataFrame(
+				{
+						"Term": features,
+						"Mean TF-IDF": mean_scores,
+				}
+			).sort_values( "Mean TF-IDF", ascending=False ).head( 30 )
+			
+			st.markdown( "#### Top Terms by Mean TF-IDF" )
+			
+			st.data_editor(
+				top_terms,
+				use_container_width=True,
+				hide_index=True,
+			)
+			
+			st.bar_chart(
+				top_terms.set_index( "Term" ),
+				height=300,
+			)
+	
+	# ==================================================
+	# 🔍  pygwalker
+	# ==================================================
+	with st.expander( "🔍 Interactive Exploration ", expanded=False ):
+		try:
+			import pygwalker as pyg
+			
+			if "tfidf_matrix" in st.session_state:
+				df = pd.DataFrame(
+					st.session_state.tfidf_matrix.toarray( ),
+					columns=st.session_state.tfidf_features,
+				)
+				
+				pyg.walk( df, env="streamlit" )
+			else:
+				st.info( "Compute TF-IDF first." )
+		except Exception:
+			st.info( "pygwalker not installed. Using st.data_editor instead." )
+			
+			st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
+	# ==================================================
+	# 🔄 Word2Vec ↔ TF-IDF Comparison
+	# ==================================================
+	st.markdown( "#### 🔄 Word2Vec ↔ TF-IDF Comparison" )
+	
+	if (
+			"word2vec_model" in st.session_state
+			and "tfidf_matrix" in st.session_state
+			and "tfidf_features" in st.session_state
+	):
+		w2v_model = st.session_state.word2vec_model
+		tfidf = st.session_state.tfidf_matrix
+		features = st.session_state.tfidf_features
+		
+		# Compute mean TF-IDF
+		mean_scores = tfidf.mean( axis=0 ).A1
+		tfidf_df = pd.DataFrame(
+			{
+					"term": features,
+					"mean_tfidf": mean_scores,
+			}
+		).sort_values( "mean_tfidf", ascending=False )
+		
+		top_n = st.slider(
+			"Top TF-IDF Terms to Compare",
+			min_value=10,
+			max_value=100,
+			value=30,
+			step=5,
+		)
+		
+		top_terms = tfidf_df.head( top_n )[ "term" ].tolist( )
+		
+		comparison_rows = [ ]
+		for term in top_terms:
+			if term in w2v_model.wv:
+				vec = w2v_model.wv[ term ]
+				comparison_rows.append(
+					{
+							"term": term,
+							"mean_tfidf": tfidf_df.loc[
+								tfidf_df.term == term, "mean_tfidf"
+							].values[ 0 ],
+							"w2v_norm": float( (vec ** 2).sum( ) ** 0.5 ),
+					}
+				)
+		
+		if comparison_rows:
+			comparison_df = pd.DataFrame( comparison_rows ).sort_values(
+				"mean_tfidf", ascending=False
+			)
+			
+			st.data_editor(
+				comparison_df,
+				use_container_width=True,
+				hide_index=True,
+			)
+			
+			st.caption(
+				"High TF-IDF + stable Word2Vec norms generally indicate meaningful signal."
+			)
 		else:
-			st.error( f'Unsupported chunking mode: {mode}' )
-		
-		st.session_state.chunked_documents = chunked_documents
-		
-		st.success(
-			f'Chunking complete: {len( chunked_documents )} chunks generated '
-			f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
+			st.info( "No overlap between Word2Vec vocabulary and top TF-IDF terms." )
+	else:
+		st.info( "Train Word2Vec and compute TF-IDF to enable comparison." )
 
 # ======================================================================================
-# Tab — Database
+# Tab —  Tensor Embeddings
+# ==========================================================================================
+with tabs[ 4 ]:
+    import pandas as pd
+
+    for key, default in SESSION_STATE_DEFAULTS.items():
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+    # -------------------------------
+    # Namespaced key helper
+    # -------------------------------
+    def k(name: str) -> str:
+        return f"emb__{name}"
+
+    left, right = st.columns([1, 1.5], border=True)
+
+    # --------------------------------------------------
+    # Source selection
+    # --------------------------------------------------
+    with left:
+        st.markdown("##### Embedding Providers")
+
+        embedding_source = st.radio(
+            "Text Source",
+            options=["Processed Text", "Chunked Documents"],
+            horizontal=True,
+            key=k("text_source"),
+        )
+
+        def resolve_texts(source: str) -> list[str] | None:
+            if source == "Processed Text":
+                text = st.session_state.get("processed_text")
+                if isinstance(text, str) and text.strip():
+                    return [text]
+                return None
+
+            chunks = st.session_state.get("chunked_documents")
+            if isinstance(chunks, list) and chunks:
+                return [str(c) for c in chunks if isinstance(c, str) and c.strip()]
+
+            return None
+
+        texts = resolve_texts(embedding_source)
+
+        if not texts:
+            st.info("No text available. Run processing or chunking first.")
+            st.stop()
+
+        st.caption(f"Texts to embed: {len(texts):,}")
+
+        # --------------------------------------------------
+        # Shared save helper (from embedding_documents)
+        # --------------------------------------------------
+        def can_save_docs() -> bool:
+            return isinstance(st.session_state.get("embedding_documents"), list) and bool(
+                st.session_state.embedding_documents
+            )
+
+        def docs_to_df() -> pd.DataFrame:
+            docs = st.session_state.get("embedding_documents") or []
+            return pd.DataFrame(docs)
+
+        # ==================================================
+        # 🧠 OpenAI
+        # ==================================================
+        with st.expander("🧠 OpenAI Embeddings", expanded=False):
+            model = st.selectbox(
+                "Model",
+                options=GPT_MODELS,
+                key=k("openai_model"),
+            )
+
+            col_run, col_clear, col_save = st.columns(3)
+            run = col_run.button("Embed", key=k("openai_embed"), use_container_width=True)
+            clear = col_clear.button("Clear", key=k("openai_clear"), use_container_width=True)
+
+            if can_save_docs():
+                col_save.download_button(
+                    "Save CSV",
+                    data=docs_to_df().to_csv(index=False),
+                    file_name="openai_embeddings.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key=k("openai_save"),
+                )
+            else:
+                col_save.button("Save CSV", disabled=True, use_container_width=True, key=k("openai_save_disabled"))
+
+            if clear:
+                st.session_state.embedding_documents = None
+                st.success("Embeddings cleared.")
+
+            if run:
+                with st.spinner("Embedding with OpenAI..."):
+                    embedder = GPT(model=model)
+                    vectors = embedder.embed(texts)
+
+                    st.session_state.embedding_documents = [
+                        {
+                            "provider": "OpenAI",
+                            "model": model,
+                            "index": i,
+                            "text": texts[i] if i < len(texts) else "",
+                            "embedding": vec,
+                        }
+                        for i, vec in enumerate(vectors)
+                    ]
+
+                    st.session_state.embedding_provider = "OpenAI"
+                    st.session_state.embedding_model = model
+                    st.session_state.embeddings = vectors
+
+                    st.success(f"Generated {len(vectors)} embedding(s).")
+
+        # ==================================================
+        # ✨ Gemini
+        # ==================================================
+        with st.expander("✨ Gemini Embeddings", expanded=False):
+            model = st.selectbox(
+                "Model",
+                options=GEMINI_MODELS,
+                key=k("gemini_model"),
+            )
+
+            col_run, col_clear, col_save = st.columns(3)
+            run = col_run.button("Embed", key=k("gemini_embed"), use_container_width=True)
+            clear = col_clear.button("Clear", key=k("gemini_clear"), use_container_width=True)
+
+            if can_save_docs():
+                col_save.download_button(
+                    "Save CSV",
+                    data=docs_to_df().to_csv(index=False),
+                    file_name="gemini_embeddings.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key=k("gemini_save"),
+                )
+            else:
+                col_save.button("Save CSV", disabled=True, use_container_width=True, key=k("gemini_save_disabled"))
+
+            if clear:
+                st.session_state.embedding_documents = None
+                st.success("Embeddings cleared.")
+
+            if run:
+                with st.spinner("Embedding with Gemini..."):
+                    embedder = Gemini(model=model)
+                    vectors = embedder.embed(texts)
+
+                    st.session_state.embedding_documents = [
+                        {
+                            "provider": "Gemini",
+                            "model": model,
+                            "index": i,
+                            "text": texts[i] if i < len(texts) else "",
+                            "embedding": vec,
+                        }
+                        for i, vec in enumerate(vectors)
+                    ]
+
+                    st.session_state.embedding_provider = "Gemini"
+                    st.session_state.embedding_model = model
+                    st.session_state.embeddings = vectors
+
+                    st.success(f"Generated {len(vectors)} embedding(s).")
+
+        # ==================================================
+        # ⚡ Groq
+        # ==================================================
+        with st.expander("⚡ Groq Embeddings", expanded=False):
+            model = st.selectbox(
+                "Model",
+                options=GROK_MODELS,
+                key=k("groq_model"),
+            )
+
+            col_run, col_clear, col_save = st.columns(3)
+            run = col_run.button("Embed", key=k("groq_embed"), use_container_width=True)
+            clear = col_clear.button("Clear", key=k("groq_clear"), use_container_width=True)
+
+            if can_save_docs():
+                col_save.download_button(
+                    "Save CSV",
+                    data=docs_to_df().to_csv(index=False),
+                    file_name="groq_embeddings.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key=k("groq_save"),
+                )
+            else:
+                col_save.button("Save CSV", disabled=True, use_container_width=True, key=k("groq_save_disabled"))
+
+            if clear:
+                st.session_state.embedding_documents = None
+                st.success("Embeddings cleared.")
+
+            if run:
+                with st.spinner("Embedding with Groq..."):
+                    embedder = Grok(model=model)
+                    vectors = embedder.embed(texts)
+
+                    st.session_state.embedding_documents = [
+                        {
+                            "provider": "Groq",
+                            "model": model,
+                            "index": i,
+                            "text": texts[i] if i < len(texts) else "",
+                            "embedding": vec,
+                        }
+                        for i, vec in enumerate(vectors)
+                    ]
+
+                    st.session_state.embedding_provider = "Groq"
+                    st.session_state.embedding_model = model
+                    st.session_state.embeddings = vectors
+
+                    st.success(f"Generated {len(vectors)} embedding(s).")
+
+    # --------------------------------------------------
+    # RIGHT COLUMN — Embedding Documents
+    # --------------------------------------------------
+    with right:
+        st.markdown("##### Embedding Documents")
+
+        docs = st.session_state.get("embedding_documents")
+        if not docs:
+            st.info("No embeddings generated yet.")
+        else:
+            df = pd.DataFrame(docs)
+            st.data_editor(
+                df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                key=k("embedding_editor"),
+            )
+
+# ======================================================================================
+# Tab — Vector Database
 # ======================================================================================
 with tabs[ 5 ]:
 
@@ -2726,9 +3184,9 @@ with tabs[ 5 ]:
             )
 
             if df_tables.empty:
-                st.info("Database exists but contains no tables.")
+                st.info( "Database exists but contains no tables." )
             else:
-                table_names = df_tables["name"].tolist()
+                table_names = df_tables[ "name" ].tolist( )
 
                 if "active_table" not in st.session_state:
                     st.session_state.active_table = table_names[0]
@@ -2745,10 +3203,7 @@ with tabs[ 5 ]:
                 )
                 st.session_state.active_table = table_name
 
-                df_count = pd.read_sql(
-                    f"SELECT COUNT(*) AS rows FROM {q(table_name)};",
-                    conn,
-                )
+                df_count = pd.read_sql( f"SELECT COUNT(*) AS rows FROM {q(table_name)};", conn )
                 data_grid.metric("Row Count", int(df_count.iloc[0]["rows"]))
 
                 df_preview = pd.read_sql(
