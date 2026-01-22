@@ -2665,6 +2665,10 @@ with tabs[ 3 ]:
 			lines = processor.split_sentences( text=processed_text, size=15 )
 			_chunks = [ l.split( ' ' )  for l in lines ]
 			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
+			st.session_state.chunked_documents = [
+					" ".join( tokens ) for tokens in _chunks if tokens
+			]
+			
 			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
@@ -2695,7 +2699,7 @@ with tabs[ 3 ]:
 	# ======================================================================================
 	# Statistical Language Models (Word2Vec / TF-IDF)
 	# ======================================================================================
-	st.markdown( "### 📊 Statistical Language Models" )
+	st.markdown( "#### 📊 Statistical Language Models" )
 	
 	if not isinstance( st.session_state.get( "chunked_documents" ), list ):
 		st.info( "Chunked documents required to train statistical models." )
@@ -2755,12 +2759,25 @@ with tabs[ 3 ]:
 		# Nearest-neighbor inspection
 		# --------------------------------------------------
 		if "word2vec_model" in st.session_state:
-			model = st.session_state.word2vec_model
+			model = st.session_state.get( "word2vec_model" )
 			
-			term = st.selectbox(
-				"Inspect Term",
-				options=sorted( model.wv.index_to_key ),
-			)
+			if model is not None:
+				term = st.selectbox(
+					"Inspect Term",
+					options=sorted( model.wv.index_to_key ),
+					key="w2v_inspect_term",
+				)
+				
+				neighbors = model.wv.most_similar( term, topn=10 )
+				
+				st.data_editor(
+					pd.DataFrame( neighbors, columns=[ "Term",
+					                                   "Similarity" ] ),
+					use_container_width=True,
+					hide_index=True,
+				)
+			else:
+				st.info( "Train Word2Vec to inspect term similarities." )
 			
 			neighbors = model.wv.most_similar( term, topn=10 )
 			
