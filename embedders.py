@@ -343,7 +343,7 @@ class Gemini( ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.input_text = text;
+			self.input_text = text
 			self.model = model
 			self.embedding_config = EmbedContentConfig( task_type=self.task_type )
 			self.response = self.client.models.embed_content( model=self.model,
@@ -393,6 +393,7 @@ class Grok:
 		self.endpoint = f'https://api.openai.com/v1/embeddings'
 		self.client = Groq( api_key=self.api_key )
 		self.contents = [ ]
+		self.payload = Dict[ str, Any ]=None
 		self.encoding_format = 'float'
 		self.input_text = None
 		self.embedding = None
@@ -417,14 +418,14 @@ class Grok:
 			self.input_text = text;
 			self.model = model;
 			self.encoding_format = format
-			payload = \
+			self.payload = \
 			{
 				'input': self.input_text,
 				'model': self.model,
 				'encoding_format': self.encoding_format
 			}
 			
-			_response = requests.post( url=self.endpoint, headers=self.headers, json=payload )
+			_response = requests.post( url=self.endpoint, headers=self.headers, json=self.payload )
 			if _response.status_code == 200:
 				self.response = _response.json( )
 				self.embedding = self.response[ 'data' ][ 0 ][ 'embedding' ]
@@ -438,7 +439,7 @@ class Grok:
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def embed( self, texts: List[ str ], model: str = "grok-embedding" ) -> List[ List[ float ] ]:
+	def embed( self, texts: List[ str ], model: str='text-embedding-3-small' ) -> List[ List[ float ] ]:
 		"""
 		
 			Purpose:
@@ -460,12 +461,13 @@ class Grok:
 		"""
 		try:
 			throw_if( 'texts', texts )
-			headers = { "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", }
-			payload = { "model": model, "input": texts, }
-			response = requests.post( url=self.endpoint, headers=headers, json=payload, timeout=30, )
+			self.model = model
+			self.headers = { 'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json', }
+			self.payload = { 'model': model, 'input': texts, }
+			response = requests.post( url=self.endpoint, headers=self.headers, json=self.payload, timeout=30, )
 			response.raise_for_status( )
 			data = response.json( )
-			return [ item[ "embedding" ] for item in data[ "data" ] ]
+			return [ item[ 'embedding' ] for item in data[ 'data' ] ]
 		except Exception as e:
 			exception = Error( e );
 			exception.module = 'embeddings'
