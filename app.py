@@ -289,8 +289,7 @@ tabs = st.tabs( TABS )
 # Tab - Document Loading
 # ======================================================================================
 with tabs[ 0 ]:
-	metrics_container = st.container( )
-	
+	metrics_container = st.container( )	
 	def render_metrics_panel( ):
 		raw_text = st.session_state.get( 'raw_text' )
 		processed_text = st.session_state.get( 'processed_text' )
@@ -459,7 +458,7 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	left, right = st.columns( [ 1, 1.5 ] )
 	with left:
-		_loader_msg = st.session_state.pop( "_loader_status", None )
+		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
 			
@@ -2687,7 +2686,6 @@ with tabs[ 3 ]:
 	st.caption( f'Source Loader: {loader_name}' )
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
-
 # ======================================================================================
 # Tab — Tensor Embeddings
 # ======================================================================================
@@ -2698,10 +2696,10 @@ with tabs[4]:
         if key not in st.session_state:
             st.session_state[key] = default
 
-    processed_text = st.session_state.get("processed_text")
-    embeddings = st.session_state.get("embeddings")
-    chunks = st.session_state.get("chunks")
-    chunked_documents = st.session_state.get("chunked_documents")
+    processed_text = st.session_state.get('processed_text')
+    embeddings = st.session_state.get('embeddings')
+    chunks = st.session_state.get('chunks')
+    chunked_documents = st.session_state.get('chunked_documents')
 
     # -------------------------------
     # Namespaced key helper
@@ -2715,13 +2713,13 @@ with tabs[4]:
     # LEFT COLUMN — Providers
     # --------------------------------------------------
     with left:
-        st.markdown("##### Embedding Providers")
+        st.markdown('##### Embedding Providers')
 
         embedding_source = st.radio(
-            "Text Source",
-            options=["Processed Text", "Chunked Documents"],
+            'Text Source',
+            options=['Processed Text', 'Chunked Documents'],
             horizontal=True,
-            key=k("text_source"),
+            key=k('text_source'),
         )
 
         def resolve_texts(source: str) -> list[str] | None:
@@ -2737,43 +2735,43 @@ with tabs[4]:
 
         texts = resolve_texts(embedding_source)
         if not texts:
-            st.info("No text available. Run processing or chunking first.")
+            st.info('No text available. Run processing or chunking first.')
 
-        st.caption(f"Texts to embed: {len(texts) if texts else 0:,}")
+        st.caption(f'Texts to embed: {len(texts) if texts else 0:,}')
 
         # --------------------------------------------------
         # Shared save helpers
         # --------------------------------------------------
         def can_save_docs() -> bool:
-            return isinstance(st.session_state.get("chunked_documents"), list) and bool(
+            return isinstance(st.session_state.get('chunked_documents'), list) and bool(
                 st.session_state.chunked_documents
             )
 
         def docs_to_df() -> pd.DataFrame:
-            return pd.DataFrame(st.session_state.get("chunked_documents") or [])
+            return pd.DataFrame(st.session_state.get('chunked_documents') or [])
 
         # ==================================================
         # 🧠 OpenAI
         # ==================================================
-        with st.expander("🧠 OpenAI Embeddings", expanded=False):
-            model = st.selectbox("Model", options=GPT_MODELS, key=k("openai_model"))
+        with st.expander('🧠 OpenAI Embeddings', expanded=False):
+            model = st.selectbox('Model', options=GPT_MODELS, key=k('openai_model'))
             col_run, col_clear, col_save = st.columns(3)
 
-            run = col_run.button("Embed", key=k("openai_embed"), use_container_width=True)
-            clear = col_clear.button("Clear", key=k("openai_clear"), use_container_width=True)
+            run = col_run.button('Embed', key=k('openai_embed'), use_container_width=True)
+            clear = col_clear.button('Clear', key=k('openai_clear'), use_container_width=True)
 
             if can_save_docs():
                 col_save.download_button(
-                    "Save CSV",
+                    'Save CSV',
                     data=docs_to_df().to_csv(index=False),
-                    file_name="openai_embeddings.csv",
-                    mime="text/csv",
+                    file_name='openai_embeddings.csv',
+                    mime='text/csv',
                     use_container_width=True,
-                    key=k("openai_save"),
+                    key=k('openai_save'),
                 )
             else:
                 col_save.button(
-                    "Save CSV", disabled=True, use_container_width=True, key=k("openai_save_disabled")
+                    'Save CSV', disabled=True, use_container_width=True, key=k('openai_save_disabled')
                 )
 
             if clear:
@@ -2781,48 +2779,46 @@ with tabs[4]:
                 st.session_state.chunked_documents = None
                 st.session_state.embedding_provider = None
                 st.session_state.embedding_model = None
-                st.success("Embeddings cleared.")
+                st.success('Embeddings cleared.')
 
             if run and texts:
-                with st.spinner("Embedding with OpenAI..."):
+                with st.spinner('Embedding with OpenAI...'):
                     embedder = GPT(api_key=cfg.OPENAI_API_KEY)
                     vectors = embedder.embed(texts, model=model)
-
                     st.session_state.chunked_documents = [
                         {
-                            "provider": "OpenAI",
-                            "model": model,
-                            "index": i,
-                            "text": texts[i],
-                            "embedding": vec,
+                            'provider': 'OpenAI',
+                            'model': model,
+                            'index': i,
+                            'text': texts[i],
+                            'embedding': vec,
                         }
                         for i, vec in enumerate(vectors)
                     ]
 
                     st.session_state.embeddings = vectors
-                    st.session_state.embedding_provider = "OpenAI"
+                    st.session_state.embedding_provider = 'OpenAI'
                     st.session_state.embedding_model = model
-                    st.success(f"Generated {len(vectors)} embedding(s).")
+                    st.success(f'Generated {len(vectors)} embedding(s).')
         
         # ==================================================
         # ✨ Gemini
         # ==================================================
-        with st.expander( "✨ Gemini Embeddings", expanded=False ):
+        with st.expander( '✨ Gemini Embeddings', expanded=False ):
 	        # --------------------------------------------------
 	        # Preconditions
 	        # --------------------------------------------------
-	        texts = texts if isinstance( texts, list ) and texts else None
-	        
+	        texts = texts if isinstance( texts, list ) and texts else None	        
 	        if not texts:
-		        st.info( "No text available. Run processing or chunking first." )
+		        st.info( 'No text available. Run processing or chunking first.' )
 	        
 	        # --------------------------------------------------
 	        # Model selection
 	        # --------------------------------------------------
 	        model = st.selectbox(
-		        "Model",
+		        'Model',
 		        options=GEMINI_MODELS,
-		        key=k( "gemini_model" ),
+		        key=k( 'gemini_model' ),
 		        disabled=not bool( texts ),
 	        )
 	        
@@ -2830,60 +2826,58 @@ with tabs[4]:
 	        # Gemini-specific options
 	        # --------------------------------------------------
 	        task = st.selectbox(
-		        "Task Type",
+		        'Task Type',
 		        options=Gemini( ).task_options,
-		        key=k( "gemini_task" ),
+		        key=k( 'gemini_task' ),
 		        disabled=not bool( texts ),
-		        help="Required by Gemini to determine embedding intent.",
+		        help='Required by Gemini to determine embedding intent.',
 	        )
 	        
 	        dimensions = st.number_input(
-		        "Dimensions",
+		        'Dimensions',
 		        min_value=128,
 		        max_value=2048,
 		        step=128,
 		        value=768,
-		        key=k( "gemini_dimensions" ),
+		        key=k( 'gemini_dimensions' ),
 		        disabled=not bool( texts ),
-		        help="Optional. Must be supported by the selected model.",
+		        help='Optional. Must be supported by the selected model.',
 	        )
 	        
 	        # --------------------------------------------------
 	        # Action buttons
 	        # --------------------------------------------------
-	        col_run, col_clear, col_save = st.columns( 3 )
-	        
-	        can_embed = bool( texts and model and task )
-	        
+	        col_run, col_clear, col_save = st.columns( 3 )	        
+	        can_embed = bool( texts and model and task )	        
 	        run = col_run.button(
-		        "Embed",
-		        key=k( "gemini_embed" ),
+		        'Embed',
+		        key=k( 'gemini_embed' ),
 		        use_container_width=True,
 		        disabled=not can_embed,
 	        )
 	        
 	        clear = col_clear.button(
-		        "Clear",
-		        key=k( "gemini_clear" ),
+		        'Clear',
+		        key=k( 'gemini_clear' ),
 		        use_container_width=True,
-		        disabled=not bool( st.session_state.get( "embedding_documents" ) ),
+		        disabled=not bool( st.session_state.get( 'embedding_documents' ) ),
 	        )
 	        
 	        if can_save_docs( ):
 		        col_save.download_button(
-			        "Save CSV",
+			        'Save CSV',
 			        data=docs_to_df( ).to_csv( index=False ),
-			        file_name="gemini_embeddings.csv",
-			        mime="text/csv",
+			        file_name='gemini_embeddings.csv',
+			        mime='text/csv',
 			        use_container_width=True,
-			        key=k( "gemini_save" ),
+			        key=k( 'gemini_save' ),
 		        )
 	        else:
 		        col_save.button(
-			        "Save CSV",
+			        'Save CSV',
 			        disabled=True,
 			        use_container_width=True,
-			        key=k( "gemini_save_disabled" ),
+			        key=k( 'gemini_save_disabled' ),
 		        )
 	        
 	        # --------------------------------------------------
@@ -2894,13 +2888,13 @@ with tabs[4]:
 		        st.session_state.embedding_documents = None
 		        st.session_state.embedding_provider = None
 		        st.session_state.embedding_model = None
-		        st.success( "Embeddings cleared." )
+		        st.success( 'Embeddings cleared.' )
 	        
 	        # --------------------------------------------------
 	        # Run embeddings
 	        # --------------------------------------------------
 	        if run:
-		        with st.spinner( "Embedding with Gemini..." ):
+		        with st.spinner( 'Embedding with Gemini...' ):
 			        embedder = Gemini( )
 			        
 			        vectors = embedder.embed(
@@ -2912,13 +2906,13 @@ with tabs[4]:
 			        
 			        st.session_state.embedding_documents = [
 					        {
-							        "provider": "Gemini",
-							        "model": model,
-							        "task": task,
-							        "dimensions": dimensions,
-							        "index": i,
-							        "text": texts[ i ],
-							        "embedding": vec,
+							        'provider': 'Gemini',
+							        'model': model,
+							        'task': task,
+							        'dimensions': dimensions,
+							        'index': i,
+							        'text': texts[ i ],
+							        'embedding': vec,
 					        }
 					        for i, vec in enumerate( vectors )
 			        ]
@@ -2927,19 +2921,19 @@ with tabs[4]:
 			        st.session_state.embedding_provider = "Gemini"
 			        st.session_state.embedding_model = model
 			        
-			        st.success( f"Generated {len( vectors )} embedding(s)." )
+			        st.success( f'Generated {len( vectors )} embedding(s).' )
         
         # ==================================================
         # ⚡ Groq
         # ==================================================
-        with st.expander( "⚡ Groq Embeddings", expanded=False ):
+        with st.expander( '⚡ Groq Embeddings', expanded=False ):
 	        # --------------------------------------------------
 	        # Preconditions
 	        # --------------------------------------------------
 	        texts = texts if isinstance( texts, list ) and texts else None
 	        
 	        if not texts:
-		        st.info( "No text available. Run processing or chunking first." )
+		        st.info( 'No text available. Run processing or chunking first.' )
 	        
 	        # --------------------------------------------------
 	        # Model selection
@@ -2956,8 +2950,8 @@ with tabs[4]:
 	        # Informational context (no invented semantics)
 	        # --------------------------------------------------
 	        st.caption(
-		        "Groq embeddings use provider-defined geometry. "
-		        "No task type or dimensionality parameters are exposed."
+		        'Groq embeddings use provider-defined geometry. '
+		        'No task type or dimensionality parameters are exposed.'
 	        )
 	        
 	        # --------------------------------------------------
@@ -2968,34 +2962,34 @@ with tabs[4]:
 	        can_embed = bool( texts and model )
 	        
 	        run = col_run.button(
-		        "Embed",
-		        key=k( "groq_embed" ),
+		        'Embed',
+		        key=k( 'groq_embed' ),
 		        use_container_width=True,
 		        disabled=not can_embed,
 	        )
 	        
 	        clear = col_clear.button(
-		        "Clear",
-		        key=k( "groq_clear" ),
+		        'Clear',
+		        key=k( 'groq_clear' ),
 		        use_container_width=True,
-		        disabled=not bool( st.session_state.get( "embedding_documents" ) ),
+		        disabled=not bool( st.session_state.get( 'embedding_documents' ) ),
 	        )
 	        
 	        if can_save_docs( ):
 		        col_save.download_button(
-			        "Save CSV",
+			        'Save CSV',
 			        data=docs_to_df( ).to_csv( index=False ),
-			        file_name="groq_embeddings.csv",
-			        mime="text/csv",
+			        file_name='groq_embeddings.csv',
+			        mime='text/csv',
 			        use_container_width=True,
-			        key=k( "groq_save" ),
+			        key=k( 'groq_save' ),
 		        )
 	        else:
 		        col_save.button(
-			        "Save CSV",
+			        'Save CSV',
 			        disabled=True,
 			        use_container_width=True,
-			        key=k( "groq_save_disabled" ),
+			        key=k( 'groq_save_disabled' ),
 		        )
 	        
 	        # --------------------------------------------------
@@ -3006,13 +3000,13 @@ with tabs[4]:
 		        st.session_state.embedding_documents = None
 		        st.session_state.embedding_provider = None
 		        st.session_state.embedding_model = None
-		        st.success( "Embeddings cleared." )
+		        st.success( 'Embeddings cleared.' )
 	        
 	        # --------------------------------------------------
 	        # Run embeddings
 	        # --------------------------------------------------
 	        if run:
-		        with st.spinner( "Embedding with Groq..." ):
+		        with st.spinner( 'Embedding with Groq...' ):
 			        embedder = Grok( )
 			        
 			        vectors = embedder.embed(
@@ -3022,20 +3016,20 @@ with tabs[4]:
 			        
 			        st.session_state.embedding_documents = [
 					        {
-							        "provider": "Groq",
-							        "model": model,
-							        "index": i,
-							        "text": texts[ i ],
-							        "embedding": vec,
+							        'provider': 'Groq',
+							        'model': model,
+							        'index': i,
+							        'text': texts[ i ],
+							        'embedding': vec,
 					        }
 					        for i, vec in enumerate( vectors )
 			        ]
 			        
 			        st.session_state.embeddings = vectors
-			        st.session_state.embedding_provider = "Groq"
+			        st.session_state.embedding_provider = 'Groq'
 			        st.session_state.embedding_model = model
 			        
-			        st.success( f"Generated {len( vectors )} embedding(s)." )
+			        st.success( f'Generated {len( vectors )} embedding(s).' )
     
     # --------------------------------------------------
     # RIGHT COLUMN — Embedding Documents (RESTORED)
@@ -3056,7 +3050,6 @@ with tabs[4]:
                 hide_index=True,
                 key=k("embedding_editor"),
             )
-
 
 # ======================================================================================
 # Tab — Vector Database
