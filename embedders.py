@@ -159,8 +159,8 @@ class GPT( ):
 			return self.embedding
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'gpt'
-			exception.cause = 'Embedding'
+			exception.module = 'embedders'
+			exception.cause = 'GPT'
 			exception.method = 'create( self, text: str, model: str ) -> List[ float ]'
 			error = ErrorDialog( exception )
 			error.show( )
@@ -191,8 +191,8 @@ class GPT( ):
 			return [ item.embedding for item in response.data ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'gpt'
-			exception.cause = 'Embedding'
+			exception.module = 'embedders'
+			exception.cause = 'GPT'
 			exception.method = 'embed( self, text: str, model: str ) -> List[ List[ float ] ]'
 			error = ErrorDialog( exception )
 			error.show( )
@@ -362,7 +362,7 @@ class Gemini( ):
 			return self.embedding
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'embeddings'
+			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
 			error = ErrorDialog( exception )
@@ -396,10 +396,10 @@ class Gemini( ):
 			self.response = self.client.models.embed_content( model=self.model,
 				contents=self.input_text, config=self.embedding_config )
 			self.embeddings = [ embedding.values for embedding in self.response.embeddings ]
-			return [ embedding.values for embedding in self.response.embeddings ]
+			return self.embeddings
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'embeddings'
+			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
 			error = ErrorDialog( exception )
