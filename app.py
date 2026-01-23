@@ -163,10 +163,6 @@ SESSION_STATE_DEFAULTS = {
 		'chunks': None,
 		'chunk_modes': None,
 		"chunked_documents": None,
-		'word2vec_model': None,
-		'word2vec_vectors': None,
-		'tfidf_matrix': None,
-		'tfidf_features': None,
 		# Vectorization
 		'embeddings': None,
 		'embedding_model': None,
@@ -263,7 +259,6 @@ st.set_page_config( page_title='Chonky', layout='wide', page_icon=cfg.ICON )
 # Headers/Title
 # ======================================================================================
 st.logo(  cfg.LOGO, size='large' )
-
 
 # ======================================================================================
 # Session State Initialization
@@ -2690,7 +2685,6 @@ with tabs[ 3 ]:
 	
 	st.caption( f'Source Loader: {loader_name}' )
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
 
 
 # ======================================================================================
