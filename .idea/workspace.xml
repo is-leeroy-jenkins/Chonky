@@ -7,7 +7,6 @@
     <list default="true" id="c25ef788-6718-454d-a135-d33a15dd640d" name="Changes" comment="update">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/embedders.py" beforeDir="false" afterPath="$PROJECT_DIR$/embedders.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +92,7 @@
       <workItem from="1769118192231" duration="659000" />
       <workItem from="1769132884683" duration="6980000" />
       <workItem from="1769172362870" duration="181000" />
-      <workItem from="1769173822072" duration="4114000" />
+      <workItem from="1769173822072" duration="4614000" />
     </task>
     <task id="LOCAL-00001" summary="yp">
       <option name="closed" value="true" />
