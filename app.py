@@ -2803,68 +2803,240 @@ with tabs[4]:
                     st.session_state.embedding_provider = "OpenAI"
                     st.session_state.embedding_model = model
                     st.success(f"Generated {len(vectors)} embedding(s).")
-
+        
         # ==================================================
-        # ✨ Gemini (UI preserved, execution disabled)
+        # ✨ Gemini
         # ==================================================
-        with st.expander("✨ Gemini Embeddings", expanded=False):
-            st.warning("Gemini embeddings are not currently supported.")
-            st.selectbox("Model", options=GEMINI_MODELS, disabled=True, key=k("gemini_model"))
-            col_run, col_clear, col_save = st.columns(3)
-            col_run.button("Embed", disabled=True, use_container_width=True)
-            col_clear.button("Clear", disabled=True, use_container_width=True)
-            col_save.button("Save CSV", disabled=True, use_container_width=True)
-
+        with st.expander( "✨ Gemini Embeddings", expanded=False ):
+	        # --------------------------------------------------
+	        # Preconditions
+	        # --------------------------------------------------
+	        texts = texts if isinstance( texts, list ) and texts else None
+	        
+	        if not texts:
+		        st.info( "No text available. Run processing or chunking first." )
+	        
+	        # --------------------------------------------------
+	        # Model selection
+	        # --------------------------------------------------
+	        model = st.selectbox(
+		        "Model",
+		        options=GEMINI_MODELS,
+		        key=k( "gemini_model" ),
+		        disabled=not bool( texts ),
+	        )
+	        
+	        # --------------------------------------------------
+	        # Gemini-specific options
+	        # --------------------------------------------------
+	        task = st.selectbox(
+		        "Task Type",
+		        options=Gemini( ).task_options,
+		        key=k( "gemini_task" ),
+		        disabled=not bool( texts ),
+		        help="Required by Gemini to determine embedding intent.",
+	        )
+	        
+	        dimensions = st.number_input(
+		        "Dimensions",
+		        min_value=128,
+		        max_value=2048,
+		        step=128,
+		        value=768,
+		        key=k( "gemini_dimensions" ),
+		        disabled=not bool( texts ),
+		        help="Optional. Must be supported by the selected model.",
+	        )
+	        
+	        # --------------------------------------------------
+	        # Action buttons
+	        # --------------------------------------------------
+	        col_run, col_clear, col_save = st.columns( 3 )
+	        
+	        can_embed = bool( texts and model and task )
+	        
+	        run = col_run.button(
+		        "Embed",
+		        key=k( "gemini_embed" ),
+		        use_container_width=True,
+		        disabled=not can_embed,
+	        )
+	        
+	        clear = col_clear.button(
+		        "Clear",
+		        key=k( "gemini_clear" ),
+		        use_container_width=True,
+		        disabled=not bool( st.session_state.get( "embedding_documents" ) ),
+	        )
+	        
+	        if can_save_docs( ):
+		        col_save.download_button(
+			        "Save CSV",
+			        data=docs_to_df( ).to_csv( index=False ),
+			        file_name="gemini_embeddings.csv",
+			        mime="text/csv",
+			        use_container_width=True,
+			        key=k( "gemini_save" ),
+		        )
+	        else:
+		        col_save.button(
+			        "Save CSV",
+			        disabled=True,
+			        use_container_width=True,
+			        key=k( "gemini_save_disabled" ),
+		        )
+	        
+	        # --------------------------------------------------
+	        # Clear embeddings (Gemini only)
+	        # --------------------------------------------------
+	        if clear:
+		        st.session_state.embeddings = None
+		        st.session_state.embedding_documents = None
+		        st.session_state.embedding_provider = None
+		        st.session_state.embedding_model = None
+		        st.success( "Embeddings cleared." )
+	        
+	        # --------------------------------------------------
+	        # Run embeddings
+	        # --------------------------------------------------
+	        if run:
+		        with st.spinner( "Embedding with Gemini..." ):
+			        embedder = Gemini( )
+			        
+			        vectors = embedder.embed(
+				        texts,
+				        task=task,
+				        model=model,
+				        dimensions=dimensions,
+			        )
+			        
+			        st.session_state.embedding_documents = [
+					        {
+							        "provider": "Gemini",
+							        "model": model,
+							        "task": task,
+							        "dimensions": dimensions,
+							        "index": i,
+							        "text": texts[ i ],
+							        "embedding": vec,
+					        }
+					        for i, vec in enumerate( vectors )
+			        ]
+			        
+			        st.session_state.embeddings = vectors
+			        st.session_state.embedding_provider = "Gemini"
+			        st.session_state.embedding_model = model
+			        
+			        st.success( f"Generated {len( vectors )} embedding(s)." )
+        
         # ==================================================
         # ⚡ Groq
         # ==================================================
-        with st.expander("⚡ Groq Embeddings", expanded=False):
-            model = st.selectbox("Model", options=GROK_MODELS, key=k("groq_model"))
-            col_run, col_clear, col_save = st.columns(3)
-            run = col_run.button("Embed", key=k("groq_embed"), use_container_width=True)
-            clear = col_clear.button("Clear", key=k("groq_clear"), use_container_width=True)
-            if can_save_docs():
-                col_save.download_button(
-                    "Save CSV",
-                    data=docs_to_df().to_csv(index=False),
-                    file_name="groq_embeddings.csv",
-                    mime="text/csv",
-                    use_container_width=True,
-                    key=k("groq_save"),
-                )
-            else:
-                col_save.button(
-                    "Save CSV", disabled=True, use_container_width=True, key=k("groq_save_disabled")
-                )
-
-            if clear:
-                st.session_state.embeddings = None
-                st.session_state.chunked_documents = None
-                st.session_state.embedding_provider = None
-                st.session_state.embedding_model = None
-                st.success("Embeddings cleared.")
-
-            if run and texts:
-                with st.spinner("Embedding with Groq..."):
-                    embedder = Grok(api_key=cfg.GROK_API_KEY)
-                    vectors = embedder.embed(texts, model=model)
-
-                    st.session_state.chunked_documents = [
-                        {
-                            "provider": "Groq",
-                            "model": model,
-                            "index": i,
-                            "text": texts[i],
-                            "embedding": vec,
-                        }
-                        for i, vec in enumerate(vectors)
-                    ]
-
-                    st.session_state.embeddings = vectors
-                    st.session_state.embedding_provider = "Groq"
-                    st.session_state.embedding_model = model
-                    st.success(f"Generated {len(vectors)} embedding(s).")
-
+        with st.expander( "⚡ Groq Embeddings", expanded=False ):
+	        # --------------------------------------------------
+	        # Preconditions
+	        # --------------------------------------------------
+	        texts = texts if isinstance( texts, list ) and texts else None
+	        
+	        if not texts:
+		        st.info( "No text available. Run processing or chunking first." )
+	        
+	        # --------------------------------------------------
+	        # Model selection
+	        # --------------------------------------------------
+	        model = st.selectbox(
+		        "Model",
+		        options=GROK_MODELS,
+		        key=k( "groq_model" ),
+		        disabled=not bool( texts ),
+		        help="Select the Groq embedding model.",
+	        )
+	        
+	        # --------------------------------------------------
+	        # Informational context (no invented semantics)
+	        # --------------------------------------------------
+	        st.caption(
+		        "Groq embeddings use provider-defined geometry. "
+		        "No task type or dimensionality parameters are exposed."
+	        )
+	        
+	        # --------------------------------------------------
+	        # Action buttons
+	        # --------------------------------------------------
+	        col_run, col_clear, col_save = st.columns( 3 )
+	        
+	        can_embed = bool( texts and model )
+	        
+	        run = col_run.button(
+		        "Embed",
+		        key=k( "groq_embed" ),
+		        use_container_width=True,
+		        disabled=not can_embed,
+	        )
+	        
+	        clear = col_clear.button(
+		        "Clear",
+		        key=k( "groq_clear" ),
+		        use_container_width=True,
+		        disabled=not bool( st.session_state.get( "embedding_documents" ) ),
+	        )
+	        
+	        if can_save_docs( ):
+		        col_save.download_button(
+			        "Save CSV",
+			        data=docs_to_df( ).to_csv( index=False ),
+			        file_name="groq_embeddings.csv",
+			        mime="text/csv",
+			        use_container_width=True,
+			        key=k( "groq_save" ),
+		        )
+	        else:
+		        col_save.button(
+			        "Save CSV",
+			        disabled=True,
+			        use_container_width=True,
+			        key=k( "groq_save_disabled" ),
+		        )
+	        
+	        # --------------------------------------------------
+	        # Clear embeddings (Groq only)
+	        # --------------------------------------------------
+	        if clear:
+		        st.session_state.embeddings = None
+		        st.session_state.embedding_documents = None
+		        st.session_state.embedding_provider = None
+		        st.session_state.embedding_model = None
+		        st.success( "Embeddings cleared." )
+	        
+	        # --------------------------------------------------
+	        # Run embeddings
+	        # --------------------------------------------------
+	        if run:
+		        with st.spinner( "Embedding with Groq..." ):
+			        embedder = Grok( )
+			        
+			        vectors = embedder.embed(
+				        texts,
+				        model=model,
+			        )
+			        
+			        st.session_state.embedding_documents = [
+					        {
+							        "provider": "Groq",
+							        "model": model,
+							        "index": i,
+							        "text": texts[ i ],
+							        "embedding": vec,
+					        }
+					        for i, vec in enumerate( vectors )
+			        ]
+			        
+			        st.session_state.embeddings = vectors
+			        st.session_state.embedding_provider = "Groq"
+			        st.session_state.embedding_model = model
+			        
+			        st.success( f"Generated {len( vectors )} embedding(s)." )
+    
     # --------------------------------------------------
     # RIGHT COLUMN — Embedding Documents (RESTORED)
     # --------------------------------------------------

@@ -368,7 +368,7 @@ class Gemini( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def embed( self, text: List[ str ], task: str, model: str='gemini-embedding-001',
+	def embed( self, text: List[ str ],  model: str='gemini-embedding-001',
 			dimensions: int=768  ) -> List[ List[ float ] ]:
 		"""
 			
@@ -390,7 +390,7 @@ class Gemini( ):
 			self.model = model
 			self.input_text = text
 			self.dimensions = dimensions
-			self.task_type = task
+			self.task_type = 'RETRIEVAL_DOCUMENT'
 			self.embedding_config = EmbedContentConfig( task_type=self.task_type,
 				output_dimensionality=self.dimensions )
 			self.response = self.client.models.embed_content( model=self.model,
