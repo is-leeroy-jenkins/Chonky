@@ -2248,7 +2248,6 @@ with tabs[ 2 ]:
 		# Actions
 		# ---------------------------
 		if reset_chunking:
-			# No mutation of source documents here unless you already snapshot originals
 			st.info( 'Chunking controls reset.' )
 		
 		if run_chunking:
@@ -2264,8 +2263,7 @@ with tabs[ 2 ]:
 			
 			st.session_state.chunked_documents = chunked_documents
 			
-			st.success(
-				f'Chunking complete: {len( chunked_documents )} chunks generated '
+			st.success( f'Chunking complete: {len( chunked_documents )} chunks generated '
 				f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
 		
 		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
@@ -2706,19 +2704,17 @@ with tabs[ 4 ]:
     def k(name: str) -> str:
         return f"emb__{name}"
 
-    left, right = st.columns([1, 1.5], border=True)
+    left, right = st.columns( [ 1, 1.5 ], border=True )
 
     # --------------------------------------------------
     # Source selection
     # --------------------------------------------------
     with left:
         st.markdown("##### Embedding Providers")
-        
-		
         embedding_source = st.radio( "Text Source",
             options=["Processed Text", "Chunked Documents"], horizontal=True, key=k("text_source") )
 
-        def resolve_texts(source: str) -> list[str] | None:
+        def resolve_texts( source: str ) -> list[str] | None:
             if source == "Processed Text":
                 text = st.session_state.get("processed_text")
                 if isinstance(text, str) and text.strip():
@@ -2731,20 +2727,19 @@ with tabs[ 4 ]:
 
             return None
 
-        texts = resolve_texts(embedding_source)
+        texts = resolve_texts( embedding_source )
 
         if not texts:
             st.info("No text available. Run processing or chunking first.")
 
-        st.caption(f"Texts to embed: {len(texts):,}")
+        st.caption(f"Texts to embed: {len( texts ):,}")
 
         # --------------------------------------------------
         # Shared save helper (from embedding_documents)
         # --------------------------------------------------
-        def can_save_docs() -> bool:
+        def can_save_docs( ) -> bool:
             return isinstance(st.session_state.get("embedding_documents"), list) and bool(
-                st.session_state.chunked_documents
-            )
+                st.session_state.chunked_documents )
 
         def docs_to_df() -> pd.DataFrame:
             docs = st.session_state.get("embedding_documents") or []
