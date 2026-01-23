@@ -164,8 +164,11 @@ SESSION_STATE_DEFAULTS = {
 		'chunk_modes': None,
 		"chunked_documents": None,
 		# Vectorization
+		'embedder': None,
 		'embeddings': None,
+		'embedding_provider': None,
 		'embedding_model': None,
+		'embedding_source': None,
 		# Retrieval / Search
 		'search_results': None,
 		# DataFrames
@@ -192,7 +195,7 @@ REQUIRED_CORPORA = [
 
 for corpus in REQUIRED_CORPORA:
     try:
-        nltk.data.find(f'corpora/{corpus}')
+        nltk.data.find( f'corpora/{corpus}' )
     except LookupError:
         nltk.download(corpus)
 	    
@@ -2620,11 +2623,11 @@ with tabs[ 3 ]:
 	df_chunks = st.session_state.get( 'df_chunks' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embeddings = st.session_state.get( 'embeddings' )
-	active_table = st.session_state.get( 'active_table' )
 	lines = st.session_state.get( 'lines' )
 	chunks = st.session_state.get( 'chunks' )
-	chunk_modes = st.session_state.get( 'chunk_modes' )
 	chunked_documents = st.session_state.get( 'chunked_documents' )
+	active_table = st.session_state.get( 'active_table' )
+	chunk_modes = st.session_state.get( 'chunk_modes' )
 	
 	with line_col:
 		st.text( 'Chunked Data' )
@@ -2695,7 +2698,15 @@ with tabs[ 4 ]:
         if key not in st.session_state:
             st.session_state[key] = default
     
+    processed_text = st.session_state.get( 'processed_text' )
+    embedder = st.session_state.get( 'embedder' )
+    embedding_provider = st.session_state.get( 'embedding_provider' )
+    embedding_model = st.session_state.get( 'embedding_model' )
+    embedding_source = st.session_state.get( 'embedding_source' )
+    embeddings = st.session_state.get( 'embeddings' )
     lines = st.session_state.get( 'lines' )
+    chunks = st.session_state.get( 'chunks' )
+    chunked_documents = st.session_state.get( 'chunked_documents' )
     tokens = st.session_state.get( 'tokens' )
 
     # -------------------------------
@@ -2710,39 +2721,37 @@ with tabs[ 4 ]:
     # Source selection
     # --------------------------------------------------
     with left:
-        st.markdown("##### Embedding Providers")
+        st.markdown( "##### Embedding Providers" )
         embedding_source = st.radio( "Text Source",
-            options=["Processed Text", "Chunked Documents"], horizontal=True, key=k("text_source") )
+            options=[ "Processed Text", "Chunked Documents" ], horizontal=True, key=k( "text_source" ) )
 
         def resolve_texts( source: str ) -> list[str] | None:
             if source == "Processed Text":
-                text = st.session_state.get("processed_text")
-                if isinstance(text, str) and text.strip():
-                    return [text]
+                if isinstance( processed_text, str ) and processed_text.strip( ):
+                    return [ processed_text ]
                 return None
 
-            chunks = st.session_state.get("chunkss")
-            if isinstance(chunks, list) and chunks:
-                return [str(c) for c in chunks if isinstance(c, str) and c.strip()]
+            if isinstance( chunks, list ) and chunks:
+                return [ str( c ) for c in chunks if isinstance( c, str ) and c.strip( ) ]
 
             return None
 
         texts = resolve_texts( embedding_source )
         if not texts:
-            st.info("No text available. Run processing or chunking first.")
+            st.info( "No text available. Run processing or chunking first." )
 
-        st.caption(f"Texts to embed: {len( texts ):,}")
+        st.caption( f"Texts to embed: {len( texts ):,}" )
 
         # --------------------------------------------------
-        # Shared save helper (from embedding_documents)
+        # Shared save helper
         # --------------------------------------------------
         def can_save_docs( ) -> bool:
-            return isinstance(st.session_state.get("embedding_documents"), list) and bool(
+            return isinstance( st.session_state.get( "chunked_documents" ), list ) and bool(
                 st.session_state.chunked_documents )
 
         def docs_to_df() -> pd.DataFrame:
-            docs = st.session_state.get("embedding_documents") or []
-            return pd.DataFrame(docs)
+            chunked_documents = st.session_state.get( "chunked_documents" ) or []
+            return pd.DataFrame( chunked_documents )
 
         # ==================================================
         # 🧠 OpenAI
@@ -2767,12 +2776,12 @@ with tabs[ 4 ]:
 
             if clear:
                 st.session_state.chunked_documents  = None
-                st.success("Embeddings cleared.")
+                st.success( "Embeddings cleared." )
 
             if run:
-                with st.spinner("Embedding with OpenAI..."):
-                    embedder = GPT(model=model)
-                    vectors = embedder.embed(texts)
+                with st.spinner( "Embedding with OpenAI..." ):
+                    embedder = GPT( model=model )
+                    vectors = embedder.embed( texts )
                     st.session_state.chunked_documents  = [
                         {
                             "provider": "OpenAI",
@@ -2787,7 +2796,7 @@ with tabs[ 4 ]:
                     st.session_state.embedding_provider = "OpenAI"
                     st.session_state.embedding_model = model
                     st.session_state.embeddings = vectors
-                    st.success(f"Generated {len(vectors)} embedding(s).")
+                    st.success( f"Generated {len(vectors)} embedding(s)." )
 
         # ==================================================
         # ✨ Gemini
@@ -2801,7 +2810,7 @@ with tabs[ 4 ]:
             if can_save_docs():
                 col_save.download_button(
                     "Save CSV",
-                    data=docs_to_df().to_csv(index=False),
+                    data=docs_to_df( ).to_csv( index=False ),
                     file_name="gemini_embeddings.csv",
                     mime="text/csv",
                     use_container_width=True,
@@ -2812,14 +2821,14 @@ with tabs[ 4 ]:
 
             if clear:
                 st.session_state.chunked_documents  = None
-                st.success("Embeddings cleared.")
+                st.success( "Embeddings cleared." )
 
             if run:
-                with st.spinner("Embedding with Gemini..."):
-                    embedder = Gemini(model=model)
-                    vectors = embedder.embed(texts)
+                with st.spinner( "Embedding with Gemini..." ):
+                    embedder = Gemini( model=model )
+                    vectors = embedder.embed( texts )
 
-                    st.session_state.embedding_documents = [
+                    st.session_state.chunked_documents = [
                         {
                             "provider": "Gemini",
                             "model": model,
@@ -2833,16 +2842,16 @@ with tabs[ 4 ]:
                     st.session_state.embedding_provider = "Gemini"
                     st.session_state.embedding_model = model
                     st.session_state.embeddings = vectors
-                    st.success(f"Generated {len(vectors)} embedding(s).")
+                    st.success( f"Generated {len(vectors)} embedding(s)." )
 
         # ==================================================
         # ⚡ Groq
         # ==================================================
-        with st.expander("⚡ Groq Embeddings", expanded=False):
+        with st.expander( "⚡ Groq Embeddings", expanded=False ):
             model = st.selectbox( "Model", options=GROK_MODELS, key=k("groq_model"), )
-            col_run, col_clear, col_save = st.columns(3)
-            run = col_run.button("Embed", key=k("groq_embed"), use_container_width=True)
-            clear = col_clear.button("Clear", key=k("groq_clear"), use_container_width=True)
+            col_run, col_clear, col_save = st.columns( 3 )
+            run = col_run.button( "Embed", key=k( "groq_embed" ), use_container_width=True )
+            clear = col_clear.button( "Clear", key=k( "groq_clear" ), use_container_width=True )
 
             if can_save_docs():
                 col_save.download_button(
@@ -2853,18 +2862,18 @@ with tabs[ 4 ]:
                     use_container_width=True,
                     key=k("groq_save"), )
             else:
-                col_save.button("Save CSV", disabled=True, use_container_width=True, key=k("groq_save_disabled"))
+                col_save.button( "Save CSV", disabled=True, use_container_width=True, key=k( "groq_save_disabled" ) )
 
             if clear:
-                st.session_state.embedding_documents = None
-                st.success("Embeddings cleared.")
+                st.session_state.chunked_documents = None
+                st.success( "Embeddings cleared." )
 
             if run:
-                with st.spinner("Embedding with Groq..."):
-                    embedder = Grok(model=model)
-                    vectors = embedder.embed(texts)
+                with st.spinner( "Embedding with Groq..." ):
+                    embedder = Grok( model=model )
+                    vectors = embedder.embed( texts )
 
-                    st.session_state.embedding_documents = [
+                    st.session_state.chunked_documents = [
                         {
                             "provider": "Groq",
                             "model": model,
@@ -2879,19 +2888,18 @@ with tabs[ 4 ]:
                     st.session_state.embedding_model = model
                     st.session_state.embeddings = vectors
 
-                    st.success(f"Generated {len(vectors)} embedding(s).")
+                    st.success( f"Generated {len( vectors )} embedding(s)." )
 
     # --------------------------------------------------
     # RIGHT COLUMN — Embedding Documents
     # --------------------------------------------------
     with right:
-        st.markdown("##### Embedding Documents")
-
-        docs = st.session_state.get("embedding_documents")
-        if not docs:
-            st.info("No embeddings generated yet.")
+        st.markdown( "##### Embedding Documents" )
+        chunked_documents = st.session_state.get( "chunked_documents" )
+        if not chunked_documents:
+            st.info( "No embeddings generated yet." )
         else:
-            df = pd.DataFrame(docs)
+            df = pd.DataFrame( chunked_documents )
             st.data_editor(
                 df,
                 num_rows="dynamic",

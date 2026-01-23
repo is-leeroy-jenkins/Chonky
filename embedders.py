@@ -41,6 +41,7 @@
   </summary>
   ******************************************************************************************
 '''
+from groq.types import CreateEmbeddingResponse
 from requests.models import Response
 
 import config as cfg
@@ -89,7 +90,7 @@ class GPT( ):
 	client: Optional[ OpenAI ]
 	prompt: Optional[ str ]
 	response_format: Optional[ str ]
-	response: Optional[ Response ]
+	response: Optional[ CreateEmbeddingResponse ]
 	embedding: Optional[ List[ float ] ]
 	encoding_format: Optional[ str ]
 	dimensions: Optional[ int ]
@@ -97,7 +98,7 @@ class GPT( ):
 	def __init__( self  ):
 		super( ).__init__( )
 		self.api_key = cfg.OPENAI_API_KEY
-		self.client = GPT( api_key=cfg.OPENAI_API_KEY )
+		self.client = OpenAI( api_key=cfg.OPENAI_API_KEY )
 		self.encoding_format = None
 		self.model = None
 		self.embedding = None
@@ -164,6 +165,38 @@ class GPT( ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
+	def embed( self, texts: list[ str ], model: str = "text-embedding-3-small" ) -> List[ List[ float ] ]:
+		"""
+		
+			Purpose:
+			--------
+			Generate embeddings for a batch of text inputs.
+	
+			Parameters:
+			-----------
+			texts : list[str]
+				Text inputs to embed.
+			model : str
+				OpenAI embedding model.
+	
+			Returns:
+			--------
+			list[list[float]]
+				Embedding vectors.
+				
+		"""
+		try:
+			throw_if( 'texts', texts )
+			response = self.client.embeddings.create( model=model, input=texts )
+			return [ item.embedding for item in response.data ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'gpt'
+			exception.cause = 'Embedding'
+			exception.method = 'embed( self, text: str, model: str ) -> List[ List[ float ] ]'
+			error = ErrorDialog( exception )
+			error.show( )
+			
 	def count_tokens( self, text: str, coding: str ) -> int:
 		'''
 
@@ -349,6 +382,7 @@ class Grok:
 	response_format: Optional[ Union[ str, Dict[ str, str ] ] ]
 	contents: Optional[ List[ str ] ]
 	http_options: Optional[ Dict[ str, Any ] ]
+	embedding: Optional[ float ]
 	endpoint: Optional[ str ]
 	
 	def __init__( self, model: str='text-embedding-3-small'):
@@ -391,7 +425,7 @@ class Grok:
 				'encoding_format': self.encoding_format
 			}
 			
-			_response = requests.post( url=self.embeddings, headers=self.headers, json=payload )
+			_response = requests.post( url=self.endpoint, headers=self.headers, json=payload )
 			if _response.status_code == 200:
 				self.response = _response.json( )
 				self.embedding = self.response[ 'data' ][ 0 ][ 'embedding' ]
@@ -402,6 +436,42 @@ class Grok:
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'create( self, text, model, format )'
+			error = ErrorDialog( exception )
+			error.show( )
+	
+	def embed( self, texts: List[ str ], model: str = "grok-embedding" ) -> List[ List[ float ] ]:
+		"""
+		
+			Purpose:
+			--------
+			Generate embeddings using xAI Grok.
+	
+			Parameters:
+			-----------
+			texts : list[str]
+				Text inputs to embed.
+			model : str
+				Grok embedding model.
+	
+			Returns:
+			--------
+			list[list[float]]
+				Embedding vectors.
+				
+		"""
+		try:
+			throw_if( 'texts', texts )
+			headers = { "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", }
+			payload = { "model": model, "input": texts, }
+			response = requests.post( url=self.endpoint, headers=headers, json=payload, timeout=30, )
+			response.raise_for_status( )
+			data = response.json( )
+			return [ item[ "embedding" ] for item in data[ "data" ] ]
+		except Exception as e:
+			exception = Error( e );
+			exception.module = 'embeddings'
+			exception.cause = 'Grok'
+			exception.method = 'embed( self, text, model, format )'
 			error = ErrorDialog( exception )
 			error.show( )
 	
