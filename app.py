@@ -289,7 +289,13 @@ tabs = st.tabs( TABS )
 # Tab - Document Loading
 # ======================================================================================
 with tabs[ 0 ]:
-	metrics_container = st.container( )	
+	
+	for key, default in SESSION_STATE_DEFAULTS.items( ):
+		if key not in st.session_state:
+			st.session_state[ key ] = default
+	
+	metrics_container = st.container( )
+	tokens = st.session_state.get( 'tokens' )
 	def render_metrics_panel( ):
 		raw_text = st.session_state.get( 'raw_text' )
 		processed_text = st.session_state.get( 'processed_text' )
@@ -2714,9 +2720,12 @@ with tabs[4]:
     # --------------------------------------------------
     with left:
         st.markdown('##### Embedding Providers')
-
-        embedding_source = st.radio(
-            'Text Source',
+        
+        processed_text = st.session_state.processed_text
+        chunks = st.session_state.chunks
+        chunked_documents = st.session_state.chunked_documents
+        embeddings = st.session_state.embeddings
+        embedding_source = st.radio( 'Text Source',
             options=['Processed Text', 'Chunked Documents'],
             horizontal=True,
             key=k('text_source'),
@@ -2734,7 +2743,7 @@ with tabs[4]:
             return None
 
         texts = resolve_texts(embedding_source)
-        if not texts:
+        if texts is None:
             st.info('No text available. Run processing or chunking first.')
 
         st.caption(f'Texts to embed: {len(texts) if texts else 0:,}')
@@ -2742,13 +2751,12 @@ with tabs[4]:
         # --------------------------------------------------
         # Shared save helpers
         # --------------------------------------------------
-        def can_save_docs() -> bool:
-            return isinstance(st.session_state.get('chunked_documents'), list) and bool(
-                st.session_state.chunked_documents
-            )
+        def can_save_docs( ) -> bool:
+            return isinstance( st.session_state.chunked_documents, list) and bool(
+                st.session_state.chunked_documents  )
 
         def docs_to_df() -> pd.DataFrame:
-            return pd.DataFrame(st.session_state.get('chunked_documents') or [])
+            return pd.DataFrame( st.session_state.chunked_documents or [])
 
         # ==================================================
         # 🧠 OpenAI
@@ -2783,8 +2791,8 @@ with tabs[4]:
 
             if run and texts:
                 with st.spinner('Embedding with OpenAI...'):
-                    embedder = GPT(api_key=cfg.OPENAI_API_KEY)
-                    vectors = embedder.embed(texts, model=model)
+                    embedder = GPT( )
+                    vectors = embedder.embed( texts, model=model )
                     st.session_state.chunked_documents = [
                         {
                             'provider': 'OpenAI',

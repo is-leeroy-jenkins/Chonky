@@ -315,10 +315,10 @@ class Gemini( ):
 		self.embeddings = None
 		self.response = None
 		self.encoding_format = None
-		self.input_text = Optional[ List[ str ] ]=None
+		self.input_text = None
 		self.file_path = None
-		self.dimensions = Optional[ int ]=None
-		self.task_type = Optional[ List[ str ] ]=None
+		self.dimensions = None
+		self.task_type = None
 		self.response_modalities = None
 		self.embedding_config = None
 		self.content_config = None
