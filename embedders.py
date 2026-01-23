@@ -165,7 +165,7 @@ class GPT( ):
 			error = ErrorDialog( exception )
 			error.show( )
 	
-	def embed( self, texts: list[ str ], model: str = "text-embedding-3-small" ) -> List[ List[ float ] ]:
+	def embed( self, texts: list[ str ], model: str="text-embedding-3-small" ) -> List[ List[ float ] ]:
 		"""
 		
 			Purpose:
@@ -285,9 +285,11 @@ class Gemini( ):
 	prompt: Optional[ str ]
 	model: Optional[ str ]
 	response_format: Optional[ str ]
+	dimensions: Optional[ int ]
 	client: Optional[ genai.Client ]
 	response: Optional[ Any ]
 	embedding: Optional[ List[ float ] ]
+	embeddings: Optional[ List[ List[ float ] ] ]
 	encoding_format: Optional[ str ]
 	dimensions: Optional[ int ]
 	use_vertex: Optional[ bool ]
@@ -295,36 +297,43 @@ class Gemini( ):
 	http_options: Optional[ HttpOptions ]
 	embedding_config: Optional[ types.EmbedContentConfig ]
 	contents: Optional[ List[ str ] ]
-	input_text: Optional[ str ]
+	input_text: Optional[ List[ str ] ]
 	file_path: Optional[ str ]
 	response_modalities: Optional[ str ]
 	
-	def __init__( self, version: str='v1alpha', use_ai: bool=False ):
+	def __init__( self, version: str='v1alpha', use_ai: bool=False, dimensions: int=768 ):
 		super( ).__init__( )
 		self.api_key = cfg.GEMINI_API_KEY
 		self.model = None
 		self.api_version = version
 		self.use_vertex = use_ai
+		self.dimensions = dimensions
 		self.http_options = HttpOptions( api_version=self.api_version )
 		self.client = genai.Client( vertexai=self.use_vertex, api_key=self.api_key,
 			http_options=self.http_options )
-		self.embedding = None;
-		self.response = None;
+		self.embedding = None
+		self.embeddings = None
+		self.response = None
 		self.encoding_format = None
-		self.input_text = None;
-		self.file_path = None;
-		self.dimensions = None
-		self.task_type = None;
+		self.input_text = Optional[ List[ str ] ]=None
+		self.file_path = None
+		self.dimensions = Optional[ int ]=None
+		self.task_type = Optional[ List[ str ] ]=None
 		self.response_modalities = None
-		self.embedding_config = None;
+		self.embedding_config = None
 		self.content_config = None
 	
 	@property
 	def model_options( self ) -> List[ str ] | None:
 		"""Returns list of embedding models."""
-		return [ 'text-embedding-004', 'text-multilingual-embedding-002' ]
+		return [ 'gemini-embedding-001', 'text-multilingual-embedding-002' ]
+
+	@property
+	def task_options( self ) -> List[ str ] | None:
+		"""Returns list of task type options."""
+		return [ 'RETRIEVAL_QUERY', 'RETRIEVAL_DOCUMENT', 'SEMANTIC_SIMILARITY' ]
 	
-	def generate( self, text: str, model: str='text-embedding-004' ) -> Optional[ List[ float ] ]:
+	def generate( self, text: str, model: str='gemini-embedding-001', dimensions: int=768  ) -> Optional[ List[ float ] ]:
 		"""
 			
 			Purpose:
@@ -345,6 +354,7 @@ class Gemini( ):
 			throw_if( 'text', text )
 			self.input_text = text
 			self.model = model
+			self.dimensions = dimensions
 			self.embedding_config = EmbedContentConfig( task_type=self.task_type )
 			self.response = self.client.models.embed_content( model=self.model,
 				contents=self.input_text, config=self.embedding_config )
@@ -358,6 +368,43 @@ class Gemini( ):
 			error = ErrorDialog( exception )
 			error.show( )
 
+	def embed( self, text: List[ str ], task: str, model: str='gemini-embedding-001',
+			dimensions: int=768  ) -> List[ List[ float ] ]:
+		"""
+			
+			Purpose:
+			---------
+			Generates embeddings for a batch of strings.
+		
+			Parameters:
+			-----------
+			text: List[str] - List of input text strings.
+			model: str - Embedding model identifier.
+		
+			Returns:
+			--------
+			List[List[float]] - A list of embedding vectors.
+		
+		"""
+		try:
+			self.model = model
+			self.input_text = text
+			self.dimensions = dimensions
+			self.task_type = task
+			self.embedding_config = EmbedContentConfig( task_type=self.task_type,
+				output_dimensionality=self.dimensions )
+			self.response = self.client.models.embed_content( model=self.model,
+				contents=self.input_text, config=self.embedding_config )
+			self.embeddings = [ embedding.values for embedding in self.response.embeddings ]
+			return [ embedding.values for embedding in self.response.embeddings ]
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'embeddings'
+			exception.cause = 'Gemini'
+			exception.method = 'generate( self, text, model ) -> List[ float ]'
+			error = ErrorDialog( exception )
+			error.show( )
+		
 class Grok:
 	'''
 
