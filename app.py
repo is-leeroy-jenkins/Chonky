@@ -2728,7 +2728,6 @@ with tabs[ 4 ]:
             return None
 
         texts = resolve_texts( embedding_source )
-
         if not texts:
             st.info("No text available. Run processing or chunking first.")
 
@@ -2748,8 +2747,8 @@ with tabs[ 4 ]:
         # ==================================================
         # 🧠 OpenAI
         # ==================================================
-        with st.expander("🧠 OpenAI Embeddings", expanded=False):
-            model = st.selectbox( "Model", options=GPT_MODELS, key=k("openai_model"), )
+        with st.expander( "🧠 OpenAI Embeddings", expanded=False ):
+            model = st.selectbox( "Model", options=GPT_MODELS, key=k( "openai_model" ), )
             col_run, col_clear, col_save = st.columns(3)
             run = col_run.button("Embed", key=k("openai_embed"), use_container_width=True)
             clear = col_clear.button("Clear", key=k("openai_clear"), use_container_width=True)
