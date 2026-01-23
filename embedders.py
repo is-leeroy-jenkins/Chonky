@@ -299,10 +299,10 @@ class Gemini( ):
 	file_path: Optional[ str ]
 	response_modalities: Optional[ str ]
 	
-	def __init__( self, model: str='text-embedding-004', version: str='v1alpha', use_ai: bool=False ):
+	def __init__( self, version: str='v1alpha', use_ai: bool=False ):
 		super( ).__init__( )
 		self.api_key = cfg.GEMINI_API_KEY
-		self.model = model
+		self.model = None
 		self.api_version = version
 		self.use_vertex = use_ai
 		self.http_options = HttpOptions( api_version=self.api_version )
@@ -322,8 +322,7 @@ class Gemini( ):
 	@property
 	def model_options( self ) -> List[ str ] | None:
 		"""Returns list of embedding models."""
-		return [ 'text-embedding-004',
-		         'text-multilingual-embedding-002' ]
+		return [ 'text-embedding-004', 'text-multilingual-embedding-002' ]
 	
 	def generate( self, text: str, model: str='text-embedding-004' ) -> Optional[ List[ float ] ]:
 		"""

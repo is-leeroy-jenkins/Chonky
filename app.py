@@ -2785,7 +2785,7 @@ with tabs[4]:
 
             if run and texts:
                 with st.spinner("Embedding with OpenAI..."):
-                    embedder = GPT(api_key=config.OPENAI_API_KEY)
+                    embedder = GPT(api_key=cfg.OPENAI_API_KEY)
                     vectors = embedder.embed(texts, model=model)
 
                     st.session_state.chunked_documents = [
@@ -2821,10 +2821,8 @@ with tabs[4]:
         with st.expander("⚡ Groq Embeddings", expanded=False):
             model = st.selectbox("Model", options=GROK_MODELS, key=k("groq_model"))
             col_run, col_clear, col_save = st.columns(3)
-
             run = col_run.button("Embed", key=k("groq_embed"), use_container_width=True)
             clear = col_clear.button("Clear", key=k("groq_clear"), use_container_width=True)
-
             if can_save_docs():
                 col_save.download_button(
                     "Save CSV",
@@ -2848,7 +2846,7 @@ with tabs[4]:
 
             if run and texts:
                 with st.spinner("Embedding with Groq..."):
-                    embedder = Grok(api_key=config.GROK_API_KEY)
+                    embedder = Grok(api_key=cfg.GROK_API_KEY)
                     vectors = embedder.embed(texts, model=model)
 
                     st.session_state.chunked_documents = [
