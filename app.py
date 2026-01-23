@@ -45,6 +45,9 @@ from __future__ import annotations
 
 import base64
 from collections import Counter
+
+from lxml import etree
+
 import config as cfg
 import collections
 import functools
@@ -891,7 +894,7 @@ with tabs[ 0 ]:
 							tree = loader.load_tree( path )
 					
 					if tree is not None:
-						xml_text = etree.tostring(
+						xml_text = tree.tostring(
 							tree,
 							pretty_print=True,
 							encoding="unicode"
@@ -2626,6 +2629,9 @@ with tabs[ 3 ]:
 	embeddings = st.session_state.get( 'embeddings' )
 	active_table = st.session_state.get( 'active_table' )
 	lines = st.session_state.get( 'lines' )
+	chunks = st.session_state.get( 'chunks' )
+	chunk_modes = st.session_state.get( 'chunk_modes' )
+	chunked_documents = st.session_state.get( 'chunked_documents' )
 	
 	with line_col:
 		st.text( 'Chunked Data' )
@@ -2634,6 +2640,7 @@ with tabs[ 3 ]:
 			lines = processor.split_sentences( text=processed_text, size=15 )
 			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
 				num_rows='dynamic', width='stretch', height='stretch' )
+			st.session_state.lines = lines
 		else:
 			st.info( 'Run preprocessing first' )
 	with chunk_col:
@@ -2660,6 +2667,7 @@ with tabs[ 3 ]:
 			processor = TextParser( )
 			lines = processor.split_sentences( text=processed_text, size=15 )
 			_chunks = [ l.split( ' ' ) for l in lines ]
+			st.session_state.chunked_documents = _chunks
 			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
 			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
 		else:
@@ -2667,13 +2675,10 @@ with tabs[ 3 ]:
 	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	documents = st.session_state.get( 'documents' )
-	chunks = st.session_state.get( 'chunks' )
-	chunk_modes = st.session_state.get( 'chunk_modes' )
-	chunked_documents = st.session_state.get( 'chunked_documents' )
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
 	
-	if documents is None:
+	if st.session_state.documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
 	elif loader_name is None:
 		st.warning( 'No active loader found.' )
@@ -2685,191 +2690,7 @@ with tabs[ 3 ]:
 	
 	st.caption( f'Source Loader: {loader_name}' )
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-	
-	# ======================================================================================
-	# Statistical Language Models (Word2Vec / TF-IDF)
-	# ======================================================================================
-	st.markdown( "#### 📊 Statistical Language Models" )
-	if not isinstance( st.session_state.get( "chunked_documents" ), list ):
-		st.info( "Chunked documents required to train statistical models." )
-		
-	# --------------------------------------------------
-	# Prepare corpus (tokens per chunk)
-	# --------------------------------------------------
-	tokenized_chunks: list[ list[ str ] ] = [ word_tokenize( chunk.lower( ) )
-			for chunk in st.session_state.chunked_documents
-	                                          if isinstance( chunk, str ) and chunk.strip( ) ]
-	
-	# ==================================================
-	# 🧠 Word2Vec
-	# ==================================================
-	with st.expander( "🧠 Word2Vec (Corpus-Trained)", expanded=False ):
-		col_a, col_b, col_c = st.columns( 3 )
-		vector_size = col_a.number_input( "Vector Size", 50, 500, 100, step=50 )
-		window = col_b.number_input( "Window", 2, 15, 5 )
-		min_count = col_c.number_input( "Min Count", 1, 10, 2 )
-		
-		architecture = st.radio(
-			"Architecture",
-			options=[ "CBOW",
-			          "Skip-Gram" ],
-			horizontal=True,
-		)
-		
-		train = st.button( "Train Word2Vec", use_container_width=True )
-		
-		if train:
-			with st.spinner( "Training Word2Vec model..." ):
-				from gensim.models import Word2Vec
-				sg = 0 if architecture == "CBOW" else 1
-				
-				model = Word2Vec(
-					sentences=tokenized_chunks,
-					vector_size=vector_size,
-					window=window,
-					min_count=min_count,
-					sg=sg,
-					workers=4,
-				)
-				
-				st.session_state.word2vec_model = model
-				st.session_state.word2vec_vectors = {
-						word: model.wv[ word ] for word in model.wv.index_to_key
-				}
-				
-				st.success( f"Trained Word2Vec on {len( model.wv )} terms." )
-		
-		# --------------------------------------------------
-		# Nearest-neighbor inspection
-		# --------------------------------------------------
-		if "word2vec_model" in st.session_state:
-			model = st.session_state.word2vec_model
-			term = st.selectbox( "Inspect Term", options=sorted( model.wv.index_to_key ), )
-			
-			neighbors = model.wv.most_similar( term, topn=10 )
-			
-			st.data_editor(
-				pd.DataFrame( neighbors, columns=[ "Term",
-				                                   "Similarity" ] ),
-				use_container_width=True,
-				hide_index=True,
-			)
-	
-	# ==================================================
-	# 📐 TF-IDF
-	# ==================================================
-	with st.expander( "📐 TF-IDF (Term Importance)", expanded=False ):
-		from sklearn.feature_extraction.text import TfidfVectorizer
-		
-		max_features = st.slider( "Max Features", 100, 5000, 1000, step=100 )
-		ngram_range = st.selectbox( "n-gram Range", [ (1, 1), (1, 2), (1, 3) ] )
-		compute = st.button( "Compute TF-IDF", use_container_width=True )
-		
-		if compute:
-			with st.spinner( "Computing TF-IDF matrix..." ):
-				vectorizer = TfidfVectorizer( max_features=max_features, ngram_range=ngram_range,
-					stop_words="english" )
-				
-				tfidf = vectorizer.fit_transform( st.session_state.chunked_documents )
-				st.session_state.tfidf_matrix = tfidf
-				st.session_state.tfidf_features = vectorizer.get_feature_names_out( )
-				st.success(f"TF-IDF matrix shape: {tfidf.shape[ 0 ]} documents × {tfidf.shape[ 1 ]} terms"
-				)
-		
-		# --------------------------------------------------
-		# Visualization
-		# --------------------------------------------------
-		if "tfidf_matrix" in st.session_state:
-			tfidf = st.session_state.tfidf_matrix
-			features = st.session_state.tfidf_features
-			mean_scores = tfidf.mean( axis=0 ).A1
-			top_terms = pd.DataFrame(
-				{
-					"Term": features,
-					"Mean TF-IDF": mean_scores,
-				}
-			).sort_values( "Mean TF-IDF", ascending=False ).head( 30 )
-			
-			st.markdown( "#### Top Terms by Mean TF-IDF" )
-			st.data_editor( top_terms, use_container_width=True, hide_index=True, )
-			st.bar_chart( top_terms.set_index( "Term" ), height=300, )
-	
-	# ==================================================
-	# 🔍  pygwalker
-	# ==================================================
-	with st.expander( "🔍 Interactive Exploration ", expanded=False ):
-		try:
-			import pygwalker as pyg
-			
-			if "tfidf_matrix" in st.session_state:
-				df = pd.DataFrame(st.session_state.tfidf_matrix.toarray( ),
-					columns=st.session_state.tfidf_features,)
-				pyg.walk( df, env="streamlit" )
-			else:
-				st.info( "Compute TF-IDF first." )
-		except Exception:
-			st.info( "pygwalker not installed. Using st.data_editor instead." )
-			st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-	
-	# ==================================================
-	# 🔄 Word2Vec ↔ TF-IDF Comparison
-	# ==================================================
-	st.markdown( "#### 🔄 Word2Vec ↔ TF-IDF Comparison" )
-	
-	if (
-			"word2vec_model" in st.session_state
-			and "tfidf_matrix" in st.session_state
-			and "tfidf_features" in st.session_state
-	):
-		w2v_model = st.session_state.word2vec_model
-		tfidf = st.session_state.tfidf_matrix
-		features = st.session_state.tfidf_features
-		
-		# Compute mean TF-IDF
-		mean_scores = tfidf.mean( axis=0 ).A1
-		tfidf_df = pd.DataFrame(
-			{
-					"term": features,
-					"mean_tfidf": mean_scores,
-			}
-		).sort_values( "mean_tfidf", ascending=False )
-		
-		top_n = st.slider(
-			"Top TF-IDF Terms to Compare",
-			min_value=10,
-			max_value=100,
-			value=30,
-			step=5,
-		)
-		
-		top_terms = tfidf_df.head( top_n )[ "term" ].tolist( )
-		
-		comparison_rows = [ ]
-		for term in top_terms:
-			if term in w2v_model.wv:
-				vec = w2v_model.wv[ term ]
-				comparison_rows.append(
-					{
-							"term": term,
-							"mean_tfidf": tfidf_df.loc[
-								tfidf_df.term == term, "mean_tfidf"
-							].values[ 0 ],
-							"w2v_norm": float( (vec ** 2).sum( ) ** 0.5 ),
-					}
-				)
-		
-		if comparison_rows:
-			comparison_df = pd.DataFrame( comparison_rows ).sort_values( "mean_tfidf", ascending=False )
-			
-			st.data_editor( comparison_df, use_container_width=True, hide_index=True, )
-			
-			st.caption(
-				"High TF-IDF + stable Word2Vec norms generally indicate meaningful signal."
-			)
-		else:
-			st.info( "No overlap between Word2Vec vocabulary and top TF-IDF terms." )
-	else:
-		st.info( "Train Word2Vec and compute TF-IDF to enable comparison." )
+
 
 
 # ======================================================================================
@@ -2881,6 +2702,9 @@ with tabs[ 4 ]:
     for key, default in SESSION_STATE_DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = default
+    
+    lines = st.session_state.get( 'lines' )
+    tokens = st.session_state.get( 'tokens' )
 
     # -------------------------------
     # Namespaced key helper
@@ -2895,7 +2719,8 @@ with tabs[ 4 ]:
     # --------------------------------------------------
     with left:
         st.markdown("##### Embedding Providers")
-
+        
+		
         embedding_source = st.radio( "Text Source",
             options=["Processed Text", "Chunked Documents"], horizontal=True, key=k("text_source") )
 
@@ -2906,7 +2731,7 @@ with tabs[ 4 ]:
                     return [text]
                 return None
 
-            chunks = st.session_state.get("chunked_documents")
+            chunks = st.session_state.get("chunkss")
             if isinstance(chunks, list) and chunks:
                 return [str(c) for c in chunks if isinstance(c, str) and c.strip()]
 
@@ -2916,7 +2741,6 @@ with tabs[ 4 ]:
 
         if not texts:
             st.info("No text available. Run processing or chunking first.")
-            st.stop()
 
         st.caption(f"Texts to embed: {len(texts):,}")
 
@@ -2925,7 +2749,7 @@ with tabs[ 4 ]:
         # --------------------------------------------------
         def can_save_docs() -> bool:
             return isinstance(st.session_state.get("embedding_documents"), list) and bool(
-                st.session_state.embedding_documents
+                st.session_state.chunked_documents
             )
 
         def docs_to_df() -> pd.DataFrame:
@@ -2954,14 +2778,14 @@ with tabs[ 4 ]:
 	                use_container_width=True, key=k("openai_save_disabled"))
 
             if clear:
-                st.session_state.embedding_documents = None
+                st.session_state.chunked_documents  = None
                 st.success("Embeddings cleared.")
 
             if run:
                 with st.spinner("Embedding with OpenAI..."):
                     embedder = GPT(model=model)
                     vectors = embedder.embed(texts)
-                    st.session_state.embedding_documents = [
+                    st.session_state.chunked_documents  = [
                         {
                             "provider": "OpenAI",
                             "model": model,
@@ -2999,7 +2823,7 @@ with tabs[ 4 ]:
                 col_save.button("Save CSV", disabled=True, use_container_width=True, key=k("gemini_save_disabled"))
 
             if clear:
-                st.session_state.embedding_documents = None
+                st.session_state.chunked_documents  = None
                 st.success("Embeddings cleared.")
 
             if run:
