@@ -2670,7 +2670,7 @@ with tabs[ 3 ]:
 # ======================================================================================
 # Tab — Tensor Embeddings
 # ======================================================================================
-with tabs[4]:
+with tabs[ 4 ]:
     import pandas as pd
 
     for key, default in SESSION_STATE_DEFAULTS.items():
