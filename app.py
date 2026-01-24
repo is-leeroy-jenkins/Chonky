@@ -327,8 +327,7 @@ with tabs[ 0 ]:
 			
 			st.session_state.tokens = tokens
 			st.session_state.vocabulary = set( tokens )
-			st.session_state.token_counts = Counter( tokens )
-		
+			st.session_state.token_counts = Counter( tokens )		
 		tokens = st.session_state.tokens
 		vocabulary = st.session_state.vocabulary
 		counts = st.session_state.token_counts
@@ -2259,18 +2258,14 @@ with tabs[ 2 ]:
 			st.info( 'Chunking controls reset.' )
 		
 		if run_chunking:
-			processor = TextParser( )
-			
 			if mode == 'chars':
 				chunked_documents = processor.chunk_text( text=processed_text, size=chunk_size )
-			
 			elif mode == 'tokens':
 				chunked_documents = word_tokenize( processed_text )
 			else:
 				st.error( f'Unsupported chunking mode: {mode}' )
 			
-			st.session_state.chunked_documents = chunked_documents
-			
+			st.session_state.chunked_documents = chunked_documents			
 			st.success( f'Chunking complete: {len( chunked_documents )} chunks generated '
 				f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
 		
@@ -2318,8 +2313,7 @@ with tabs[ 2 ]:
 			st.caption( 'Top 100 most frequent tokens' )
 			if df_frequency is not None and not df_frequency.empty:
 				# Identify numeric frequency column
-				numeric_cols = df_frequency.select_dtypes( include="number" )
-				
+				numeric_cols = df_frequency.select_dtypes( include="number" )				
 				if not numeric_cols.empty:
 					freq_col = numeric_cols.columns[ 0 ]
 					top_n = 100
@@ -2336,7 +2330,6 @@ with tabs[ 2 ]:
 		# --------------------------------------------------
 		st.session_state.tokens = tokens
 		st.session_state.vocabulary = vocabulary
-	
 	else:
 		st.info( 'Run preprocessing first' )
 		
@@ -2427,42 +2420,34 @@ with tabs[ 2 ]:
 		cache_key_sig = "wordnet_synsets_sig"
 		cache_key_syn = "df_wordnet_synsets"
 		cache_key_lem = "df_wordnet_lemmas"
-		cache_miss = (
-				cache_key_sig not in st.session_state
-				or st.session_state[ cache_key_sig ] != sig
-				or cache_key_syn not in st.session_state
-				or cache_key_lem not in st.session_state
-		)
+		cache_miss = ( cache_key_sig not in st.session_state 
+		               or st.session_state[ cache_key_sig ] != sig 
+		               or cache_key_syn not in st.session_state 
+		               or cache_key_lem not in st.session_state )
 		
 		if cache_miss:
 			rows_synsets: list[ dict ] = [ ]
-			rows_lemmas: list[ dict ] = [ ]
-			
+			rows_lemmas: list[ dict ] = [ ]			
 			for term in vocab_terms:
-				synsets = wn.synsets( term )[ :MAX_SYSETS_PER_WORD ]
-				
+				synsets = wn.synsets( term )[ :MAX_SYSETS_PER_WORD ]				
 				for syn in synsets:
 					lemmas = syn.lemmas( )
-					lemma_count = len( lemmas )
-					
+					lemma_count = len( lemmas )					
 					hypernym_paths = syn.hypernym_paths( )
-					hypernym_depth = (
-							max( len( path ) for path in hypernym_paths )
-							if hypernym_paths else 0
-					)
+					hypernym_depth = ( max( len( path ) for path in hypernym_paths )
+							if hypernym_paths else 0 )
 					
 					# Synset-level row
 					rows_synsets.append(
-						{
-								"Word": term,
-								"Part Of Speech": syn.pos( ),
-								"Synset": syn.name( ),
-								"Definition": syn.definition( ),
-								"Lemmas": ", ".join( l.name( ) for l in lemmas ),
-								"Lemma Count": lemma_count,
-								"Hypernym Depth": hypernym_depth,
-						}
-					)
+					{
+						"Word": term,
+						"Part Of Speech": syn.pos( ),
+						"Synset": syn.name( ),
+						"Definition": syn.definition( ),
+						"Lemmas": ", ".join( l.name( ) for l in lemmas ),
+						"Lemma Count": lemma_count,
+						"Hypernym Depth": hypernym_depth,
+					} )
 					
 					# Lemma-exploded rows
 					for lemma in lemmas:
@@ -2487,21 +2472,16 @@ with tabs[ 2 ]:
 		# --------------------------------------------------
 		# Inline Control Row (POS / Depth / Toggle)
 		# --------------------------------------------------
-		col_pos, col_depth, col_toggle = st.columns( [ 1.4, 2.8,  1.4 ], border=True )
-		
+		col_pos, col_depth, col_toggle = st.columns( [ 1.4, 2.8,  1.4 ], border=True )		
 		with col_pos:
-			pos_label = st.selectbox(
-				"Part of Speech",
-				options=[
-						"All",
-						"Noun",
-						"Verb",
-						"Adjective",
-						"Adverb",
-				],
+			pos_label = st.selectbox( 'Part of Speech',
+				options=[ 'All', 
+				          'Noun', 
+				          'Verb', 
+				          'Adjective', 
+				          'Adverb', ],
 				index=0,
-				label_visibility="collapsed",
-			)
+				label_visibility='collapsed', )
 		
 		with col_depth:
 			# Choose a reference DF for max depth computation (synsets is usually smaller/cleaner)
@@ -2513,18 +2493,15 @@ with tabs[ 2 ]:
 				max_depth = int( df_wordnet_synsets[ "Hypernym Depth" ].max( ) )
 			
 			depth_range = st.slider(
-				"Hypernym Depth",
+				'Hypernym Depth',
 				min_value=0,
 				max_value=max_depth if max_depth > 0 else 0,
 				value=(0, max_depth if max_depth > 0 else 0),
-				label_visibility="collapsed",
+				label_visibility='collapsed',
 			)
 		
 		with col_toggle:
-			explode_lemmas = st.toggle(
-				"Explode Lemmas",
-				value=False,
-			)
+			explode_lemmas = st.toggle( 'Explode Lemmas', value=False )
 		
 		# --------------------------------------------------
 		# Select view (synsets vs exploded lemmas)
@@ -2543,8 +2520,8 @@ with tabs[ 2 ]:
 		if not df_view.empty and "Hypernym Depth" in df_view.columns:
 			min_depth, max_depth_selected = depth_range
 			df_view = df_view[
-				(df_view[ "Hypernym Depth" ] >= min_depth)
-				& (df_view[ "Hypernym Depth" ] <= max_depth_selected)
+				(df_view[ 'Hypernym Depth' ] >= min_depth)
+				& (df_view[ 'Hypernym Depth' ] <= max_depth_selected)
 				]
 		
 		# --------------------------------------------------
@@ -2554,7 +2531,7 @@ with tabs[ 2 ]:
 			df_filtered = dataframe_explorer( df_view, case=False )
 			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
 		else:
-			st.info( "No WordNet rows found for the selected filters." )
+			st.info( 'No WordNet rows found for the selected filters.' )
 	
 	except LookupError:
 		st.warning(
@@ -2606,10 +2583,9 @@ with tabs[ 2 ]:
 			df_filtered = dataframe_explorer( df_wordnet_relations, case=False )
 			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
 		else:
-			st.info( "No semantic relations found for the current vocabulary slice." )
-	
+			st.info( 'No semantic relations found for the current vocabulary slice.' )	
 	except Exception as e:
-		st.error( f"WordNet semantic relations failed: {e}" )
+		st.error( f'WordNet semantic relations failed: {e}' )
 
 # ======================================================================================
 # Tab - Data Chunking
@@ -2678,7 +2654,6 @@ with tabs[ 3 ]:
 	documents = st.session_state.get( 'documents' )
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
-	
 	if st.session_state.documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
 	elif loader_name is None:
@@ -2761,7 +2736,6 @@ with tabs[4]:
         with st.expander( '🧠 OpenAI Embeddings', expanded=False ):
             model = st.selectbox('Model', options=GPT_MODELS, key=k( 'openai_model' ) )
             col_run, col_clear, col_save = st.columns( 3 )
-
             run = col_run.button('Embed', key=k('openai_embed'), use_container_width=True)
             clear = col_clear.button('Clear', key=k('openai_clear'), use_container_width=True)
 
@@ -2796,8 +2770,7 @@ with tabs[4]:
                             'text': texts[ i ],
                             'embedding': vec,
                         }
-                        for i, vec in enumerate( vectors )
-                    ]
+                        for i, vec in enumerate( vectors ) ]
 
                     st.session_state.embeddings = vectors
                     st.session_state.embedding_provider = 'OpenAI'
@@ -2944,7 +2917,6 @@ with tabs[4]:
 	        if run:
 		        with st.spinner( 'Embedding with Groq...' ):
 			        embedder = Grok( )
-			        
 			        vectors = embedder.embed( texts, model=model  )
 			        st.session_state.embedding_documents = [
 					        {
@@ -2959,7 +2931,6 @@ with tabs[4]:
 			        st.session_state.embeddings = vectors
 			        st.session_state.embedding_provider = 'Groq'
 			        st.session_state.embedding_model = model
-			        
 			        st.success( f'Generated {len( vectors )} embedding(s).' )
     
     # --------------------------------------------------
