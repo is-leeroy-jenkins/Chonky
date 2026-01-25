@@ -208,11 +208,6 @@ def encode_image_base64( path: str ) -> str:
 def clear_if_active( loader_name: str ) -> None:
 	if st.session_state.active_loader == loader_name:
 		st.session_state.documents = None
-		st.session_state.raw_documents = None
-		st.session_state.raw_text = None
-		st.session_state.raw_text_view = None
-		st.session_state.processed_text = None
-		st.session_state.processed_text_view = None
 		st.session_state.active_loader = None
 		st.session_state.tokens = None
 		st.session_state.vocabulary = None
@@ -586,10 +581,7 @@ with tabs[ 0 ]:
 			clear_nltk = col_clear.button( 'Clear', key='nltk_clear' )
 			
 			_docs = st.session_state.get( 'documents' ) or [ ]
-			_nltk_docs = [
-					d for d in _docs
-					if d.metadata.get( 'loader' ) == 'NLTKLoader'
-			]
+			_nltk_docs = [ d for d in _docs if d.metadata.get( 'loader' ) == 'NLTKLoader' ]
 			_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs )
 			_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
 			
@@ -615,7 +607,6 @@ with tabs[ 0 ]:
 						if st.session_state.documents else None
 				)
 				
-				st.session_state.processed_text = None
 				st.session_state.active_loader = None
 				
 				st.info( 'NLTKLoader documents removed.' )
@@ -746,7 +737,6 @@ with tabs[ 0 ]:
 			if clear_csv:
 				clear_if_active( "CsvLoader" )
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "CSV Loader state cleared."
 				st.rerun( )
 			
@@ -992,7 +982,6 @@ with tabs[ 0 ]:
 			if clear_pdf:
 				clear_if_active( "PdfLoader" )
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state.processed_text = None
 				st.session_state[ "_loader_status" ] = "PDF Loader state cleared."
 				st.rerun( )
 			
@@ -1042,7 +1031,6 @@ with tabs[ 0 ]:
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
 			load_md = col_load.button(
 				'Load',
 				key='md_load',
@@ -1096,39 +1084,21 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-				)
-				st.session_state.processed_text = None
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "MarkdownLoader"
 				
-				st.success(
-					f"Loaded {len( documents )} Markdown document(s)."
-				)
+				st.success( f"Loaded {len( documents )} Markdown document(s)." )
 		
 		# --------------------------- HTML Loader
 		with st.expander( '🌐 HTML Loader', expanded=False ):
-			html = st.file_uploader(
-				'Upload HTML',
-				type=[ 'html',
-				       'htm' ],
-				key='html_upload',
-			)
+			html = st.file_uploader( 'Upload HTML', type=[ 'html', 'htm' ], key='html_upload' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
-			load_html = col_load.button(
-				'Load',
-				key='html_load',
-			)
-			
-			clear_html = col_clear.button(
-				'Clear',
-				key='html_clear',
-			)
+			load_html = col_load.button( 'Load', key='html_load' )
+			clear_html = col_clear.button( 'Clear', key='html_clear' )
 			
 			# Save enabled only when HtmlLoader is active and raw_text exists
 			can_save = (
@@ -1173,15 +1143,9 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-				)
-				st.session_state.processed_text = None
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "HtmlLoader"
-				
-				st.success(
-					f"Loaded {len( documents )} HTML document(s)."
-				)
+				st.success( f"Loaded {len( documents )} HTML document(s)." )
 		
 		# --------------------------- JSON Loader
 		with st.expander( '🧩 JSON Loader', expanded=False ):
@@ -1201,7 +1165,6 @@ with tabs[ 0 ]:
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
 			load_json = col_load.button(
 				'Load',
 				key='json_load',
@@ -1259,15 +1222,9 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-				)
-				st.session_state.processed_text = None
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "JsonLoader"
-				
-				st.success(
-					f"Loaded {len( documents )} JSON document(s)."
-				)
+				st.success( f"Loaded {len( documents )} JSON document(s)." )
 		
 		# --------------------------- PowerPoint Loader
 		with st.expander( '📽 Power Point Loader', expanded=False ):
@@ -1288,7 +1245,6 @@ with tabs[ 0 ]:
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			
 			load_pptx = col_load.button(
 				'Load',
 				key='pptx_load',
@@ -1346,15 +1302,9 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-				)
-				st.session_state.processed_text = None
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "PowerPointLoader"
-				
-				st.success(
-					f"Loaded {len( documents )} PowerPoint document(s)."
-				)
+				st.success( f"Loaded {len( documents )} PowerPoint document(s).")
 		
 		# --------------------------- Excel Loader
 		with st.expander( '📊 Excel Loader', expanded=False ):
@@ -1580,11 +1530,9 @@ with tabs[ 0 ]:
 						st.session_state.raw_documents = list( documents )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.processed_text = None
 					st.session_state.active_loader = "ArXivLoader"
 					
-					st.session_state[
-						"_loader_status" ] = f"Fetched {len( documents )} arXiv document(s)."
+					st.session_state[ "_loader_status" ] = f"Fetched {len( documents )} arXiv document(s)."
 					st.rerun( )
 		
 		# --------------------------- Wikipedia Loader
@@ -1707,11 +1655,9 @@ with tabs[ 0 ]:
 			gh_fetch = col_fetch.button( "Load", key="gh_fetch" )
 			gh_clear = col_clear.button( "Clear", key="gh_clear" )
 			
-			can_save = (
-					st.session_state.get( "active_loader" ) == "GithubLoader"
+			can_save = ( st.session_state.get( "active_loader" ) == "GithubLoader"
 					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
-			)
+					and st.session_state.get( "raw_text" ).strip( ) )
 			
 			if can_save:
 				col_save.download_button(
@@ -1719,16 +1665,14 @@ with tabs[ 0 ]:
 					data=st.session_state.get( "raw_text" ),
 					file_name="github_loader_output.txt",
 					mime="text/plain",
-					key="gh_save",
-				)
+					key="gh_save", )
 			else:
 				col_save.button( "Save", key="gh_save_disabled", disabled=True )
 			
 			if gh_clear and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( "loader" ) != "GithubLoader"
-				]
+						if d.metadata.get( "loader" ) != "GithubLoader" ]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "GithubLoader documents removed."
 				st.rerun( )
@@ -1765,18 +1709,14 @@ with tabs[ 0 ]:
 			urls = st.text_area(
 				"Enter one URL per line",
 				placeholder="https://example.com\nhttps://another.com",
-				key="web_urls",
-			)
+				key="web_urls", )
 			
 			col_fetch, col_clear, col_save = st.columns( 3 )
 			load_web = col_fetch.button( "Load", key="web_fetch" )
 			clear_web = col_clear.button( "Clear", key="web_clear" )
-			
-			can_save = (
-					st.session_state.get( "active_loader" ) == "WebLoader"
+			can_save = ( st.session_state.get( "active_loader" ) == "WebLoader"
 					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
-			)
+					and st.session_state.get( "raw_text" ).strip( ) )
 			
 			if can_save:
 				col_save.download_button(
@@ -1819,8 +1759,7 @@ with tabs[ 0 ]:
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebLoader"
 					
-					st.session_state[
-						"_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
+					st.session_state[ "_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
 					st.rerun( )
 		
 		# --------------------------- Web Crawler
@@ -1897,9 +1836,7 @@ with tabs[ 0 ]:
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebCrawler"
-					
-					st.session_state[
-						"_loader_status" ] = f"Crawled {len( documents )} document(s)."
+					st.session_state[ "_loader_status" ] = f"Crawled {len( documents )} document(s)."
 					st.rerun( )
 	
 	# ------------------------------------------------------------------
@@ -1928,26 +1865,6 @@ with tabs[ 1 ]:
 	end_time = st.session_state.get( 'end_time', 0.0 )
 	total_time = st.session_state.get( 'total_time', 0.0 )
 	has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
-	
-	# ------------------------------------------------------------------
-	# Cascade: whenever raw_text changes, re-seed BOTH processed_text and the widget view
-	# ------------------------------------------------------------------
-	if has_text:
-		seed_hash = hash( raw_text )
-		if st.session_state.get( "_processing_seed_hash" ) != seed_hash:
-			st.session_state.processed_text = ""
-			st.session_state.processed_text_view = ""
-			st.session_state.raw_text_view = raw_text
-			st.session_state._processing_seed_hash = seed_hash
-			
-			# Keep raw view in sync as well (disabled widget still has state)
-			st.session_state.raw_text_view = raw_text
-			st.session_state._processing_seed_hash = processed_text
-	else:
-		st.session_state.raw_text_view = ""
-	
-	if not has_text:
-		st.info( "No raw text available yet. Load documents to enable processing." )
 	
 	# ------------------------------------------------------------------
 	# Layout
@@ -2054,7 +1971,7 @@ with tabs[ 1 ]:
 			st.session_state.start_time = 0.0
 			st.session_state.end_time = 0.0
 			st.session_state.total_time = 0.0
-			st.success( 'Processed text reset to raw text.' )
+			st.success( 'Processed text reset.' )
 		
 		if clear_processing:
 			st.session_state.processed_text = ''
@@ -2063,12 +1980,20 @@ with tabs[ 1 ]:
 			st.session_state.end_time = 0.0
 			st.session_state.total_time = 0.0
 			st.success( 'Processed text cleared.' )
-			
+		
 		if apply_processing:
 			start_time = time.perf_counter( )
-			processed_text = raw_text
+		
+			# ----------------------------------------------------------
+			# Initialize from raw text (authoritative source)
+			# ----------------------------------------------------------
+			processed_text = raw_text if isinstance( raw_text, str ) else ''
+		
 			tp = TextParser( )
+		
+			# ----------------------------------------------------------
 			# 1 — Structural cleanup
+			# ----------------------------------------------------------
 			if remove_html:
 				processed_text = tp.remove_html( processed_text )
 			if remove_markdown:
@@ -2079,46 +2004,58 @@ with tabs[ 1 ]:
 				processed_text = tp.remove_encodings( processed_text )
 			if remove_xml:
 				processed_text = tp.remove_xml( processed_text )
+		
+			# ----------------------------------------------------------
 			# 2 — Noise / non-lexical characters
+			# ----------------------------------------------------------
 			if remove_symbols:
 				processed_text = tp.remove_symbols( processed_text )
 			if remove_numbers:
 				processed_text = tp.remove_numbers( processed_text )
 			if remove_numerals:
 				processed_text = tp.remove_numerals( processed_text )
+		
+			# ----------------------------------------------------------
 			# 3 — Meaning-critical punctuation shaping
+			# ----------------------------------------------------------
 			if remove_punctuation:
 				processed_text = tp.remove_punctuation( processed_text )
+		
+			# ----------------------------------------------------------
 			# 4 — Word normalization
+			# ----------------------------------------------------------
 			if normalize_text:
 				processed_text = tp.normalize_text( processed_text )
+		
+			# ----------------------------------------------------------
 			# 5 — Lexical refinement
+			# ----------------------------------------------------------
 			if remove_stopwords:
 				processed_text = tp.remove_stopwords( processed_text )
 			if remove_fragments:
 				processed_text = tp.remove_fragments( processed_text )
 			if remove_errors:
 				processed_text = tp.remove_errors( processed_text )
+		
+			# ----------------------------------------------------------
 			# 6 — Lemmatization
+			# ----------------------------------------------------------
 			if lemmatize_text:
 				processed_text = tp.lemmatize_text( processed_text )
+		
+			# ----------------------------------------------------------
 			# 7 — Whitespace cleanup
+			# ----------------------------------------------------------
 			if collapse_whitespace:
 				processed_text = tp.collapse_whitespace( processed_text )
 			if compress_whitespace:
 				processed_text = tp.compress_whitespace( processed_text )
-			
-
-			# Performance calculation
-			end_time = time.perf_counter( )
-			st.session_state.total_time = end_time - start_time
-			if st.session_state.total_time is None:
-				st.session_state.total_time = 0.0
-				
+		
 			# ----------------------------------------------------------
 			# Format-specific FIRST
 			# ----------------------------------------------------------
 			parser = st.session_state.get( 'parser' )
+		
 			if active == 'WordLoader':
 				if extract_tables and hasattr( parser, 'extract_tables' ):
 					parser = WordParser( )
@@ -2126,7 +2063,7 @@ with tabs[ 1 ]:
 				if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
 					parser = WordParser( )
 					processed_text = parser.extract_paragraphs( processed_text )
-			
+		
 			if active == 'PdfLoader':
 				if remove_headers and hasattr( parser, 'remove_headers' ):
 					parser = PdfParser( )
@@ -2134,75 +2071,84 @@ with tabs[ 1 ]:
 				if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
 					parser = PdfParser( )
 					processed_text = parser.join_hyphenated( processed_text )
-			
+		
 			if active == 'HtmlLoader':
 				if strip_scripts:
 					processed_text = tp.remove_html( processed_text )
-			
-			# Performance calculation
+		
+			# ----------------------------------------------------------
+			# Finalize timing
+			# ----------------------------------------------------------
 			end_time = time.perf_counter( )
 			st.session_state.total_time = end_time - start_time
-			if st.session_state.total_time is None:
-				st.session_state.total_time = 0.0
-			
-			# Structural selectors can be refined later
-			st.session_state.processed_text = processed_text
-			st.session_state.processed_text_view = processed_text
-			st.success( f'Text processing applied  {st.session_state.total_time:.1f}' )
-	
-	# ------------------------------------------------------------------
-	# RIGHT COLUMN — Text Views
-	# ------------------------------------------------------------------
-	with right:
-		st.text_area( 'Raw Text', st.session_state.raw_text or 'No text loaded yet.',
-			height=200, disabled=True, key='raw_text_view' )
 		
-		raw_text = st.session_state.get( 'raw_text' )
-		with st.expander( f'📊 Processing Statistics:', expanded=False ):
-			processed_text = st.session_state.get( 'processed_text' )
-			if (isinstance( raw_text, str ) and raw_text.strip( )
-					and isinstance( processed_text, str ) and processed_text.strip( )):
-				raw_tokens = raw_text.split( )
-				proc_tokens = processed_text.split( )
-				raw_chars = len( raw_text )
-				proc_chars = len( processed_text )
-				raw_vocab = len( set( raw_tokens ) )
-				proc_vocab = len( set( proc_tokens ) )
-				
-				# ----------------------------
-				# Absolute Metrics
-				# ----------------------------
-				st.text( 'Measures:' )
-				ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
-				a1, a2, a3, a4 = st.columns( 4, border=True )
-				a1.metric( 'Characters', f'{proc_chars:,}' )
-				a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
-				a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
-				a4.metric( 'TTR', f'{ttr:.3f}' )
-				
-				st.divider( )
-				
-				# ----------------------------
-				# Delta Metrics
-				# ----------------------------
-				st.text( 'Deltas:' )
-				d1, d2, d3, d4 = st.columns( 4, border=True )
-				char_delta = proc_chars - raw_chars
-				token_delta = len( proc_tokens ) - len( raw_tokens )
-				vocab_delta = proc_vocab - raw_vocab
-				compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
-				d1.metric( 'Δ Characters', f'{char_delta:+,}' )
-				d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
-				d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
-				d4.metric( 'Compression Ratio', f'{compression:.2%}' )
-			else:
-				st.caption( 'Load and process text to view absolute and delta statistics.' )
+			# ----------------------------------------------------------
+			# Commit processed text
+			# ----------------------------------------------------------
+			st.session_state.processed_text = (
+				processed_text if isinstance( processed_text, str ) else str( processed_text ))
+			st.session_state.processed_text_view = st.session_state.processed_text
+			st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
 		
-		# ----------------------------
-		# Processed Text (output)
-		# ----------------------------
-		st.text_area( "Processed Text", st.session_state.processed_text or "", height=700,
-			key="processed_text_view" )
+		# ------------------------------------------------------------------
+		# RIGHT COLUMN — Text Views
+		# ------------------------------------------------------------------
+		with right:
+			st.text_area( 'Raw Text',
+				st.session_state.raw_text or 'No text loaded yet.',
+				height=200,
+				disabled=True,
+				key='raw_text_view' )
+		
+			raw_text = st.session_state.get( 'raw_text' )
+		
+			with st.expander( '📊 Processing Statistics:', expanded=False ):
+				processed_text = st.session_state.get( 'processed_text' )
+		
+				if (isinstance( raw_text, str ) and raw_text.strip( ) and
+					isinstance( processed_text, str ) and processed_text.strip( ) ):
+					raw_tokens = raw_text.split( )
+					proc_tokens = processed_text.split( )
+					raw_chars = len( raw_text )
+					proc_chars = len( processed_text )
+					raw_vocab = len( set( raw_tokens ) )
+					proc_vocab = len( set( proc_tokens ) )
+		
+					# ----------------------------
+					# Absolute Metrics
+					# ----------------------------
+					st.text( 'Measures:' )
+					ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
+					a1, a2, a3, a4 = st.columns( 4, border=True )
+					a1.metric( 'Characters', f'{proc_chars:,}' )
+					a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
+					a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
+					a4.metric( 'TTR', f'{ttr:.3f}' )
+		
+					st.divider( )
+		
+					# ----------------------------
+					# Delta Metrics
+					# ----------------------------
+					st.text( 'Deltas:' )
+					d1, d2, d3, d4 = st.columns( 4, border=True )
+					char_delta = proc_chars - raw_chars
+					token_delta = len( proc_tokens ) - len( raw_tokens )
+					vocab_delta = proc_vocab - raw_vocab
+					compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
+					d1.metric( 'Δ Characters', f'{char_delta:+,}' )
+					d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
+					d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
+					d4.metric( 'Compression Ratio', f'{compression:.2%}' )
+				else:
+					st.caption( 'Load and process text to view absolute and delta statistics.' )
+		
+			# ----------------------------
+			# Processed Text (output)
+			# ----------------------------
+			st.text_area( 'Processed Text', st.session_state.processed_text or '',
+				height=700, key='processed_text_view' )
+
 
 # ======================================================================================
 # Tab - Semantic Analysis
@@ -2218,8 +2164,8 @@ with tabs[ 2 ]:
 		# ---------------------------
 		# Chunking Controls
 		# ---------------------------
-		mode = st.selectbox( 'Chunking Mode', options=chunk_modes,
-			key='chunk_mode', help='Select how documents are chunked' )
+		mode = st.selectbox( 'Chunking Mode', options=chunk_modes, key='chunk_mode',
+			help='Select how documents are chunked' )
 		
 		col_a, col_b = st.columns( 2 )
 		
@@ -2505,8 +2451,7 @@ with tabs[ 2 ]:
 			min_depth, max_depth_selected = depth_range
 			df_view = df_view[
 				(df_view[ 'Hypernym Depth' ] >= min_depth)
-				& (df_view[ 'Hypernym Depth' ] <= max_depth_selected)
-				]
+				& (df_view[ 'Hypernym Depth' ] <= max_depth_selected) ]
 		
 		# --------------------------------------------------
 		# Interactive Explorer + Display
@@ -2541,8 +2486,7 @@ with tabs[ 2 ]:
 		
 		MAX_RELATIONS_PER_SYNSET = 3
 		
-		rows: list[ dict ] = [ ]
-		
+		rows = [ ]
 		for term in vocab_terms:
 			for syn in wn.synsets( term ):
 				def _add_related( label: str, related ):
