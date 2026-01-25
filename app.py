@@ -272,7 +272,6 @@ for key, default in SESSION_STATE_DEFAULTS.items( ):
 	if key not in st.session_state:
 		st.session_state[ key ] = default
 
-
 # ======================================================================================
 # Sidebar
 # ======================================================================================
