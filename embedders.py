@@ -51,6 +51,7 @@ from google import genai
 from groq import Groq
 from google.genai import types
 from google.genai.types import ( EmbedContentConfig, HttpOptions )
+import os
 from openai import OpenAI
 from boogr import ErrorDialog, Error
 import requests
@@ -187,8 +188,8 @@ class GPT( ):
 		"""
 		try:
 			throw_if( 'texts', texts )
-			response = self.client.embeddings.create( model=model, input=texts )
-			return [ item.embedding for item in response.data ]
+			self.response = self.client.embeddings.create( model=model, input=texts )
+			return [ item.embedding for item in self.response.data ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'embedders'

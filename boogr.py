@@ -54,6 +54,8 @@ import html
 import re
 import unicodedata
 
+HEADLESS = ( "STREAMLIT_SERVER_RUNNING" in os.environ
+    or "streamlit" in os.environ.get("PYTHONPATH", "").lower( ) )
 
 class Dark( ):
 	'''
@@ -317,28 +319,32 @@ class ErrorDialog( Dark ):
 
 		'''
 		_msg = self.heading if isinstance( self.heading, str ) else None
+		if HEADLESS:
+			raise RuntimeError( _msg )
 		_info = f'Module:\t{self.module}\r\nClass:\t{self.cause}\r\n' \
 		        f'Method:\t{self.method}\r\n \r\n{self.info}'
 		_red = '#F70202'
-		_font = ( 'Roboto', 10 )
+		_font = ('Roboto', 10)
 		_padsz = (3, 3)
 		_layout = [ [ sg.Text( ) ],
-		            [ sg.Text( f'{_msg}', size=(100, 1), key='-MSG-', text_color=_red, font=_font ) ],
-		            [ sg.Text( size=( 150, 1 ) ) ],
+		            [ sg.Text( f'{_msg}', size=(100, 1), key='-MSG-', text_color=_red, font=_font
+		            ) ],
+		            [ sg.Text( size=(150, 1) ) ],
 		            [ sg.Multiline( f'{_info}', key='-INFO-', size=(80, 7), pad=_padsz ) ],
 		            [ sg.Text( ) ],
-		            [ sg.Text( size=( 20, 1 ) ), sg.Cancel( size=( 15, 1 ), key='-CANCEL-' ),
-		              sg.Text( size=( 10, 1 ) ), sg.Ok( size=( 15, 1 ), key='-OK-' ) ] ]
-
+		            [ sg.Text( size=(20, 1) ),
+		              sg.Cancel( size=(15, 1), key='-CANCEL-' ),
+		              sg.Text( size=(10, 1) ),
+		              sg.Ok( size=(15, 1), key='-OK-' ) ] ]
+		
 		_window = sg.Window( r'Chonky', _layout,
 			icon=self.icon_path,
 			font=self.theme_font,
 			size=self.form_size )
-
+		
 		while True:
 			_event, _values = _window.read( )
-			if _event in ( sg.WIN_CLOSED, sg.WIN_X_EVENT, 'Canel', '-OK-' ):
+			if _event in (sg.WIN_CLOSED, sg.WIN_X_EVENT, 'Canel', '-OK-'):
 				break
-
+		
 		_window.close( )
-
