@@ -240,9 +240,47 @@ pip install -r requirements.txt
 
 Each tab is responsible for a **single stage** in the pipeline and only consumes outputs from upstream stages, ensuring deterministic execution and reproducibility.
 
+### End-to-End Processing Flow
 
+```
+    ┌────────────┐
+│  Loading   │
+│  (Sources) │
+└─────┬──────┘
+      │ raw_text
+      ▼
+┌────────────┐
+│ Processing │
+│ (Cleaning) │
+└─────┬──────┘
+      │ processed_text
+      ▼
+┌────────────────┐
+│ Data Tokenization │
+│ (Sentences / Tokens)
+└─────┬──────────┘
+      │ token diagnostics
+      ▼
+┌────────────────┐
+│ Tensor Embedding │
+│ (Vectorization)  │
+└─────┬──────────┘
+      │ embeddings
+      ▼
+┌────────────────┐
+│ Vector Database │
+│ (sqlite-vec)    │
+└─────┬──────────┘
+      │ similarity search
+      ▼
+┌────────────────┐
+│ RAG / Retrieval │
+│ (Downstream)    │
+└────────────────┘
 
-## 📥 Loading Tab — Multi-Source Text Acquisition
+```
+
+## 📥 Loaders
 
 The Loading tab supports **single-source document ingestion** from multiple loaders, including:
 
@@ -257,7 +295,7 @@ The Loading tab supports **single-source document ingestion** from multiple load
 All loaders normalize extracted content into a single **raw text buffer**, which is then propagated downstream for processing. Only one document or request is active at a time to preserve provenance and reproducibility.
 
 
-## 🧼 Processing Tab — Deterministic Text Transformation
+## 🧼 Processing
 
 The Processing tab provides a **repeatable, multi-pass text cleaning pipeline** with fine-grained controls, including:
 
@@ -278,7 +316,7 @@ Outputs from this tab form the **authoritative processed text** for all downstre
 
 
 
-## 🔤 Data Tokenization Tab — Token & Sentence Diagnostics
+## 🔤 Tokenization
 
 The Data Tokenization tab transforms processed text into **sentence- and token-level representations** suitable for chunking and embedding.
 
@@ -289,7 +327,7 @@ The Data Tokenization tab transforms processed text into **sentence- and token-l
 * Token frequency distributions
 * Fixed-width token grids (D0–D14)
 
-### Diagnostic Visualizations
+### Visualizations
 
 This tab includes analytical panels designed to validate embedding readiness:
 
@@ -306,7 +344,7 @@ These diagnostics help identify:
 
 
 
-## 🧠 Tensor Embedding Tab — Embedding Generation & Inspection
+## 🧠 Embedding Generation
 
 The Tensor Embedding tab generates vector embeddings for tokenized chunks using supported embedding providers and models.
 
@@ -330,9 +368,9 @@ These diagnostics are **read-only** and are intended solely for validating embed
 
 
 
-## 🗄️ Vector Database Tab — Vector-Native Persistence
+## 🗄️  Persistence
 
-The Vector Database tab replaces generic SQL CRUD with **vector-aware persistence**, tailored specifically for embedding workflows.
+The Vector Database SQL CRUD with **vector-aware persistence**, tailored specifically for embedding workflows.
 
 ### Storage Stack
 
@@ -359,7 +397,7 @@ This prevents accidental mixing of embeddings from different models or dimension
 
 
 
-## 🔍 Similarity Search UI
+## 🔍 Similarity Search 
 
 Chonky includes an **interactive semantic similarity search interface** built directly on sqlite-vec.
 
@@ -373,9 +411,47 @@ Chonky includes an **interactive semantic similarity search interface** built di
 
 Similarity search is **read-only** and does not mutate stored vectors, making it safe for exploratory analysis and RAG workflows.
 
+### Similarity Retrieval (sqlite-vec)
 
+```python
 
-## 🧠 RAG-Ready by Design
+import sqlite3
+import sqlite_vec
+from langchain_community.vectorstores import SQLiteVec
+from langchain_community.embeddings.sentence_transformer import (
+    SentenceTransformerEmbeddings
+)
+
+# Connect to the same sqlite database used by Chonky
+conn = sqlite3.connect("vectors.db")
+conn.enable_load_extension(True)
+sqlite_vec.load(conn)
+
+# Initialize the embedding function (must match persisted model)
+embedding_fn = SentenceTransformerEmbeddings(
+    model_name="all-MiniLM-L6-v2"
+)
+
+# Load the vector store
+vector_store = SQLiteVec(
+    connection=conn,
+    table_name="epa_budget_2024__sentence_transformer__all-MiniLM-L6-v2__384",
+    embedding=embedding_fn
+)
+
+# Perform semantic retrieval
+query = "How are EPA discretionary funds allocated?"
+results = vector_store.similarity_search(
+    query=query,
+    k=5
+)
+
+for doc in results:
+    print(doc.page_content)
+
+```
+
+## 🧠 Retreival Augmentation 
 
 With persistent vector storage and similarity search, Chonky is ready for:
 
@@ -393,6 +469,30 @@ Below is an **updated, drop-in replacement** for your **📦 Dependencies** tabl
 * t-SNE / UMAP diagnostics
 * sqlite-vec persistence
 * LangChain vector stores and RAG usage
+
+
+### LLM Retreival Augmentation
+
+```python
+
+from langchain.chains import RetrievalQA
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    retriever=vector_store.as_retriever(search_kwargs={"k": 5}),
+    return_source_documents=True
+)
+
+response = qa_chain(
+    {"query": "Summarize EPA funding priorities for FY2024."}
+)
+
+print(response["result"])
+
+```
 
 ## 📦 Dependencies
 
