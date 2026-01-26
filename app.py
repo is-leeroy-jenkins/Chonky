@@ -3306,96 +3306,271 @@ with tabs[ 4 ]:
 						"""
 					)
 
-
-
 # ======================================================================================
-# Tab — Vector Database
+# Tab — Vector Database (sqlite-vec)
 # ======================================================================================
-with tabs[ 5 ]:
+with tabs[ 6 ]:
 
-    import os
-    import sqlite3
-    import pandas as pd
-    from streamlit_extras.grid import grid  # <-- REQUIRED
+	st.subheader( 'Vector Database (sqlite-vec)' )
 
-    st.subheader("Data")
+	# ------------------------------------------------------------------
+	# Required upstream state
+	# ------------------------------------------------------------------
+	embeddings = st.session_state.get( 'embeddings' )
+	chunked_documents = st.session_state.get( 'chunked_documents' )
+	embedding_model = st.session_state.get( 'embedding_model' )
+	embedding_provider = st.session_state.get( 'embedding_provider' )
 
-    sqlite_path = os.path.join("stores", "sqlite", "data.db")
+	if not (
+		isinstance( embeddings, list ) and
+		isinstance( chunked_documents, list ) and
+		embedding_model and embedding_provider
+	):
+		st.info(
+			'Generate embeddings before persisting to the vector database.'
+		)
 
-    def q(identifier: str) -> str:
-        escaped = identifier.replace('"', '""')
-        return f'"{escaped}"'
+	else:
+		import sqlite3
+		import sqlite_vec
+		import numpy as np
+		from langchain_community.vectorstores import SQLiteVec
+		from langchain_community.embeddings.sentence_transformer import (
+			SentenceTransformerEmbeddings
+		)
 
-    if not os.path.exists(sqlite_path):
-        st.info("No SQLite database found. Load data first.")
-    else:
-        conn = sqlite3.connect(sqlite_path)
-        try:
-            df_tables = pd.read_sql(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
-                conn,
-            )
+		# ------------------------------------------------------------------
+		# Derive vector metadata
+		# ------------------------------------------------------------------
+		emb_array = np.asarray( embeddings )
+		dim = emb_array.shape[ 1 ]
 
-            if df_tables is None:
-                st.info( "Database exists but contains no tables." )
-            else:
-                table_names = df_tables[ "name" ].tolist( )
+		document_name = st.text_input(
+			'Document / Collection Name',
+			value='default_document'
+		)
 
-                if "active_table" not in st.session_state:
-                    st.session_state.active_table = table_names[ 0 ]
+		table_name = (
+			f"{document_name}__"
+			f"{embedding_provider}__"
+			f"{embedding_model}__"
+			f"{dim}"
+		)
 
-                if st.session_state.active_table not in table_names:
-                    st.session_state.active_table = table_names[ 0 ]
+		st.caption( f'Vector Table: `{table_name}`' )
 
-                data_grid = grid( 2, [2, 3, 1],  1, 1, vertical_align="center", )
+		# ------------------------------------------------------------------
+		# Database connection
+		# ------------------------------------------------------------------
+		db_path = st.text_input(
+			'SQLite Database Path',
+			value='vectors.db'
+		)
 
-                table_name = data_grid.selectbox(
-                    "Select Table",
-                    table_names,
-                    index=table_names.index(st.session_state.active_table),
-                )
-                st.session_state.active_table = table_name
+		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
+		# ------------------------------------------------------------------
+		# Actions
+		# ------------------------------------------------------------------
+		col_create, col_insert, col_delete = st.columns( 3 )
+		with col_create:
+			if st.button( 'Create Vector Table' ):
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
 
-                df_count = pd.read_sql( f"SELECT COUNT(*) AS rows FROM {q(table_name)};", conn )
-                data_grid.metric("Row Count", int(df_count.iloc[0]["rows"]))
+				SQLiteVec.create_table(
+					conn,
+					table_name=table_name,
+					dimension=dim
+				)
 
-                df_preview = pd.read_sql(
-                    f"SELECT * FROM {q(table_name)} LIMIT 250;",
-                    conn,
-                )
-                data_grid.dataframe( df_preview, use_container_width=True )
+				conn.close( )
+				st.success( f'Created vector table `{table_name}`.' )
 
-                numeric_cols = df_preview.select_dtypes(include="number")
-                if numeric_cols is None:
-                    data_grid.line_chart(numeric_cols, use_container_width=True)
-                else:
-                    data_grid.write("No numeric columns available for charting.")
+		# ----------------------------
+		# Insert embeddings
+		# ----------------------------
+		with col_insert:
+			if st.button( 'Insert Embeddings' ):
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
 
-                df_schema = pd.read_sql(
-                    f"PRAGMA table_info({q(table_name)});",
-                    conn,
-                )
-                data_grid.dataframe(
-                    df_schema[["cid", "name", "type", "notnull", "pk"]],
-                    use_container_width=True,
-                )
+				vector_store = SQLiteVec(
+					connection=conn,
+					table_name=table_name,
+					embedding=SentenceTransformerEmbeddings(
+						model_name=embedding_model
+					)
+				)
 
-                data_grid.button("Refresh", use_container_width=True)
-                data_grid.button("Export CSV", use_container_width=True)
+				vector_store.add_texts(
+					texts=chunked_documents,
+					embeddings=embeddings
+				)
 
-                with data_grid.expander("Show Filters", expanded=False):
-                    st.multiselect(
-                        "Columns",
-                        df_preview.columns.tolist(),
-                        default=df_preview.columns.tolist(),
-                    )
-                    st.slider(
-                        "Max Rows",
-                        min_value=10,
-                        max_value=1000,
-                        value=250,
-                        step=10,
-                    )
-        finally:
-            conn.close( )
+				conn.close( )
+				st.success(
+					f'Inserted {len( embeddings )} embeddings into `{table_name}`.'
+				)
 
+		# ----------------------------
+		# Drop vector table
+		# ----------------------------
+		with col_delete:
+			if st.button( 'Drop Vector Table', type='secondary' ):
+				conn = sqlite3.connect( db_path )
+				cur = conn.cursor( )
+				cur.execute( f'DROP TABLE IF EXISTS {table_name}' )
+				conn.commit( )
+				conn.close( )
+				st.warning( f'Dropped vector table `{table_name}`.' )
+
+		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+
+		# ------------------------------------------------------------------
+		# Verification panel
+		# ------------------------------------------------------------------
+		if st.checkbox( 'Inspect Vector Table' ):
+			conn = sqlite3.connect( db_path )
+			df_preview = pd.read_sql_query(
+				f'SELECT * FROM {table_name} LIMIT 5',
+				conn
+			)
+			conn.close( )
+
+			st.data_editor(
+				df_preview,
+				use_container_width=True,
+				num_rows='dynamic'
+			)
+			
+		# ======================================================================================
+		# Similarity Search (sqlite-vec)
+		# ======================================================================================
+		st.subheader( 'Similarity Search' )
+		
+		query_text = st.text_area(
+			'Query Text',
+			placeholder='Enter text to search for semantically similar chunks…',
+			height=100
+		)
+		
+		top_k = st.slider(
+			'Top-K Results',
+			min_value=1,
+			max_value=20,
+			value=5,
+			step=1
+		)
+		
+		similarity_threshold = st.slider(
+			'Minimum Similarity Threshold',
+			min_value=0.0,
+			max_value=1.0,
+			value=0.0,
+			step=0.01,
+			help='Only results with similarity ≥ threshold will be shown.'
+		)
+
+		
+		if not query_text.strip():
+			st.info( 'Enter a query to run similarity search.' )
+		
+		else:
+			import sqlite3
+			import sqlite_vec
+			from langchain_community.vectorstores import SQLiteVec
+			from langchain_community.embeddings.sentence_transformer import (
+				SentenceTransformerEmbeddings
+			)
+		
+			try:
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
+		
+				embedding_fn = SentenceTransformerEmbeddings(
+					model_name=embedding_model
+				)
+		
+				vector_store = SQLiteVec(
+					connection=conn,
+					table_name=table_name,
+					embedding=embedding_fn
+				)
+		
+				results = vector_store.similarity_search_with_score(
+					query=query_text,
+					k=top_k
+				)
+		
+				conn.close( )
+		
+			except Exception as ex:
+				st.error( f'Similarity search failed: {ex}' )
+				results = None
+				
+		# ------------------------------------------------------------------
+		# Results Rendering (with similarity threshold)
+		# ------------------------------------------------------------------
+		if results:
+			filtered_results = [
+				( doc, score )
+				for ( doc, score ) in results
+				if score >= similarity_threshold
+			]
+		
+			st.caption(
+				f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
+				f'{len(filtered_results)} of {len(results)} results retained.'
+			)
+		
+			if not filtered_results:
+				st.warning(
+					'No results met the selected similarity threshold. '
+					'Try lowering the threshold or increasing Top-K.'
+				)
+		
+			for rank, ( doc, score ) in enumerate( filtered_results, start=1 ):
+				with st.expander(
+					f'#{rank} — Similarity Score: {score:.4f}',
+					expanded=( rank == 1 )
+				):
+					st.text_area(
+						'Chunk Text',
+						doc.page_content,
+						height=200,
+						disabled=True
+					)
+		
+		else:
+			st.info( 'No results to display.' )
+
+		# ------------------------------------------------------------------
+		# Results Rendering
+		# ------------------------------------------------------------------
+		if results:
+			st.caption(
+				'Results are ordered by semantic similarity (higher is more similar).'
+			)
+		
+			for rank, ( doc, score ) in enumerate( results, start=1 ):
+				with st.expander(
+					f'#{rank} — Similarity Score: {score:.4f}',
+					expanded=( rank == 1 )
+				):
+					st.text_area(
+						'Chunk Text',
+						doc.page_content,
+						height=200,
+						disabled=True
+					)
+		
+		else:
+			st.info( 'No results to display.' )
+	
+	
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
