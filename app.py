@@ -57,6 +57,7 @@ import sqlite3
 import math
 import nltk
 import os
+import numpy as np
 import pandas as pd
 from PIL import Image
 from pathlib import Path
@@ -73,6 +74,11 @@ import time
 import tempfile
 from typing import List
 from langchain_core.documents import Document
+from langchain_community.embeddings.sentence_transformer import (
+    SentenceTransformerEmbeddings,
+)
+from langchain_community.vectorstores import SQLiteVec
+
 from loaders import (
 	TextLoader,
 	CsvLoader,
@@ -2149,7 +2155,6 @@ with tabs[ 1 ]:
 			st.text_area( 'Processed Text', st.session_state.processed_text or '',
 				height=700, key='processed_text_view' )
 
-
 # ======================================================================================
 # Tab - Semantic Analysis
 # ======================================================================================
@@ -2516,10 +2521,14 @@ with tabs[ 2 ]:
 		st.error( f'WordNet semantic relations failed: {e}' )
 
 # ======================================================================================
-# Tab - Data Chunking
+# Tab - Data Tokenizaation
 # ======================================================================================
 with tabs[ 3 ]:
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='center' )
+	
+	# ------------------------------------------------------------------
+	# Session-state
+	# ------------------------------------------------------------------
 	df_frequency = st.session_state.get( 'df_frequency' )
 	dr_tables = st.session_state.get( 'df_tables' )
 	df_count = st.session_state.get( 'df_count' )
@@ -2533,61 +2542,229 @@ with tabs[ 3 ]:
 	chunked_documents = st.session_state.get( 'chunked_documents' )
 	active_table = st.session_state.get( 'active_table' )
 	chunk_modes = st.session_state.get( 'chunk_modes' )
+	processed_text = st.session_state.get( 'processed_text' )
+
+	def pad_or_trim_row( row: list, size: int ) -> list:
+		"""
+			Purpose:
+			--------
+			Normalizes a token row to a fixed width by trimming or right-padding with blanks.
+
+			Parameters:
+			-----------
+			row : list
+				The token row to normalize.
+
+			size : int
+				The required fixed width.
+
+			Returns:
+			--------
+			list
+				A list of length == size.
+		"""
+		if not isinstance( row, list ):
+			row = [ ]
+		if len( row ) >= size:
+			return row[ :size ]
+		return row + ( [ '' ] * ( size - len( row ) ) )
 	
+	# ------------------------------------------------------------------
+	# Fixed vector-space schema
+	# ------------------------------------------------------------------
+	dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
+		'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
+
+	# ------------------------------------------------------------------
+	# LEFT COLUMN — Chunked Data (lines)
+	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
-		if st.session_state.processed_text:
+
+		if isinstance( processed_text, str ) and processed_text.strip( ):
 			processor = TextParser( )
 			lines = processor.split_sentences( text=processed_text, size=15 )
-			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
-				num_rows='dynamic', width='stretch', height='stretch' )
 			st.session_state.lines = lines
+
+			st.data_editor(
+				pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
+				num_rows='dynamic',
+				width='stretch',
+				height='stretch'
+			)
 		else:
 			st.info( 'Run preprocessing first' )
+			
+	# ------------------------------------------------------------------
+	# RIGHT COLUMN — Vector Space View (D0..D14) + df_chunks
+	# ------------------------------------------------------------------
 	with chunk_col:
-		dimensions = [ 'D0',
-		               'D1',
-		               'D2',
-		               'D3',
-		               'D4',
-		               'D5',
-		               'D6',
-		               'D7',
-		               'D8',
-		               'D9',
-		               'D10',
-		               'D11',
-		               'D12',
-		               'D13',
-		               'D14' ]
-		if isinstance( lines, (list, tuple) ) and isinstance( dimensions, (list, tuple) ):
+		if isinstance( lines, ( list, tuple ) ) and isinstance( dimensions, ( list, tuple ) ):
 			st.text( f"Vector Space: {len( lines ) * len( dimensions ):,}" )
 		else:
 			st.caption( "Vector space not available yet." )
-		if st.session_state.processed_text:
-			processor = TextParser( )
-			lines = processor.split_sentences( text=processed_text, size=15 )
-			_chunks = [ l.split( ' ' ) for l in lines ]
+
+		if isinstance( processed_text, str ) and processed_text.strip( ):
+			if not isinstance( lines, list ) or not lines:
+				processor = TextParser( )
+				lines = processor.split_sentences( text=processed_text, size=15 )
+				st.session_state.lines = lines
+			_chunks = [ (l.split( ) if isinstance( l, str ) else [ ]) for l in lines ]
+			_chunks = [ pad_or_trim_row( r, size=len( dimensions ) ) for r in _chunks ]
 			st.session_state.chunked_documents = _chunks
 			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
+			st.session_state.df_chunks = df_chunks
 			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
 	
+	# ------------------------------------------------------------------
+	# Trailing blocks (preserve exactly — no omissions)
+	# ------------------------------------------------------------------
 	documents = st.session_state.get( 'documents' )
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
+
 	if st.session_state.documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
 	elif loader_name is None:
 		st.warning( 'No active loader found.' )
 	else:
 		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
-	
+
 	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
-	
+
+
+# ======================================================================================
+# Diagnostics — Token & Sentence Distributions
+# ======================================================================================
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.subheader( 'Tokenization Diagnostics' )
+
+	row1_col1, row1_col2 = st.columns( [ 0.5, 0.5 ], border=True )
+	
+	# ------------------------------------------------------------------
+	# Top-N Token Frequency Histogram
+	# ------------------------------------------------------------------
+	with row1_col1:
+		st.caption( 'Top-N Token Frequency Distribution' )
+	
+		df_token_frequency = st.session_state.get( 'df_token_frequency' )
+	
+		if isinstance( df_token_frequency, pd.DataFrame ) and not df_token_frequency.empty:
+			top_n = st.slider(
+				'Top-N Tokens',
+				min_value=10,
+				max_value=100,
+				value=30,
+				step=10,
+				key='token_freq_top_n'
+			)
+	
+			df_top = df_token_frequency.head( top_n )
+	
+			st.bar_chart(
+				df_top.set_index( 'Token' )[ 'Frequency' ],
+				use_container_width=True
+			)
+		else:
+			st.info( 'Token frequency data not available.' )
+	
+	# ------------------------------------------------------------------
+	# Sentence Length Distribution
+	# ------------------------------------------------------------------
+	with row1_col2:
+		st.caption( 'Sentence Length Distribution (Tokens per Sentence)' )
+	
+		sentences = st.session_state.get( 'sentences' )
+	
+		if isinstance( sentences, list ) and sentences:
+			sentence_lengths = [ len( s.split( ) ) for s in sentences if isinstance( s, str ) ]
+	
+			if sentence_lengths:
+				df_sentence_lengths = pd.DataFrame(
+					sentence_lengths,
+					columns=[ 'Tokens per Sentence' ]
+				)
+	
+				st.bar_chart(
+					df_sentence_lengths[ 'Tokens per Sentence' ],
+					use_container_width=True
+				)
+			else:
+				st.info( 'No valid sentence lengths computed.' )
+		else:
+			st.info( 'Sentence data not available.' )
+
+	# ======================================================================================
+	# Diagnostics — Sparsity & Embedding Readiness
+	# ======================================================================================
+	row2_col1, row2_col2 = st.columns( [ 0.5, 0.5 ], border=True )
+	
+	# ------------------------------------------------------------------
+	# Padding / Sparsity Analysis (D0–D14)
+	# ------------------------------------------------------------------
+	with row2_col1:
+		st.caption( 'Token Grid Sparsity (Padding Analysis)' )
+	
+		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens' )
+	
+		if isinstance( df_sentence_tokens, pd.DataFrame ) and not df_sentence_tokens.empty:
+			total_cells = df_sentence_tokens.shape[ 0 ] * df_sentence_tokens.shape[ 1 ]
+			empty_cells = ( df_sentence_tokens == '' ).sum( ).sum( )
+			filled_cells = total_cells - empty_cells
+	
+			padding_ratio = empty_cells / total_cells if total_cells > 0 else 0.0
+			fill_ratio = filled_cells / total_cells if total_cells > 0 else 0.0
+	
+			m1, m2, m3 = st.columns( 3 )
+			m1.metric( 'Total Cells', f'{total_cells:,}' )
+			m2.metric( 'Filled Cells', f'{filled_cells:,}' )
+			m3.metric( 'Padding %', f'{padding_ratio:.1%}' )
+	
+			st.progress( fill_ratio )
+		else:
+			st.info( 'Sentence token grid not available.' )
+	
+		# ------------------------------------------------------------------
+		# Embedding Readiness Scorecard
+		# ------------------------------------------------------------------
+		with row2_col2:
+			st.caption( 'Embedding Readiness Scorecard' )
+		
+			tokens = st.session_state.get( 'tokens' )
+			token_counts = (
+				Counter( tokens )
+				if isinstance( tokens, list ) and tokens
+				else None
+			)
+		
+			if token_counts:
+				total_tokens = len( tokens )
+				unique_tokens = len( token_counts )
+				hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
+				hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
+		
+				avg_sentence_len = (
+					sum( len( s.split( ) ) for s in sentences ) / len( sentences )
+					if isinstance( sentences, list ) and sentences
+					else 0.0
+				)
+		
+				r1, r2 = st.columns( 2 )
+				r1.metric( 'Total Tokens', f'{total_tokens:,}' )
+				r2.metric( 'Unique Tokens', f'{unique_tokens:,}' )
+		
+				r3, r4 = st.columns( 2 )
+				r3.metric( 'Avg Tokens / Sentence', f'{avg_sentence_len:.1f}' )
+				r4.metric( 'Hapax Ratio', f'{hapax_ratio:.1%}' )
+		
+				st.caption(
+					'Lower padding and moderate hapax ratios generally yield more stable embeddings.'
+				)
+			else:
+				st.info( 'Token data not available.' )
 
 # ======================================================================================
 # Tab — Tensor Embeddings
@@ -2971,6 +3148,165 @@ with tabs[ 4 ]:
 			disabled=True,
 			key=k( "embedding_output_view" ),
 		)
+
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	
+	# ======================================================================================
+	# Tensor Embedding — Dimensionality Reduction Diagnostics (t-SNE / UMAP)
+	# ======================================================================================
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.subheader( 'Embedding Diagnostics (t-SNE / UMAP)' )
+	
+	embeddings = st.session_state.get( 'embeddings' )
+	chunked_documents = st.session_state.get( 'chunked_documents' )
+	
+	# ------------------------------------------------------------------
+	# Guard: embeddings availability
+	# ------------------------------------------------------------------
+	if not isinstance( embeddings, ( list, np.ndarray ) ):
+		st.info( 'Generate embeddings to enable dimensionality reduction diagnostics.' )
+	else:
+		emb_array = np.asarray( embeddings )
+		if emb_array.ndim != 2 or emb_array.shape[ 0 ] < 5:
+			st.warning( 'At least 5 valid embedding vectors are required for meaningful diagnostics.' )
+		else:
+			ctrl_col1, ctrl_col2, ctrl_col3 = st.columns( 3, border=True )
+			with ctrl_col1:
+				reduction_method = st.selectbox( 'Reduction Method', options=[ 't-SNE', 'UMAP' ],
+					key='embedding_reduction_method' )
+	
+			with ctrl_col2:
+				if reduction_method == 't-SNE':
+					perplexity = st.slider(
+						't-SNE Perplexity',
+						min_value=5,
+						max_value=min( 50, emb_array.shape[ 0 ] - 1 ),
+						value=30,
+						step=5,
+						key='tsne_perplexity'
+					)
+				else:
+					n_neighbors = st.slider(
+						'UMAP Neighbors',
+						min_value=5,
+						max_value=min( 50, emb_array.shape[ 0 ] - 1 ),
+						value=15,
+						step=5,
+						key='umap_neighbors'
+					)
+	
+			with ctrl_col3:
+				random_state = st.number_input(
+					'Random Seed',
+					min_value=0,
+					value=42,
+					step=1,
+					key='embedding_reduction_seed'
+				)
+	
+			# ------------------------------------------------------------------
+			# Dimensionality reduction (diagnostic only)
+			# ------------------------------------------------------------------
+			reduced = None
+			error_message = None
+	
+			try:
+				if reduction_method == 't-SNE':
+					from sklearn.manifold import TSNE
+	
+					reducer = TSNE(
+						n_components=2,
+						perplexity=perplexity,
+						random_state=random_state,
+						init='pca',
+						learning_rate='auto'
+					)
+	
+					reduced = reducer.fit_transform( emb_array )
+	
+				else:
+					import umap
+	
+					reducer = umap.UMAP(
+						n_components=2,
+						n_neighbors=n_neighbors,
+						random_state=random_state,
+						min_dist=0.1
+					)
+	
+					reduced = reducer.fit_transform( emb_array )
+	
+			except Exception as ex:
+				error_message = str( ex )
+	
+			# ------------------------------------------------------------------
+			# Visualization
+			# ------------------------------------------------------------------
+			if error_message:
+				st.error( f'Dimensionality reduction failed: {error_message}' )
+	
+			elif isinstance( reduced, np.ndarray ) and reduced.shape[ 1 ] == 2:
+				df_reduced = pd.DataFrame(
+					reduced,
+					columns=[ 'X', 'Y' ]
+				)
+	
+				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
+	
+				if isinstance( chunked_documents, list ):
+					df_reduced[ 'Preview' ] = [
+						( d[ :120 ] + '…' )
+						if isinstance( d, str ) and len( d ) > 120
+						else str( d )
+						for d in chunked_documents
+					]
+				else:
+					df_reduced[ 'Preview' ] = ''
+	
+				# ----------------------------
+				# Scatter plot container
+				# ----------------------------
+				chart_container = st.container()
+				with chart_container:
+					st.caption(
+						'Each point represents one embedded chunk. '
+						'Proximity reflects semantic similarity.'
+					)
+					st.scatter_chart(
+						df_reduced,
+						x='X',
+						y='Y',
+						size=60,
+						use_container_width=True
+					)
+	
+				# ----------------------------
+				# Tabular inspection (optional)
+				# ----------------------------
+				with st.expander( 'View Reduced Coordinates (Table)', expanded=False ):
+					st.data_editor(
+						df_reduced,
+						use_container_width=True,
+						num_rows='dynamic'
+					)
+	
+				# ----------------------------
+				# Interpretation notes
+				# ----------------------------
+				with st.expander( 'ℹ️ Interpretation Notes', expanded=False ):
+					st.markdown(
+						"""
+	- **t-SNE** emphasizes local neighborhoods; global distances are not meaningful.
+	- **UMAP** preserves more global structure and is typically more stable.
+	- Heavy overlap may indicate:
+	  - chunk sizes are too small
+	  - boilerplate text dominance
+	  - insufficient preprocessing
+	- These diagnostics are **read-only** and are not persisted.
+						"""
+					)
+
+
 
 # ======================================================================================
 # Tab — Vector Database
