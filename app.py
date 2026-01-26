@@ -3330,15 +3330,6 @@ with tabs[ 6 ]:
 			'Generate embeddings before persisting to the vector database.'
 		)
 
-	else:
-		import sqlite3
-		import sqlite_vec
-		import numpy as np
-		from langchain_community.vectorstores import SQLiteVec
-		from langchain_community.embeddings.sentence_transformer import (
-			SentenceTransformerEmbeddings
-		)
-
 		# ------------------------------------------------------------------
 		# Derive vector metadata
 		# ------------------------------------------------------------------
@@ -3477,15 +3468,6 @@ with tabs[ 6 ]:
 		
 		if not query_text.strip():
 			st.info( 'Enter a query to run similarity search.' )
-		
-		else:
-			import sqlite3
-			import sqlite_vec
-			from langchain_community.vectorstores import SQLiteVec
-			from langchain_community.embeddings.sentence_transformer import (
-				SentenceTransformerEmbeddings
-			)
-		
 			try:
 				conn = sqlite3.connect( db_path )
 				conn.enable_load_extension( True )
@@ -3547,30 +3529,6 @@ with tabs[ 6 ]:
 		
 		else:
 			st.info( 'No results to display.' )
-
-		# ------------------------------------------------------------------
-		# Results Rendering
-		# ------------------------------------------------------------------
-		if results:
-			st.caption(
-				'Results are ordered by semantic similarity (higher is more similar).'
-			)
-		
-			for rank, ( doc, score ) in enumerate( results, start=1 ):
-				with st.expander(
-					f'#{rank} — Similarity Score: {score:.4f}',
-					expanded=( rank == 1 )
-				):
-					st.text_area(
-						'Chunk Text',
-						doc.page_content,
-						height=200,
-						disabled=True
-					)
-		
-		else:
-			st.info( 'No results to display.' )
-	
 	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	

@@ -4,7 +4,8 @@ ___
 
 
 A modular text-processing framework baseed in python tailored for analysts, data scientists,
-and machine learning practitioners working with unstructured text. It unifies high-performance NLP
+and machine learning practitioners working with unstructured text. Chonky provideds a text-processing 
+pipeline from ingestion through preprocessing, tokenization, embedding, semantic inspection, and vector persistence.  It unifies high-performance NLP
 utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
 feature extraction, and document analysis.
 
@@ -50,7 +51,7 @@ pip install -r requirements.txt
 ```
 
 
-## 🧠 `Text` Class
+## 🧠 `Text` 
 
 - General-purpose text processor.
   - Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
@@ -93,7 +94,7 @@ pip install -r requirements.txt
     | `encode_sentences`         | Generate contextual sentence embeddings w/ SentenceTransformer.|
  
 
-## 📄 `Word` Class
+## 📄 `Word` 
 
 - Parses `.docx` files using Python-docx.
 - Sentence segmentation, vocabulary extraction, frequency computation.
@@ -108,7 +109,7 @@ pip install -r requirements.txt
   | `summarize()` | Prints summary stats: paragraphs, sentences, vocab size. |
 
 
-## 📑 `PDF` Class
+## 📑 `PDF` 
 
 - Reads `.pdf` files using `PyMuPDF`.
 - Extracts structured or unstructured text and exports CSV/Excel.
@@ -229,23 +230,191 @@ pip install -r requirements.txt
   processor.clean_files("data/input_dir", "data/cleaned_output_dir")     # 🧼 Clean .txt files in bulk
   processor.convert_jsonl("data/cleaned_output_dir", "data/jsonl_output_dir")  # 🔄 .txt ➡️ .jsonl
 ```
+### Application Tabs (High-Level Flow)
+
+1. **Loading**
+2. **Processing**
+3. **Data Tokenization**
+4. **Tensor Embedding**
+5. **Vector Database**
+
+Each tab is responsible for a **single stage** in the pipeline and only consumes outputs from upstream stages, ensuring deterministic execution and reproducibility.
+
+
+
+## 📥 Loading Tab — Multi-Source Text Acquisition
+
+The Loading tab supports **single-source document ingestion** from multiple loaders, including:
+
+* Plain text
+* PDF documents
+* Word documents
+* Web pages
+* Wikipedia articles
+* NLTK corpora
+* Web crawling sources
+
+All loaders normalize extracted content into a single **raw text buffer**, which is then propagated downstream for processing. Only one document or request is active at a time to preserve provenance and reproducibility.
+
+
+## 🧼 Processing Tab — Deterministic Text Transformation
+
+The Processing tab provides a **repeatable, multi-pass text cleaning pipeline** with fine-grained controls, including:
+
+* HTML, Markdown, XML, and encoding removal
+* Symbol, numeral, and punctuation stripping
+* Stopword removal
+* Lemmatization
+* Error and fragment cleanup
+* Whitespace normalization
+
+### Key Characteristics
+
+* Processing can be applied **multiple times** to the same text.
+* Each run deterministically replaces the previous processed output.
+* Timing metrics and before/after statistics are computed automatically.
+
+Outputs from this tab form the **authoritative processed text** for all downstream analysis.
+
+
+
+## 🔤 Data Tokenization Tab — Token & Sentence Diagnostics
+
+The Data Tokenization tab transforms processed text into **sentence- and token-level representations** suitable for chunking and embedding.
+
+### Core Outputs
+
+* Sentence segmentation
+* Token lists
+* Token frequency distributions
+* Fixed-width token grids (D0–D14)
+
+### Diagnostic Visualizations
+
+This tab includes analytical panels designed to validate embedding readiness:
+
+* **Top-N token frequency histograms**
+* **Sentence length distributions**
+* **Token grid sparsity / padding analysis**
+* **Embedding readiness scorecard** (tokens, vocabulary, hapax ratio)
+
+These diagnostics help identify:
+
+* Boilerplate dominance
+* Over-truncation or padding
+* Low-information text regions
+
+
+
+## 🧠 Tensor Embedding Tab — Embedding Generation & Inspection
+
+The Tensor Embedding tab generates vector embeddings for tokenized chunks using supported embedding providers and models.
+
+### Supported Capabilities
+
+* SentenceTransformer-based embeddings
+* Model-aware dimensional validation
+* Batch embedding generation
+
+### Semantic Diagnostics (t-SNE / UMAP)
+
+Chonky includes **interactive dimensionality-reduction diagnostics** to visually inspect embedding quality:
+
+* **t-SNE** for local neighborhood analysis
+* **UMAP** for global structure preservation
+* Adjustable hyperparameters (perplexity, neighbors, seed)
+* Interactive scatter plots with chunk previews
+* Optional tabular inspection of reduced coordinates
+
+These diagnostics are **read-only** and are intended solely for validating embedding quality prior to persistence.
+
+
+
+## 🗄️ Vector Database Tab — Vector-Native Persistence
+
+The Vector Database tab replaces generic SQL CRUD with **vector-aware persistence**, tailored specifically for embedding workflows.
+
+### Storage Stack
+
+* **sqlite-vec** for vector storage and ANN search
+* **LangChain Community VectorStores**
+* **SentenceTransformer embeddings**
+
+### Vector-Aware CRUD Semantics
+
+| Operation | Vector Meaning                                  |
+| --------- | ----------------------------------------------- |
+| Create    | Create a vector table with fixed dimensionality |
+| Insert    | Persist chunk embeddings with provenance        |
+| Read      | Inspect metadata and sample rows                |
+| Delete    | Drop entire vector tables                       |
+
+Tables are deterministically named using:
+
+```
+<document>__<provider>__<model>__<dimension>
+```
+
+This prevents accidental mixing of embeddings from different models or dimensions.
+
+
+
+## 🔍 Similarity Search UI
+
+Chonky includes an **interactive semantic similarity search interface** built directly on sqlite-vec.
+
+### Features
+
+* Free-text query input
+* Top-K result selection
+* **Similarity threshold slider** for precision control
+* Ranked semantic matches with cosine similarity scores
+* Expandable result previews
+
+Similarity search is **read-only** and does not mutate stored vectors, making it safe for exploratory analysis and RAG workflows.
+
+
+
+## 🧠 RAG-Ready by Design
+
+With persistent vector storage and similarity search, Chonky is ready for:
+
+* Retrieval-Augmented Generation (RAG)
+* Semantic document exploration
+* Chunk-level knowledge retrieval
+* Integration with LangChain retrievers and chains
+
+
+
+Below is an **updated, drop-in replacement** for your **📦 Dependencies** table that reflects **all functionality present in the current `app.py`**, including:
+
+* Streamlit UI
+* Embedding generation
+* t-SNE / UMAP diagnostics
+* sqlite-vec persistence
+* LangChain vector stores and RAG usage
 
 ## 📦 Dependencies
 
-| Package         | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `nltk`          | Natural language toolkit for tokenization, stopwords, tagging, etc.         |
-| `gensim`        | Library for Word2Vec and topic modeling.                                    |
-| `spacy`         | Industrial-strength NLP for tagging and parsing.                            |
-| `scikit-learn`  | Machine learning library used for TF-IDF and dimensionality reduction.      |
-| `pandas`        | Data analysis and manipulation tool.                                        |
-| `numpy`         | Fundamental package for scientific computing.                               |
-| `tiktoken`      | OpenAI’s tokenizer for GPT models.                                          |
-| `transformers`  | HuggingFace’s model and tokenizer interface.                               |
-| `pymupdf`       | PDF extraction with PyMuPDF (a.k.a. `fitz`).                               |
-| `python-docx`   | Extracts text from Microsoft Word `.docx` documents.                        |
-| `beautifulsoup4`| Parses and cleans HTML/XML content.                                         |
-| `pydantic`      | Data validation and parsing with Python type hints.                         |
+| Package                 | Description                                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `streamlit`             | Interactive web application framework used to build the Chonky UI.                              |
+| `nltk`                  | Natural Language Toolkit for tokenization, stopwords, lemmatization, and sentence segmentation. |
+| `gensim`                | Library for Word2Vec and traditional topic modeling utilities.                                  |
+| `spacy`                 | Industrial-strength NLP for linguistic parsing and tagging (optional advanced processing).      |
+| `scikit-learn`          | Machine learning utilities, including TF-IDF, t-SNE, clustering, and supporting metrics.        |
+| `umap-learn`            | UMAP dimensionality-reduction algorithm used for embedding diagnostics and visualization.       |
+| `pandas`                | Data analysis and tabular manipulation for metrics, diagnostics, and previews.                  |
+| `numpy`                 | Core numerical computing library for vector and tensor operations.                              |
+| `tiktoken`              | OpenAI tokenizer for GPT-family models (token counting and diagnostics).                        |
+| `transformers`          | Hugging Face model and tokenizer interfaces used by some embedding pipelines.                   |
+| `sentence-transformers` | Sentence-level embedding models used for vector generation and semantic search.                 |
+| `langchain-community`   | LangChain vector stores, embedding wrappers, and RAG utilities (including `SQLiteVec`).         |
+| `sqlite-vec`            | SQLite extension providing vector storage and approximate nearest-neighbor (ANN) search.        |
+| `pymupdf`               | PDF text extraction via PyMuPDF (a.k.a. `fitz`).                                                |
+| `python-docx`           | Extracts text from Microsoft Word `.docx` documents.                                            |
+| `beautifulsoup4`        | Parses and cleans HTML/XML content from web sources.                                            |
+| `pydantic`              | Data validation and parsing using Python type hints.                                            |
 
 
 
