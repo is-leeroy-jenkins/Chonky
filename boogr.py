@@ -49,7 +49,7 @@ from pydantic import BaseModel
 import traceback
 import FreeSimpleGUI as sg
 from sys import exc_info
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import html
 import re
 import unicodedata
