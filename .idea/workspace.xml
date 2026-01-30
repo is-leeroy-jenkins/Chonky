@@ -5,9 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c25ef788-6718-454d-a135-d33a15dd640d" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Chonky.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Chonky.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,7 +101,7 @@
       <workItem from="1769261528925" duration="24726000" />
       <workItem from="1769368165810" duration="10673000" />
       <workItem from="1769441751783" duration="7904000" />
-      <workItem from="1769794968753" duration="585000" />
+      <workItem from="1769794968753" duration="1416000" />
     </task>
     <task id="LOCAL-00001" summary="yp">
       <option name="closed" value="true" />
@@ -304,7 +303,15 @@
       <option name="project" value="LOCAL" />
       <updated>1769462460409</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="update">
+      <option name="closed" value="true" />
+      <created>1769795980349</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1769795980349</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
