@@ -42,7 +42,13 @@
   ******************************************************************************************
 '''
 from __future__ import annotations
+import sys
+import types
 
+
+if "FreeSimpleGUI" not in sys.modules:
+    sys.modules["FreeSimpleGUI"] = types.ModuleType("FreeSimpleGUI")
+    
 import base64
 from collections import Counter
 
@@ -95,16 +101,7 @@ from loaders import (
 	XmlLoader
 )
 
-IS_STREAMLIT = (
-    "STREAMLIT_SERVER_RUNNING" in os.environ
-    or "streamlit" in os.environ.get("PYTHONPATH", "").lower()
-)
 
-if IS_STREAMLIT:
-    from processors import Processor, TextParser, WordParser, PdfParser
-else:
-    from processors import Processor, TextParser, WordParser, PdfParser
-    
 from embedders import GPT, Grok, Gemini
 
 try:
