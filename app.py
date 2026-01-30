@@ -61,16 +61,6 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from pathlib import Path
-IS_STREAMLIT = (
-    "STREAMLIT_SERVER_RUNNING" in os.environ
-    or "streamlit" in os.environ.get("PYTHONPATH", "").lower()
-)
-
-if IS_STREAMLIT:
-    from processors import Processor, TextParser, WordParser, PdfParser
-else:
-    from processors import Processor, TextParser, WordParser, PdfParser
-    
 import re
 import streamlit as st
 from streamlit_extras.dataframe_explorer import dataframe_explorer
@@ -105,6 +95,16 @@ from loaders import (
 	XmlLoader
 )
 
+IS_STREAMLIT = (
+    "STREAMLIT_SERVER_RUNNING" in os.environ
+    or "streamlit" in os.environ.get("PYTHONPATH", "").lower()
+)
+
+if IS_STREAMLIT:
+    from processors import Processor, TextParser, WordParser, PdfParser
+else:
+    from processors import Processor, TextParser, WordParser, PdfParser
+    
 from embedders import GPT, Grok, Gemini
 
 try:
