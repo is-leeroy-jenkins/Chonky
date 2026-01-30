@@ -79,6 +79,7 @@ from langchain_community.embeddings.sentence_transformer import (
     SentenceTransformerEmbeddings,
 )
 from langchain_community.vectorstores import SQLiteVec
+from processors import Processor, TextParser, WordParser, PdfParser
 
 from loaders import (
 	TextLoader,
