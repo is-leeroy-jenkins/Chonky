@@ -264,7 +264,8 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 # ======================================================================================
 # Page Configuration
 # ======================================================================================
-st.set_page_config( page_title='Chonky', layout='wide', page_icon=cfg.ICON )
+st.set_page_config( page_title='Chonky', layout='wide',
+    page_icon=cfg.ICON, initial_sidebar_state='collapsed' )
 
 # ======================================================================================
 # Headers/Title
