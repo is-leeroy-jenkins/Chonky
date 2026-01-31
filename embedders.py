@@ -318,7 +318,8 @@ class Gemini( ):
 		self.credentials = None
 		self.http_options = HttpOptions( api_version=self.api_version )
 		self.client = genai.Client( vertexai=self.use_vertex, api_key=self.api_key,
-			project=self.project, location=self.location, http_options=self.http_options )
+			project=self.project, location=self.location,
+			credentials=self.credentials, http_options=self.http_options )
 		self.embedding = None
 		self.embeddings = None
 		self.response = None
