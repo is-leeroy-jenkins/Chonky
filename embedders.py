@@ -283,6 +283,8 @@ class Gemini( ):
 	'''
 	number: Optional[ int ]
 	api_key: Optional[ str ]
+	project: Optional[ str ]
+	location: Optional[ str ]
 	prompt: Optional[ str ]
 	model: Optional[ str ]
 	response_format: Optional[ str ]
@@ -304,14 +306,16 @@ class Gemini( ):
 	
 	def __init__( self, version: str='v1alpha', use_ai: bool=False, dimensions: int=768 ):
 		super( ).__init__( )
-		self.api_key = cfg.GOOGLE_API_KEY
+		self.api_key = cfg.GEMINI_API_KEY
+		self.project = cfg.GOOGLE_CLOUD_PROJECT
+		self.location = cfg.GOOGLE_CLOUD_LOCATION
 		self.model = None
 		self.api_version = version
 		self.use_vertex = use_ai
 		self.dimensions = dimensions
 		self.http_options = HttpOptions( api_version=self.api_version )
 		self.client = genai.Client( vertexai=self.use_vertex, api_key=self.api_key,
-			http_options=self.http_options )
+			project=self.project, location=self.location, http_options=self.http_options )
 		self.embedding = None
 		self.embeddings = None
 		self.response = None
