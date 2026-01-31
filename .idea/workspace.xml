@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c25ef788-6718-454d-a135-d33a15dd640d" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/embedders.py" beforeDir="false" afterPath="$PROJECT_DIR$/embedders.py" afterDir="false" />
-    </list>
+    <list default="true" id="c25ef788-6718-454d-a135-d33a15dd640d" name="Changes" comment="update" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -102,7 +100,7 @@
       <workItem from="1769441751783" duration="7904000" />
       <workItem from="1769794968753" duration="1605000" />
       <workItem from="1769797247631" duration="1905000" />
-      <workItem from="1769867751672" duration="5523000" />
+      <workItem from="1769867751672" duration="5836000" />
     </task>
     <task id="LOCAL-00001" summary="yp">
       <option name="closed" value="true" />
@@ -416,7 +414,15 @@
       <option name="project" value="LOCAL" />
       <updated>1769872736194</updated>
     </task>
-    <option name="localTasksCounter" value="40" />
+    <task id="LOCAL-00040" summary="update">
+      <option name="closed" value="true" />
+      <created>1769873382675</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1769873382675</updated>
+    </task>
+    <option name="localTasksCounter" value="41" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
