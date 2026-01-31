@@ -304,7 +304,7 @@ class Gemini( ):
 	file_path: Optional[ str ]
 	response_modalities: Optional[ str ]
 	
-	def __init__( self, version: str='v1alpha', use_ai: bool=False, dimensions: int=768 ):
+	def __init__( self, version: str='v1alpha', use_ai: bool=True, dimensions: int=768 ):
 		super( ).__init__( )
 		self.api_key = cfg.GEMINI_API_KEY
 		self.project = cfg.GOOGLE_CLOUD_PROJECT
