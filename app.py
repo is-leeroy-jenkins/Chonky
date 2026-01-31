@@ -69,6 +69,7 @@ from PIL import Image
 from pathlib import Path
 import re
 import sqlite3
+import sqlite_vec
 import sys
 import statistics
 import streamlit_extras
@@ -261,6 +262,11 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 				unsafe_allow_html=True,
 			)
 
+def normalize_embeddings( emb_array: np.ndarray ) -> np.ndarray:
+    if isinstance( emb_array, np.ndarray ) and emb_array.ndim == 1:
+        return emb_array.reshape( 1, -1 )
+    return emb_array
+
 # ======================================================================================
 # Page Configuration
 # ======================================================================================
@@ -283,7 +289,7 @@ for key, default in SESSION_STATE_DEFAULTS.items( ):
 # Sidebar
 # ======================================================================================
 with st.sidebar:
-	st.header( 'Embedders' )
+	st.subheader( 'Embedders' )
 	st.caption( '' )
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( '' )
@@ -1871,295 +1877,306 @@ with tabs[ 0 ]:
 # Tab — Text Processing
 # ======================================================================================
 with tabs[ 1 ]:
-	raw_text = st.session_state.get( 'raw_text' )
-	processed_text = st.session_state.get( 'processed_text' )
-	start_time = st.session_state.get( 'start_time', 0.0 )
-	end_time = st.session_state.get( 'end_time', 0.0 )
-	total_time = st.session_state.get( 'total_time', 0.0 )
-	has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
-	
-	# ------------------------------------------------------------------
-	# Layout
-	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ], border=True )
-	with left:
-		active = st.session_state.get( 'active_loader' )
-		
-		# ==============================================================
-		# Common Text Processing (TextParser)
-		# ==============================================================
-		with st.expander( '🧠 Text Processing', expanded=True ):
-			remove_html = st.checkbox( 'Remove HTML',
-				help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
-			remove_markdown = st.checkbox( 'Remove Markdown',
-				help=r'Removes symobls used in .md files #, ##, ###, -, etc' )
-			remove_symbols = st.checkbox( 'Remove Symbols',
-				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~' )
-			remove_numbers = st.checkbox( 'Remove Numbers',
-				help='Removes numeric digits 0 thour 9' )
-			remove_xml = st.checkbox( 'Remove XML',
-				help=r'Removes xml tags ( ex. <xml> & <\xml> )' )
-			remove_punctuation = st.checkbox( 'Remove Punctuation',
-				help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence delimiters' )
-			remove_images = st.checkbox( 'Remove Images',
-				help=r'Remove image from text, including Markdown, HTML <img> tags, and  image URLs' )
-			remove_stopwords = st.checkbox( 'Remove Stopwords',
-				help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
-			remove_numerals = st.checkbox( 'Remove Numerals',
-				help='Removes roman numbers I, II, IV, XI, etc' )
-			remove_encodings = st.checkbox( 'Remove Encoding',
-				help=r'Removes encoding artifacts and over-encoded byte strings' )
-			normalize_text = st.checkbox( 'Normalize (lowercase)' )
-			lemmatize_text = st.checkbox( 'Lemmatize',
-				help='Reduces words to their base or dictionary form' )
-			remove_fragments = st.checkbox( 'Remove Fragments',
-				help='Removes words less than 3 characters in length' )
-			remove_errors = st.checkbox( 'Remove Errors',
-				help='Removes misspelled words' )
-			collapse_whitespace = st.checkbox( 'Collapse Whitespace',
-				help='Removes extra lines' )
-			compress_whitespace = st.checkbox( 'Compress Whitespace',
-				help='Removes extra spaces' )
-		
-		# ==============================================================
-		# Word-Specific Processing (WordParser)
-		# ==============================================================
-		extract_tables = extract_paragraphs = False
-		with st.expander( '📄 Word Processing', expanded=False ):
-			if active == 'WordLoader':
-				extract_tables = st.checkbox( 'Extract Tables' )
-				extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
-			else:
-				st.caption( 'Available when Word documents are loaded.' )
-		
-		# ==============================================================
-		# PDF-Specific Processing (PdfParser)
-		# ==============================================================
-		remove_headers = join_hyphenated = False
-		with st.expander( '📕 PDF Processing', expanded=False ):
-			if active == 'PdfLoader':
-				remove_headers = st.checkbox( 'Remove Headers/Footers' )
-				join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
-			else:
-				st.caption( 'Available when PDF documents are loaded.' )
-		
-		# ==============================================================
-		# HTML-Specific Processing (Structural)
-		# ==============================================================
-		strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
-		with st.expander( '🌐 HTML Processing', expanded=False ):
-			if active == 'HtmlLoader':
-				strip_scripts = st.checkbox( 'Strip <script> / <style>' )
-				keep_headings = st.checkbox( 'Keep Headings' )
-				keep_paragraphs = st.checkbox( 'Keep Paragraphs' )
-				keep_tables = st.checkbox( 'Keep Tables' )
-			else:
-				st.caption( 'Available when HTML documents are loaded.' )
-		
-		st.divider( )
-		
-		# ==============================================================
-		# Actions (Apply / Reset / Clear / Save)
-		# ==============================================================
-		col_apply, col_reset, col_clear, col_save = st.columns( 4 )
-		apply_processing = col_apply.button( 'Apply', disabled=not has_text, key='processing_apply_button' )
-		reset_processing = col_reset.button( 'Reset', disabled=not has_text, key='processing_reset_button' )
-		clear_processing = col_clear.button( 'Clear', disabled=not has_text, key='processing_clear_button' )
-		can_save_processed = (isinstance( st.session_state.get( 'processed_text' ), str )
-		                      and st.session_state.get( 'processed_text' ).strip( ))
-		
-		if can_save_processed:
-			col_save.download_button( 'Save', data=st.session_state.processed_text,
-				file_name='processed_text.txt', mime='text/plain', key='processed_text_save' )
-		else:
-			col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
-		
-		# ==============================================================
-		# Buttons Events
-		# ==============================================================
-		if reset_processing:
-			st.session_state.processed_text = ''
-			st.session_state.processed_text_view = ''
-			st.session_state.start_time = 0.0
-			st.session_state.end_time = 0.0
-			st.session_state.total_time = 0.0
-			st.success( 'Processed text reset.' )
-		
-		if clear_processing:
-			st.session_state.processed_text = ''
-			st.session_state.processed_text_view = ''
-			st.session_state.start_time = 0.0
-			st.session_state.end_time = 0.0
-			st.session_state.total_time = 0.0
-			st.success( 'Processed text cleared.' )
-		
-		if apply_processing:
-			start_time = time.perf_counter( )
-		
-			# ----------------------------------------------------------
-			# Initialize from raw text (authoritative source)
-			# ----------------------------------------------------------
-			processed_text = raw_text if isinstance( raw_text, str ) else ''
-		
-			tp = TextParser( )
-		
-			# ----------------------------------------------------------
-			# 1 — Structural cleanup
-			# ----------------------------------------------------------
-			if remove_html:
-				processed_text = tp.remove_html( processed_text )
-			if remove_markdown:
-				processed_text = tp.remove_markdown( processed_text )
-			if remove_images:
-				processed_text = tp.remove_images( processed_text )
-			if remove_encodings:
-				processed_text = tp.remove_encodings( processed_text )
-			if remove_xml:
-				processed_text = tp.remove_xml( processed_text )
-		
-			# ----------------------------------------------------------
-			# 2 — Noise / non-lexical characters
-			# ----------------------------------------------------------
-			if remove_symbols:
-				processed_text = tp.remove_symbols( processed_text )
-			if remove_numbers:
-				processed_text = tp.remove_numbers( processed_text )
-			if remove_numerals:
-				processed_text = tp.remove_numerals( processed_text )
-		
-			# ----------------------------------------------------------
-			# 3 — Meaning-critical punctuation shaping
-			# ----------------------------------------------------------
-			if remove_punctuation:
-				processed_text = tp.remove_punctuation( processed_text )
-		
-			# ----------------------------------------------------------
-			# 4 — Word normalization
-			# ----------------------------------------------------------
-			if normalize_text:
-				processed_text = tp.normalize_text( processed_text )
-		
-			# ----------------------------------------------------------
-			# 5 — Lexical refinement
-			# ----------------------------------------------------------
-			if remove_stopwords:
-				processed_text = tp.remove_stopwords( processed_text )
-			if remove_fragments:
-				processed_text = tp.remove_fragments( processed_text )
-			if remove_errors:
-				processed_text = tp.remove_errors( processed_text )
-		
-			# ----------------------------------------------------------
-			# 6 — Lemmatization
-			# ----------------------------------------------------------
-			if lemmatize_text:
-				processed_text = tp.lemmatize_text( processed_text )
-		
-			# ----------------------------------------------------------
-			# 7 — Whitespace cleanup
-			# ----------------------------------------------------------
-			if collapse_whitespace:
-				processed_text = tp.collapse_whitespace( processed_text )
-			if compress_whitespace:
-				processed_text = tp.compress_whitespace( processed_text )
-		
-			# ----------------------------------------------------------
-			# Format-specific FIRST
-			# ----------------------------------------------------------
-			parser = st.session_state.get( 'parser' )
-		
-			if active == 'WordLoader':
-				if extract_tables and hasattr( parser, 'extract_tables' ):
-					parser = WordParser( )
-					processed_text = parser.extract_tables( processed_text )
-				if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
-					parser = WordParser( )
-					processed_text = parser.extract_paragraphs( processed_text )
-		
-			if active == 'PdfLoader':
-				if remove_headers and hasattr( parser, 'remove_headers' ):
-					parser = PdfParser( )
-					processed_text = parser.remove_headers( processed_text )
-				if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
-					parser = PdfParser( )
-					processed_text = parser.join_hyphenated( processed_text )
-		
-			if active == 'HtmlLoader':
-				if strip_scripts:
-					processed_text = tp.remove_html( processed_text )
-		
-			# ----------------------------------------------------------
-			# Finalize timing
-			# ----------------------------------------------------------
-			end_time = time.perf_counter( )
-			st.session_state.total_time = end_time - start_time
-		
-			# ----------------------------------------------------------
-			# Commit processed text
-			# ----------------------------------------------------------
-			st.session_state.processed_text = (
-				processed_text if isinstance( processed_text, str ) else str( processed_text ))
-			st.session_state.processed_text_view = st.session_state.processed_text
-			st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
-		
-		# ------------------------------------------------------------------
-		# RIGHT COLUMN — Text Views
-		# ------------------------------------------------------------------
-		with right:
-			st.text_area( 'Raw Text',
-				st.session_state.raw_text or 'No text loaded yet.',
-				height=200,
-				disabled=True,
-				key='raw_text_view' )
-		
-			raw_text = st.session_state.get( 'raw_text' )
-		
-			with st.expander( '📊 Processing Statistics:', expanded=False ):
-				processed_text = st.session_state.get( 'processed_text' )
-		
-				if (isinstance( raw_text, str ) and raw_text.strip( ) and
-					isinstance( processed_text, str ) and processed_text.strip( ) ):
-					raw_tokens = raw_text.split( )
-					proc_tokens = processed_text.split( )
-					raw_chars = len( raw_text )
-					proc_chars = len( processed_text )
-					raw_vocab = len( set( raw_tokens ) )
-					proc_vocab = len( set( proc_tokens ) )
-		
-					# ----------------------------
-					# Absolute Metrics
-					# ----------------------------
-					st.text( 'Measures:' )
-					ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
-					a1, a2, a3, a4 = st.columns( 4, border=True )
-					a1.metric( 'Characters', f'{proc_chars:,}' )
-					a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
-					a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
-					a4.metric( 'TTR', f'{ttr:.3f}' )
-		
-					st.divider( )
-		
-					# ----------------------------
-					# Delta Metrics
-					# ----------------------------
-					st.text( 'Deltas:' )
-					d1, d2, d3, d4 = st.columns( 4, border=True )
-					char_delta = proc_chars - raw_chars
-					token_delta = len( proc_tokens ) - len( raw_tokens )
-					vocab_delta = proc_vocab - raw_vocab
-					compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
-					d1.metric( 'Δ Characters', f'{char_delta:+,}' )
-					d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
-					d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
-					d4.metric( 'Compression Ratio', f'{compression:.2%}' )
-				else:
-					st.caption( 'Load and process text to view absolute and delta statistics.' )
-		
-			# ----------------------------
-			# Processed Text (output)
-			# ----------------------------
-			st.text_area( 'Processed Text', st.session_state.processed_text or '',
-				height=700, key='processed_text_view' )
+    raw_text = st.session_state.get( 'raw_text' )
+    
+    if isinstance( raw_text, str ):
+        st.session_state.raw_text_view = raw_text
+        
+        processed_text = st.session_state.get( 'processed_text' )
+        start_time = st.session_state.get( 'start_time', 0.0 )
+        end_time = st.session_state.get( 'end_time', 0.0 )
+        total_time = st.session_state.get( 'total_time', 0.0 )
+        has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
+        
+        # ------------------------------------------------------------------
+        # Layout
+        # ------------------------------------------------------------------
+        left, right = st.columns( [ 1,
+                                    1.5 ], border=True )
+        with left:
+            active = st.session_state.get( 'active_loader' )
+            
+            # ==============================================================
+            # Common Text Processing (TextParser)
+            # ==============================================================
+            with st.expander( '🧠 Text Processing', expanded=True ):
+                remove_html = st.checkbox( 'Remove HTML',
+                    help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
+                remove_markdown = st.checkbox( 'Remove Markdown',
+                    help=r'Removes symobls used in .md files #, ##, ###, -, etc' )
+                remove_symbols = st.checkbox( 'Remove Symbols',
+                    help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~' )
+                remove_numbers = st.checkbox( 'Remove Numbers',
+                    help='Removes numeric digits 0 thour 9' )
+                remove_xml = st.checkbox( 'Remove XML',
+                    help=r'Removes xml tags ( ex. <xml> & <\xml> )' )
+                remove_punctuation = st.checkbox( 'Remove Punctuation',
+                    help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence '
+                    r'delimiters' )
+                remove_images = st.checkbox( 'Remove Images',
+                    help=r'Remove image from text, including Markdown, HTML <img> tags, '
+                    r'and  image URLs' )
+                remove_stopwords = st.checkbox( 'Remove Stopwords',
+                    help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
+                remove_numerals = st.checkbox( 'Remove Numerals',
+                    help='Removes roman numbers I, II, IV, XI, etc' )
+                remove_encodings = st.checkbox( 'Remove Encoding',
+                    help=r'Removes encoding artifacts and over-encoded byte strings' )
+                normalize_text = st.checkbox( 'Normalize (lowercase)' )
+                lemmatize_text = st.checkbox( 'Lemmatize',
+                    help='Reduces words to their base or dictionary form' )
+                remove_fragments = st.checkbox( 'Remove Fragments',
+                    help='Removes words less than 3 characters in length' )
+                remove_errors = st.checkbox( 'Remove Errors',
+                    help='Removes misspelled words' )
+                collapse_whitespace = st.checkbox( 'Collapse Whitespace',
+                    help='Removes extra lines' )
+                compress_whitespace = st.checkbox( 'Compress Whitespace',
+                    help='Removes extra spaces' )
+            
+            # ==============================================================
+            # Word-Specific Processing (WordParser)
+            # ==============================================================
+            extract_tables = extract_paragraphs = False
+            with st.expander( '📄 Word Processing', expanded=False ):
+                if active == 'WordLoader':
+                    extract_tables = st.checkbox( 'Extract Tables' )
+                    extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
+                else:
+                    st.caption( 'Available when Word documents are loaded.' )
+            
+            # ==============================================================
+            # PDF-Specific Processing (PdfParser)
+            # ==============================================================
+            remove_headers = join_hyphenated = False
+            with st.expander( '📕 PDF Processing', expanded=False ):
+                if active == 'PdfLoader':
+                    remove_headers = st.checkbox( 'Remove Headers/Footers' )
+                    join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
+                else:
+                    st.caption( 'Available when PDF documents are loaded.' )
+            
+            # ==============================================================
+            # HTML-Specific Processing (Structural)
+            # ==============================================================
+            strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
+            with st.expander( '🌐 HTML Processing', expanded=False ):
+                if active == 'HtmlLoader':
+                    strip_scripts = st.checkbox( 'Strip <script> / <style>' )
+                    keep_headings = st.checkbox( 'Keep Headings' )
+                    keep_paragraphs = st.checkbox( 'Keep Paragraphs' )
+                    keep_tables = st.checkbox( 'Keep Tables' )
+                else:
+                    st.caption( 'Available when HTML documents are loaded.' )
+            
+            st.divider( )
+            
+            # ==============================================================
+            # Actions (Apply / Reset / Clear / Save)
+            # ==============================================================
+            col_apply, col_reset, col_clear, col_save = st.columns( 4 )
+            apply_processing = col_apply.button( 'Apply', disabled=not has_text,
+            key='processing_apply_button' )
+            reset_processing = col_reset.button( 'Reset', disabled=not has_text,
+            key='processing_reset_button' )
+            clear_processing = col_clear.button( 'Clear', disabled=not has_text,
+            key='processing_clear_button' )
+            can_save_processed = (isinstance( st.session_state.get( 'processed_text' ), str )
+                                  and st.session_state.get( 'processed_text' ).strip( ))
+            
+            if can_save_processed:
+                col_save.download_button( 'Save', data=st.session_state.processed_text,
+                    file_name='processed_text.txt', mime='text/plain', key='processed_text_save' )
+            else:
+                col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
+            
+            # ==============================================================
+            # Buttons Events
+            # ==============================================================
+            if reset_processing:
+                st.session_state.processed_text = ''
+                st.session_state.processed_text_view = ''
+                st.session_state.start_time = 0.0
+                st.session_state.end_time = 0.0
+                st.session_state.total_time = 0.0
+                st.success( 'Processed text reset.' )
+            
+            if clear_processing:
+                st.session_state.processed_text = ''
+                st.session_state.processed_text_view = ''
+                st.session_state.start_time = 0.0
+                st.session_state.end_time = 0.0
+                st.session_state.total_time = 0.0
+                st.success( 'Processed text cleared.' )
+            
+            if apply_processing:
+                start_time = time.perf_counter( )
+                
+                # ----------------------------------------------------------
+                # Initialize from raw text (authoritative source)
+                # ----------------------------------------------------------
+                processed_text = raw_text if isinstance( raw_text, str ) else ''
+                
+                tp = TextParser( )
+                
+                # ----------------------------------------------------------
+                # 1 — Structural cleanup
+                # ----------------------------------------------------------
+                if remove_html:
+                    processed_text = tp.remove_html( processed_text )
+                if remove_markdown:
+                    processed_text = tp.remove_markdown( processed_text )
+                if remove_images:
+                    processed_text = tp.remove_images( processed_text )
+                if remove_encodings:
+                    processed_text = tp.remove_encodings( processed_text )
+                if remove_xml:
+                    processed_text = tp.remove_xml( processed_text )
+                
+                # ----------------------------------------------------------
+                # 2 — Noise / non-lexical characters
+                # ----------------------------------------------------------
+                if remove_symbols:
+                    processed_text = tp.remove_symbols( processed_text )
+                if remove_numbers:
+                    processed_text = tp.remove_numbers( processed_text )
+                if remove_numerals:
+                    processed_text = tp.remove_numerals( processed_text )
+                
+                # ----------------------------------------------------------
+                # 3 — Meaning-critical punctuation shaping
+                # ----------------------------------------------------------
+                if remove_punctuation:
+                    processed_text = tp.remove_punctuation( processed_text )
+                
+                # ----------------------------------------------------------
+                # 4 — Word normalization
+                # ----------------------------------------------------------
+                if normalize_text:
+                    processed_text = tp.normalize_text( processed_text )
+                
+                # ----------------------------------------------------------
+                # 5 — Lexical refinement
+                # ----------------------------------------------------------
+                if remove_stopwords:
+                    processed_text = tp.remove_stopwords( processed_text )
+                if remove_fragments:
+                    processed_text = tp.remove_fragments( processed_text )
+                if remove_errors:
+                    processed_text = tp.remove_errors( processed_text )
+                
+                # ----------------------------------------------------------
+                # 6 — Lemmatization
+                # ----------------------------------------------------------
+                if lemmatize_text:
+                    processed_text = tp.lemmatize_text( processed_text )
+                
+                # ----------------------------------------------------------
+                # 7 — Whitespace cleanup
+                # ----------------------------------------------------------
+                if collapse_whitespace:
+                    processed_text = tp.collapse_whitespace( processed_text )
+                if compress_whitespace:
+                    processed_text = tp.compress_whitespace( processed_text )
+                
+                # ----------------------------------------------------------
+                # Format-specific FIRST
+                # ----------------------------------------------------------
+                parser = st.session_state.get( 'parser' )
+                
+                if active == 'WordLoader':
+                    if extract_tables and hasattr( parser, 'extract_tables' ):
+                        parser = WordParser( )
+                        processed_text = parser.extract_tables( processed_text )
+                    if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
+                        parser = WordParser( )
+                        processed_text = parser.extract_paragraphs( processed_text )
+                
+                if active == 'PdfLoader':
+                    if remove_headers and hasattr( parser, 'remove_headers' ):
+                        parser = PdfParser( )
+                        processed_text = parser.remove_headers( processed_text )
+                    if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
+                        parser = PdfParser( )
+                        processed_text = parser.join_hyphenated( processed_text )
+                
+                if active == 'HtmlLoader':
+                    if strip_scripts:
+                        processed_text = tp.remove_html( processed_text )
+                
+                # ----------------------------------------------------------
+                # Finalize timing
+                # ----------------------------------------------------------
+                end_time = time.perf_counter( )
+                st.session_state.total_time = end_time - start_time
+                
+                # ----------------------------------------------------------
+                # Commit processed text
+                # ----------------------------------------------------------
+                st.session_state.processed_text = (
+                        processed_text if isinstance( processed_text, str ) else str(
+                        processed_text ))
+                st.session_state.processed_text_view = st.session_state.processed_text
+                st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
+            
+            # ------------------------------------------------------------------
+            # RIGHT COLUMN — Text Views
+            # ------------------------------------------------------------------
+            with right:
+                st.text_area( 'Raw Text',
+                    st.session_state.raw_text or 'No text loaded yet.',
+                    height=200,
+                    disabled=True,
+                    key='raw_text_view' )
+                
+                raw_text = st.session_state.get( 'raw_text' )
+                
+                with st.expander( '📊 Processing Statistics:', expanded=False ):
+                    processed_text = st.session_state.get( 'processed_text' )
+                    
+                    if (isinstance( raw_text, str ) and raw_text.strip( ) and
+                            isinstance( processed_text, str ) and processed_text.strip( )):
+                        raw_tokens = raw_text.split( )
+                        proc_tokens = processed_text.split( )
+                        raw_chars = len( raw_text )
+                        proc_chars = len( processed_text )
+                        raw_vocab = len( set( raw_tokens ) )
+                        proc_vocab = len( set( proc_tokens ) )
+                        
+                        # ----------------------------
+                        # Absolute Metrics
+                        # ----------------------------
+                        st.text( 'Measures:' )
+                        ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
+                        a1, a2, a3, a4 = st.columns( 4, border=True )
+                        a1.metric( 'Characters', f'{proc_chars:,}' )
+                        a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
+                        a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
+                        a4.metric( 'TTR', f'{ttr:.3f}' )
+                        
+                        st.divider( )
+                        
+                        # ----------------------------
+                        # Delta Metrics
+                        # ----------------------------
+                        st.text( 'Deltas:' )
+                        d1, d2, d3, d4 = st.columns( 4, border=True )
+                        char_delta = proc_chars - raw_chars
+                        token_delta = len( proc_tokens ) - len( raw_tokens )
+                        vocab_delta = proc_vocab - raw_vocab
+                        compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
+                        d1.metric( 'Δ Characters', f'{char_delta:+,}' )
+                        d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
+                        d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
+                        d4.metric( 'Compression Ratio', f'{compression:.2%}' )
+                    else:
+                        st.caption( 'Load and process text to view absolute and delta statistics.' )
+                
+                # ----------------------------
+                # Processed Text (output)
+                # ----------------------------
+                st.text_area( 'Processed Text', st.session_state.processed_text or '',
+                    height=700, key='processed_text_view' )
 
 # ======================================================================================
 # Tab - Semantic Analysis
@@ -3327,6 +3344,9 @@ with tabs[ 5 ]:
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embedding_provider = st.session_state.get( 'embedding_provider' )
 
+	# ------------------------------------------------------------------
+	# Guard: embeddings must exist before continuing
+	# ------------------------------------------------------------------
 	if not (
 		isinstance( embeddings, list ) and
 		isinstance( chunked_documents, list ) and
@@ -3335,206 +3355,211 @@ with tabs[ 5 ]:
 		st.info(
 			'Generate embeddings before persisting to the vector database.'
 		)
+		st.stop( )
 
-		# ------------------------------------------------------------------
-		# Derive vector metadata
-		# ------------------------------------------------------------------
-		emb_array = np.asarray( embeddings )
-		dim = emb_array.shape[ 1 ]
+	# ------------------------------------------------------------------
+	# Derive vector metadata (SAFE)
+	# ------------------------------------------------------------------
+	emb_array = np.asarray( embeddings )
 
-		document_name = st.text_input(
-			'Document / Collection Name',
-			value='default_document'
-		)
+	if emb_array.ndim == 1:
+		emb_array = emb_array.reshape( 1, -1 )
 
-		table_name = (
-			f"{document_name}__"
-			f"{embedding_provider}__"
-			f"{embedding_model}__"
-			f"{dim}"
-		)
+	if emb_array.ndim != 2 or emb_array.shape[ 0 ] < 1:
+		st.error( 'Invalid embeddings array.' )
+		st.stop( )
 
-		st.caption( f'Vector Table: `{table_name}`' )
+	dim = emb_array.shape[ 1 ]
 
-		# ------------------------------------------------------------------
-		# Database connection
-		# ------------------------------------------------------------------
-		db_path = st.text_input(
-			'SQLite Database Path',
-			value='vectors.db'
-		)
+	document_name = st.text_input(
+		'Document / Collection Name',
+		value='default_document'
+	)
 
-		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-	
-		# ------------------------------------------------------------------
-		# Actions
-		# ------------------------------------------------------------------
-		col_create, col_insert, col_delete = st.columns( 3 )
-		with col_create:
-			if st.button( 'Create Vector Table' ):
-				conn = sqlite3.connect( db_path )
-				conn.enable_load_extension( True )
-				sqlite_vec.load( conn )
+	table_name = (
+		f"{document_name}__"
+		f"{embedding_provider}__"
+		f"{embedding_model}__"
+		f"{dim}"
+	)
 
-				SQLiteVec.create_table(
-					conn,
-					table_name=table_name,
-					dimension=dim
-				)
+	st.caption( f'Vector Table: `{table_name}`' )
 
-				conn.close( )
-				st.success( f'Created vector table `{table_name}`.' )
+	# ------------------------------------------------------------------
+	# Database connection
+	# ------------------------------------------------------------------
+	db_path = st.text_input(
+		'SQLite Database Path',
+		value='vectors.db'
+	)
 
-		# ----------------------------
-		# Insert embeddings
-		# ----------------------------
-		with col_insert:
-			if st.button( 'Insert Embeddings' ):
-				conn = sqlite3.connect( db_path )
-				conn.enable_load_extension( True )
-				sqlite_vec.load( conn )
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
-				vector_store = SQLiteVec(
-					connection=conn,
-					table_name=table_name,
-					embedding=SentenceTransformerEmbeddings(
-						model_name=embedding_model
-					)
-				)
+	# ------------------------------------------------------------------
+	# Actions
+	# ------------------------------------------------------------------
+	col_create, col_insert, col_delete = st.columns( 3 )
 
-				vector_store.add_texts(
-					texts=chunked_documents,
-					embeddings=embeddings
-				)
-
-				conn.close( )
-				st.success(
-					f'Inserted {len( embeddings )} embeddings into `{table_name}`.'
-				)
-
-		# ----------------------------
-		# Drop vector table
-		# ----------------------------
-		with col_delete:
-			if st.button( 'Drop Vector Table', type='secondary' ):
-				conn = sqlite3.connect( db_path )
-				cur = conn.cursor( )
-				cur.execute( f'DROP TABLE IF EXISTS {table_name}' )
-				conn.commit( )
-				conn.close( )
-				st.warning( f'Dropped vector table `{table_name}`.' )
-
-		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
-		# ------------------------------------------------------------------
-		# Verification panel
-		# ------------------------------------------------------------------
-		if st.checkbox( 'Inspect Vector Table' ):
+	with col_create:
+		if st.button( 'Create Vector Table' ):
 			conn = sqlite3.connect( db_path )
-			df_preview = pd.read_sql_query(
-				f'SELECT * FROM {table_name} LIMIT 5',
-				conn
+			conn.enable_load_extension( True )
+			sqlite_vec.load( conn )
+
+			SQLiteVec.create_table(
+				conn,
+				table_name=table_name,
+				dimension=dim
 			)
+
 			conn.close( )
+			st.success( f'Created vector table `{table_name}`.' )
 
-			st.data_editor(
-				df_preview,
-				use_container_width=True,
-				num_rows='dynamic'
-			)
-			
-		# ======================================================================================
-		# Similarity Search (sqlite-vec)
-		# ======================================================================================
-		st.subheader( 'Similarity Search' )
-		
-		query_text = st.text_area(
-			'Query Text',
-			placeholder='Enter text to search for semantically similar chunks…',
-			height=100
-		)
-		
-		top_k = st.slider(
-			'Top-K Results',
-			min_value=1,
-			max_value=20,
-			value=5,
-			step=1
-		)
-		
-		similarity_threshold = st.slider(
-			'Minimum Similarity Threshold',
-			min_value=0.0,
-			max_value=1.0,
-			value=0.0,
-			step=0.01,
-			help='Only results with similarity ≥ threshold will be shown.'
-		)
+	with col_insert:
+		if st.button( 'Insert Embeddings' ):
+			conn = sqlite3.connect( db_path )
+			conn.enable_load_extension( True )
+			sqlite_vec.load( conn )
 
-		
-		if not query_text.strip():
-			st.info( 'Enter a query to run similarity search.' )
-			try:
-				conn = sqlite3.connect( db_path )
-				conn.enable_load_extension( True )
-				sqlite_vec.load( conn )
-		
-				embedding_fn = SentenceTransformerEmbeddings(
+			vector_store = SQLiteVec(
+				connection=conn,
+				table_name=table_name,
+				embedding=SentenceTransformerEmbeddings(
 					model_name=embedding_model
 				)
-		
-				vector_store = SQLiteVec(
-					connection=conn,
-					table_name=table_name,
-					embedding=embedding_fn
-				)
-		
-				results = vector_store.similarity_search_with_score(
-					query=query_text,
-					k=top_k
-				)
-		
-				conn.close( )
-		
-			except Exception as ex:
-				st.error( f'Similarity search failed: {ex}' )
-				results = None
-				
-		# ------------------------------------------------------------------
-		# Results Rendering (with similarity threshold)
-		# ------------------------------------------------------------------
-		if results:
-			filtered_results = [
-				( doc, score )
-				for ( doc, score ) in results
-				if score >= similarity_threshold
-			]
-		
-			st.caption(
-				f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
-				f'{len(filtered_results)} of {len(results)} results retained.'
 			)
-		
-			if not filtered_results:
-				st.warning(
-					'No results met the selected similarity threshold. '
-					'Try lowering the threshold or increasing Top-K.'
-				)
-		
-			for rank, ( doc, score ) in enumerate( filtered_results, start=1 ):
-				with st.expander(
-					f'#{rank} — Similarity Score: {score:.4f}',
-					expanded=( rank == 1 )
-				):
-					st.text_area(
-						'Chunk Text',
-						doc.page_content,
-						height=200,
-						disabled=True
-					)
-		
-		else:
-			st.info( 'No results to display.' )
-	
+
+			vector_store.add_texts(
+				texts=chunked_documents,
+				embeddings=embeddings
+			)
+
+			conn.close( )
+			st.success(
+				f'Inserted {len( embeddings )} embeddings into `{table_name}`.'
+			)
+
+	with col_delete:
+		if st.button( 'Drop Vector Table', type='secondary' ):
+			conn = sqlite3.connect( db_path )
+			cur = conn.cursor( )
+			cur.execute( f'DROP TABLE IF EXISTS {table_name}' )
+			conn.commit( )
+			conn.close( )
+			st.warning( f'Dropped vector table `{table_name}`.' )
+
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+
+	# ------------------------------------------------------------------
+	# Verification panel
+	# ------------------------------------------------------------------
+	if st.checkbox( 'Inspect Vector Table' ):
+		conn = sqlite3.connect( db_path )
+		df_preview = pd.read_sql_query(
+			f'SELECT * FROM {table_name} LIMIT 5',
+			conn
+		)
+		conn.close( )
+
+		st.data_editor(
+			df_preview,
+			use_container_width=True,
+			num_rows='dynamic'
+		)
+
+	# ======================================================================================
+	# Similarity Search (sqlite-vec)
+	# ======================================================================================
+	st.subheader( 'Similarity Search' )
+
+	query_text = st.text_area(
+		'Query Text',
+		placeholder='Enter text to search for semantically similar chunks…',
+		height=100
+	)
+
+	top_k = st.slider(
+		'Top-K Results',
+		min_value=1,
+		max_value=20,
+		value=5,
+		step=1
+	)
+
+	similarity_threshold = st.slider(
+		'Minimum Similarity Threshold',
+		min_value=0.0,
+		max_value=1.0,
+		value=0.0,
+		step=0.01,
+		help='Only results with similarity ≥ threshold will be shown.'
+	)
+
+	if not query_text.strip():
+		st.info( 'Enter a query to run similarity search.' )
+		results = None
+	else:
+		try:
+			conn = sqlite3.connect( db_path )
+			conn.enable_load_extension( True )
+			sqlite_vec.load( conn )
+
+			embedding_fn = SentenceTransformerEmbeddings(
+				model_name=embedding_model
+			)
+
+			vector_store = SQLiteVec(
+				connection=conn,
+				table_name=table_name,
+				embedding=embedding_fn
+			)
+
+			results = vector_store.similarity_search_with_score(
+				query=query_text,
+				k=top_k
+			)
+
+			conn.close( )
+
+		except Exception as ex:
+			st.error( f'Similarity search failed: {ex}' )
+			results = None
+
+	# ------------------------------------------------------------------
+	# Results Rendering (with similarity threshold)
+	# ------------------------------------------------------------------
+	if results:
+		filtered_results = [
+			( doc, score )
+			for ( doc, score ) in results
+			if score >= similarity_threshold
+		]
+
+		st.caption(
+			f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
+			f'{len(filtered_results)} of {len(results)} results retained.'
+		)
+
+		if not filtered_results:
+			st.warning(
+				'No results met the selected similarity threshold. '
+				'Try lowering the threshold or increasing Top-K.'
+			)
+
+		for rank, ( doc, score ) in enumerate( filtered_results, start=1 ):
+			with st.expander(
+				f'#{rank} — Similarity Score: {score:.4f}',
+				expanded=( rank == 1 )
+			):
+				st.text_area(
+					'Chunk Text',
+					doc.page_content,
+					height=200,
+					disabled=True
+				)
+	else:
+		st.info( 'No results to display.' )
+
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+
 	
