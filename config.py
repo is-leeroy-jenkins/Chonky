@@ -43,9 +43,15 @@
 '''
 import  os
 
+#------ PATHS ----------------------------------
 ICON = r'resources/images/favicon.ico'
 LOGO = r'resources/images/chonky.png'
 DB = r'stores/sqlite/data.db'
+
+#------ CREDENTIALS ----------------------------------
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv( 'GOOGLE_APPLICATION_CREDENTIALS' )
+
+#------ API KEYS ----------------------------------
 OPENAI_API_KEY = os.getenv( 'OPENAI_API_KEY' )
 GEMINI_API_KEY = os.getenv( 'GEMINI_API_KEY' )
 GROQ_API_KEY = os.getenv( 'GROQ_API_KEY' )
@@ -53,5 +59,6 @@ GOOGLE_API_KEY = os.getenv( 'GOOGLE_API_KEY' )
 GOOGLE_CSE_ID = os.getenv( 'GOOGLE_CSE_ID' )
 GOOGLE_CLOUD_LOCATION = os.getenv( 'GOOGLE_CLOUD_LOCATION' )
 GOOGLE_CLOUD_PROJECT = os.getenv( 'GOOGLE_CLOUD_PROJECT' )
+GOOGLEMAPS_API_KEYS = os.getenv( 'GOOGLEMAPS_API_KEYS' )
+LANGSMITH_API_KEYS = os.getenv( 'LANGSMITH_API_KEYS' )
 VERTEX_API_KEY = os.getenv( 'VERTEX_API_KEY' )
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv( 'GOOGLE_APPLICATION_CREDENTIALS' )
