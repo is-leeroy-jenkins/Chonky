@@ -72,7 +72,6 @@ import sqlite3
 import sqlite_vec
 import sys
 import statistics
-import streamlit_extras
 import streamlit as st
 import time
 import tempfile
