@@ -71,6 +71,7 @@ import re
 import sqlite3
 import sys
 import statistics
+import streamlit_extras
 import streamlit as st
 import time
 import tempfile
@@ -3313,7 +3314,7 @@ with tabs[ 4 ]:
 # ======================================================================================
 # Tab — Vector Database (sqlite-vec)
 # ======================================================================================
-with tabs[ 6 ]:
+with tabs[ 5 ]:
 
 	st.subheader( 'Vector Database (sqlite-vec)' )
 
