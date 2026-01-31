@@ -310,11 +310,12 @@ class Gemini( ):
 		self.api_key = cfg.VERTEX_API_KEY
 		self.project = cfg.GOOGLE_CLOUD_PROJECT
 		self.location = cfg.GOOGLE_CLOUD_LOCATION
+		self.credentials = cfg.GOOGLE_APPLICATION_CREDENTIALS
 		self.model = None
 		self.api_version = version
 		self.use_vertex = use_ai
 		self.dimensions = dimensions
-		self.credentials = NONE
+		self.credentials = None
 		self.http_options = HttpOptions( api_version=self.api_version )
 		self.client = genai.Client( vertexai=self.use_vertex, api_key=self.api_key,
 			project=self.project, location=self.location, http_options=self.http_options )
