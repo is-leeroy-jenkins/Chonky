@@ -306,7 +306,7 @@ class Gemini( ):
 	
 	def __init__( self, version: str='v1alpha', use_ai: bool=True, dimensions: int=768 ):
 		super( ).__init__( )
-		self.api_key = cfg.GEMINI_API_KEY
+		self.api_key = cfg.GOOGLE_API_KEY
 		self.project = cfg.GOOGLE_CLOUD_PROJECT
 		self.location = cfg.GOOGLE_CLOUD_LOCATION
 		self.model = None
