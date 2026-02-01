@@ -88,9 +88,11 @@ class GPT( ):
 
     """
 	web_options: Optional[ List[ str ] ]
+	input: Optional[ List[ str ] ]
 	client: Optional[ OpenAI ]
 	prompt: Optional[ str ]
 	response_format: Optional[ str ]
+	input: Optional[ List[ str ] ]
 	response: Optional[ CreateEmbeddingResponse ]
 	embedding: Optional[ List[ float ] ]
 	encoding_format: Optional[ str ]
@@ -101,6 +103,7 @@ class GPT( ):
 		self.api_key = cfg.OPENAI_API_KEY
 		self.client = OpenAI( api_key=cfg.OPENAI_API_KEY )
 		self.encoding_format = None
+		self.input = None
 		self.model = None
 		self.embedding = None
 		self.response = None
@@ -188,15 +191,16 @@ class GPT( ):
 		"""
 		try:
 			throw_if( 'texts', texts )
-			self.response = self.client.embeddings.create( model=model, input=texts )
+			self.input = texts
+			self.model = model
+			self.response = self.client.embeddings.create( model=self.model, input=self.input)
 			return [ item.embedding for item in self.response.data ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'embedders'
 			exception.cause = 'GPT'
 			exception.method = 'embed( self, text: str, model: str ) -> List[ List[ float ] ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
 			
 	def count_tokens( self, text: str, coding: str ) -> int:
 		'''
@@ -318,8 +322,7 @@ class Gemini( ):
 		self.credentials = None
 		self.http_options = HttpOptions( api_version=self.api_version )
 		self.client = genai.Client( vertexai=self.use_vertex, api_key=self.api_key,
-			project=self.project, location=self.location,
-			credentials=self.credentials, http_options=self.http_options )
+			http_options=self.http_options )
 		self.embedding = None
 		self.embeddings = None
 		self.response = None

@@ -48,7 +48,8 @@ import types
 
 if "FreeSimpleGUI" not in sys.modules:
     sys.modules["FreeSimpleGUI"] = types.ModuleType("FreeSimpleGUI")
-    
+
+import altair
 import base64
 from collections import Counter
 
@@ -146,53 +147,101 @@ TABS = [ 'Document Loading', 'Text Processing', 'Semantic Analysis', 'Data Token
 		'Tensor Embeddings', 'Vector Database' ]
 
 SESSION_STATE_DEFAULTS = {
+		# -----------------------------
 		# Ingestion
+		# -----------------------------
 		'documents': None,
 		'raw_documents': None,
 		'active_loader': None,
+		# -----------------------------
 		# Input
+		# -----------------------------
 		'raw_text': None,
 		'raw_tokens': None,
 		'raw_text_view': None,
+		# -----------------------------
 		# Processing
+		# -----------------------------
 		'parser': None,
 		'processed_text': None,
 		'processed_text_view': None,
+		# -----------------------------
 		# Performance
+		# -----------------------------
 		'start_time': None,
 		'end_time': None,
 		'total_time': None,
-		# Tokenization/Vocabular
+		# -----------------------------
+		# Tokenization / Vocabulary
+		# -----------------------------
 		'tokens': None,
 		'vocabulary': None,
 		'token_counts': None,
 		'df_synsets': None,
+		# -----------------------------
 		# SQLite / Excel
+		# -----------------------------
 		'active_table': None,
+		# -----------------------------
 		# Chunking
+		# -----------------------------
 		'lines': None,
 		'chunks': None,
 		'chunk_modes': None,
-		"chunked_documents": None,
-		# Vectorization
+		'chunked_documents': None,
+		# -----------------------------
+		# Embeddings
+		# -----------------------------
 		'embedder': None,
 		'embeddings': None,
 		'embedding_provider': None,
 		'embedding_model': None,
 		'embedding_source': None,
+		'embedding_documents': None,
+		'df_embedding_input': None,
+		'df_embedding_output': None,
+		# -----------------------------
 		# Retrieval / Search
+		# -----------------------------
 		'search_results': None,
+		# -----------------------------
 		# DataFrames
+		# -----------------------------
 		'df_frequency': None,
 		'df_tables': None,
 		'df_schema': None,
 		'df_preview': None,
 		'df_count': None,
 		'df_chunks': None,
-		'df_embedding_input': None,
-		'df_embedding_output': None,
+		# -----------------------------
 		# Data
-		'data_connection': None
+		# -----------------------------
+		'data_connection': None,
+		# -----------------------------
+		# Sidebar / API Keys
+		# -----------------------------
+		'api_keys': {
+				'openai': None,
+				'groq': None,
+				'google': None,
+				'pinecone': None,
+				'google_credentials_path': None,
+		},
+		# -----------------------------
+		# XML Loader (explicit contract)
+		# -----------------------------
+		'xml_loader': None,
+		'xml_documents': None,
+		'xml_split_documents': None,
+		'xml_tree_loaded': None,
+		'xml_namespaces': None,
+		'xml_xpath_results': None,
+		# -----------------------------
+		# WordNet Caches
+		# -----------------------------
+		'wordnet_synsets_sig': None,
+		'df_wordnet_synsets': None,
+		'df_wordnet_lemmas': None,
 }
 
 REQUIRED_CORPORA = [
@@ -285,13 +334,116 @@ for key, default in SESSION_STATE_DEFAULTS.items( ):
 		st.session_state[ key ] = default
 
 # ======================================================================================
-# Sidebar
+# Sidebar — API Key Configuration
 # ======================================================================================
 with st.sidebar:
-	st.subheader( 'Embedders' )
-	st.caption( '' )
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-	st.subheader( '' )
+    st.subheader( 'Settings' )
+    st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+    with st.expander("🔐 API Keys", expanded=False):
+
+        if "api_keys" not in st.session_state:
+            st.session_state.api_keys = {
+                "openai": None,
+                "groq": None,
+                "google": None,
+                "pinecone": None,
+                "google_credentials_path": None
+            }
+
+        # --- OpenAI ---
+        openai_key: str | None = st.text_input(
+            "OpenAI API Key",
+            value=st.session_state.api_keys.get("openai") or "",
+            type="password"
+        )
+        if openai_key:
+            os.environ["OPENAI_API_KEY"] = openai_key
+            st.session_state.api_keys["openai"] = openai_key
+
+        # --- Groq ---
+        groq_key: str | None = st.text_input(
+            "Groq API Key",
+            value=st.session_state.api_keys.get("groq") or "",
+            type="password"
+        )
+        if groq_key:
+            os.environ["GROQ_API_KEY"] = groq_key
+            st.session_state.api_keys["groq"] = groq_key
+
+        # --- Google API ---
+        google_key: str | None = st.text_input(
+            "Google API Key",
+            value=st.session_state.api_keys.get("google") or "",
+            type="password"
+        )
+        if google_key:
+            os.environ["GOOGLE_API_KEY"] = google_key
+            st.session_state.api_keys["google"] = google_key
+
+        # --- Google Application Credentials ---
+        google_creds_path: str | None = st.text_input(
+            "Google Application Credentials (JSON Path)",
+            value=st.session_state.api_keys.get("google_credentials_path") or ""
+        )
+        if google_creds_path:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_creds_path
+            st.session_state.api_keys["google_credentials_path"] = google_creds_path
+
+        # --- Pinecone ---
+        pinecone_key: str | None = st.text_input(
+            "Pinecone API Key (future)",
+            value=st.session_state.api_keys.get("pinecone") or "",
+            type="password"
+        )
+        if pinecone_key:
+            os.environ["PINECONE_API_KEY"] = pinecone_key
+            st.session_state.api_keys["pinecone"] = pinecone_key
+            
+        # ------------------------------------------------------------------
+        # API Key Status Indicator
+        # ------------------------------------------------------------------
+        st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+        st.subheader(" 🔎 Key Status")
+    
+        key_status: dict[str, bool] = {
+            "OpenAI": bool(st.session_state.api_keys.get("openai")),
+            "Groq": bool(st.session_state.api_keys.get("groq")),
+            "Google API": bool(st.session_state.api_keys.get("google")),
+            "Google App Credentials": bool(
+                st.session_state.api_keys.get("google_credentials_path")
+            ),
+            "Pinecone (future)": bool(st.session_state.api_keys.get("pinecone")),
+        }
+    
+        for key_name, is_loaded in key_status.items():
+            if is_loaded:
+                st.success(f"{key_name}: Loaded", icon="✅")
+            else:
+                st.warning(f"{key_name}: Missing", icon="⚠️")
+                
+        # ------------------------------------------------------------------
+        # Reset / Clear API Keys
+        # ------------------------------------------------------------------
+        st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+        if st.button("🧹 Clear All API Keys", use_container_width=True):
+            for env_key in [
+                "OPENAI_API_KEY",
+                "GROQ_API_KEY",
+                "GOOGLE_API_KEY",
+                "PINECONE_API_KEY",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+            ]:
+                os.environ.pop(env_key, None)
+    
+            st.session_state.api_keys = {
+                "openai": None,
+                "groq": None,
+                "google": None,
+                "pinecone": None,
+                "google_credentials_path": None,
+            }
+    
+            st.experimental_rerun()
 
 # ======================================================================================
 # Tabs
@@ -304,6 +456,7 @@ tabs = st.tabs( TABS )
 with tabs[ 0 ]:
 	metrics_container = st.container( )
 	tokens = st.session_state.get( 'tokens' )
+	
 	def render_metrics_panel( ):
 		raw_text = st.session_state.get( 'raw_text' )
 		processed_text = st.session_state.get( 'processed_text' )
@@ -335,7 +488,7 @@ with tabs[ 0 ]:
 			
 			st.session_state.tokens = tokens
 			st.session_state.vocabulary = set( tokens )
-			st.session_state.token_counts = Counter( tokens )		
+			st.session_state.token_counts = Counter( tokens )
 		tokens = st.session_state.tokens
 		vocabulary = st.session_state.vocabulary
 		counts = st.session_state.token_counts
@@ -461,16 +614,17 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	with metrics_container:
 		render_metrics_panel( )
-		
+	
 	# ------------------------------------------------------------------
 	# Left Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ] )
+	left, right = st.columns( [ 1,
+	                            1.5 ] )
 	with left:
 		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
-			
+		
 		def _rebuild_raw_text_from_documents( ) -> str | None:
 			docs = st.session_state.get( "documents" ) or [ ]
 			if not docs:
@@ -493,9 +647,9 @@ with tabs[ 0 ]:
 			col_load, col_clear, col_save = st.columns( 3 )
 			load_txt = col_load.button( 'Load', key='txt_load' )
 			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
-			can_save = ( st.session_state.get( 'active_loader' ) == 'TextLoader'
-					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( ) )
+			can_save = (st.session_state.get( 'active_loader' ) == 'TextLoader'
+			            and isinstance( st.session_state.get( 'raw_text' ), str )
+			            and st.session_state.get( 'raw_text' ).strip( ))
 			
 			if can_save:
 				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -518,7 +672,9 @@ with tabs[ 0 ]:
 				for f in files:
 					text = f.read( ).decode( 'utf-8', errors='ignore' )
 					documents.append( Document( page_content=text,
-							metadata={ 'source': f.name, 'loader': 'TextLoader' }, ) )
+						metadata={
+								'source': f.name,
+								'loader': 'TextLoader' }, ) )
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
@@ -913,7 +1069,15 @@ with tabs[ 0 ]:
 			# ------------------------------------------------------------------
 			# XPath Query Interface
 			# ------------------------------------------------------------------
-			if loader.xml_root is not None:
+			loader = st.session_state.get( "active_loader" )
+
+			if loader is None:
+				st.info( "No loader initialized." )
+			elif not hasattr( loader, "xml_root" ):
+				st.info( "Active loader does not support XML." )
+			elif loader.xml_root is None:
+				st.info( "XML loader initialized but no XML tree loaded." )
+			else:
 				st.markdown( "**XPath Query**" )
 				
 				xpath_expr = st.text_input(
@@ -952,14 +1116,24 @@ with tabs[ 0 ]:
 			# Debug / Introspection
 			# ------------------------------------------------------------------
 			with st.expander( "ℹ Loader State" ):
+				loader = st.session_state.get( "active_loader" )
+
+			if loader is None:
+				st.info( "No loader initialized." )
+				file_path = None
+			elif not hasattr( loader, "file_path" ):
+				file_path = None
+			else:
+				file_path = loader.file_path
+				
 				st.json( {
-						"file_path": loader.file_path,
-						"documents_loaded": loader.documents is not None,
-						"xml_tree_loaded": loader.xml_tree is not None,
-						"namespaces": loader.xml_namespaces,
-						"chunk_size": loader.chunk_size,
-						"overlap_amount": loader.overlap_amount,
-				} )
+								"file_path": loader.file_path,
+								"documents_loaded": loader.documents is not None,
+								"xml_tree_loaded": loader.xml_tree is not None,
+								"namespaces": loader.xml_namespaces,
+								"chunk_size": loader.chunk_size,
+								"overlap_amount": loader.overlap_amount,
+							} )
 		
 		# --------------------------- PDF Loader
 		with st.expander( "📕 PDF Loader", expanded=False ):
@@ -1034,7 +1208,7 @@ with tabs[ 0 ]:
 				
 				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} PDF document(s)."
 				st.rerun( )
-				
+		
 		# --------------------------- Markdown Loader
 		with st.expander( '🧾 Markdown Loader', expanded=False ):
 			md = st.file_uploader(
@@ -1108,7 +1282,8 @@ with tabs[ 0 ]:
 		
 		# --------------------------- HTML Loader
 		with st.expander( '🌐 HTML Loader', expanded=False ):
-			html = st.file_uploader( 'Upload HTML', type=[ 'html', 'htm' ], key='html_upload' )
+			html = st.file_uploader( 'Upload HTML', type=[ 'html',
+			                                               'htm' ], key='html_upload' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
@@ -1321,7 +1496,7 @@ with tabs[ 0 ]:
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents )
 				st.session_state.active_loader = "PowerPointLoader"
-				st.success( f"Loaded {len( documents )} PowerPoint document(s).")
+				st.success( f"Loaded {len( documents )} PowerPoint document(s)." )
 		
 		# --------------------------- Excel Loader
 		with st.expander( '📊 Excel Loader', expanded=False ):
@@ -1549,7 +1724,8 @@ with tabs[ 0 ]:
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "ArXivLoader"
 					
-					st.session_state[ "_loader_status" ] = f"Fetched {len( documents )} arXiv document(s)."
+					st.session_state[
+						"_loader_status" ] = f"Fetched {len( documents )} arXiv document(s)."
 					st.rerun( )
 		
 		# --------------------------- Wikipedia Loader
@@ -1672,9 +1848,9 @@ with tabs[ 0 ]:
 			gh_fetch = col_fetch.button( "Load", key="gh_fetch" )
 			gh_clear = col_clear.button( "Clear", key="gh_clear" )
 			
-			can_save = ( st.session_state.get( "active_loader" ) == "GithubLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( ) )
+			can_save = (st.session_state.get( "active_loader" ) == "GithubLoader"
+			            and isinstance( st.session_state.get( "raw_text" ), str )
+			            and st.session_state.get( "raw_text" ).strip( ))
 			
 			if can_save:
 				col_save.download_button(
@@ -1731,9 +1907,9 @@ with tabs[ 0 ]:
 			col_fetch, col_clear, col_save = st.columns( 3 )
 			load_web = col_fetch.button( "Load", key="web_fetch" )
 			clear_web = col_clear.button( "Clear", key="web_clear" )
-			can_save = ( st.session_state.get( "active_loader" ) == "WebLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( ) )
+			can_save = (st.session_state.get( "active_loader" ) == "WebLoader"
+			            and isinstance( st.session_state.get( "raw_text" ), str )
+			            and st.session_state.get( "raw_text" ).strip( ))
 			
 			if can_save:
 				col_save.download_button(
@@ -1776,7 +1952,8 @@ with tabs[ 0 ]:
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebLoader"
 					
-					st.session_state[ "_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
+					st.session_state[
+						"_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
 					st.rerun( )
 		
 		# --------------------------- Web Crawler
@@ -1853,7 +2030,8 @@ with tabs[ 0 ]:
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebCrawler"
-					st.session_state[ "_loader_status" ] = f"Crawled {len( documents )} document(s)."
+					st.session_state[
+						"_loader_status" ] = f"Crawled {len( documents )} document(s)."
 					st.rerun( )
 	
 	# ------------------------------------------------------------------
@@ -1876,7 +2054,17 @@ with tabs[ 0 ]:
 # Tab — Text Processing
 # ======================================================================================
 with tabs[ 1 ]:
-    raw_text = st.session_state.get( 'raw_text' )
+    raw_text = st.session_state.get('raw_text')
+    active_loader = st.session_state.get('active_loader')
+    
+    if not isinstance(raw_text, str) or not raw_text.strip():
+        st.info('Load a document before running text processing.')
+        st.stop()
+    
+    if not active_loader:
+        st.warning('No active loader detected. Load documents first.')
+        st.stop()
+
     
     if isinstance( raw_text, str ):
         st.session_state.raw_text_view = raw_text
@@ -2181,372 +2369,256 @@ with tabs[ 1 ]:
 # Tab - Semantic Analysis
 # ======================================================================================
 with tabs[ 2 ]:
-	if st.session_state.processed_text:
-		vocabulary = st.session_state.get( 'vocabulary' )
-		chunk_modes = st.session_state.get( 'chunk_modes' )
-		lines = st.session_state.get( 'lines' )
-		tokens = st.session_state.get( 'tokens' )
-		processor = TextParser( )
-		
-		# ---------------------------
-		# Chunking Controls
-		# ---------------------------
-		mode = st.selectbox( 'Chunking Mode', options=chunk_modes, key='chunk_mode',
-			help='Select how documents are chunked' )
-		
-		col_a, col_b = st.columns( 2 )
-		
-		with col_a:
-			chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000, value=1000,
-				step=100, key='chunk_count' )
-		
-		with col_b:
-			overlap = st.number_input( 'Overlap', min_value=0, max_value=2000,
-				value=200, step=50, key='overlap_input' )
-		
-		col_run, col_reset = st.columns( 2 )
-		run_chunking = col_run.button( 'Chunk', key='run_button' )
-		reset_chunking = col_reset.button( 'Reset', key='reset_control' )
-		
-		# ---------------------------
-		# Actions
-		# ---------------------------
-		if reset_chunking:
-			st.info( 'Chunking controls reset.' )
-		
-		if run_chunking:
-			if mode == 'chars':
-				chunked_documents = processor.chunk_text( text=processed_text, size=chunk_size )
-			elif mode == 'tokens':
-				chunked_documents = word_tokenize( processed_text )
-			else:
-				st.error( f'Unsupported chunking mode: {mode}' )
-			
-			st.session_state.chunked_documents = chunked_documents			
-			st.success( f'Chunking complete: {len( chunked_documents )} chunks generated '
-				f'(mode={mode}, size={chunk_size}, overlap={overlap})' )
-		
-		st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-		
-		# --------------------------------------------------
-		# Tokenization & Vocabulary
-		# --------------------------------------------------
-		tokens = word_tokenize( processed_text )
-		vocabulary = processor.create_vocabulary( tokens )
-		
-		# --------------------------------------------------
-		# Frequency Distribution
-		# --------------------------------------------------
-		df_frequency = processor.create_frequency_distribution( tokens )
-		st.session_state.df_frequency = df_frequency
-		
-		# --------------------------------------------------
-		# Three-column layout
-		# --------------------------------------------------
-		col_tokens, col_vocab, col_freq = st.columns( [ 1,  1, 2 ], border=True,
-			vertical_alignment='center' )
-		
-		# -----------------------
-		# Column 1 — Tokens
-		# -----------------------
-		with col_tokens:
-			st.write( f"Tokens: {len( tokens )}" )
-			st.data_editor( pd.DataFrame( tokens, columns=[ "Token" ] ),
-				num_rows='dynamic', width='stretch', height='stretch' )
-		
-		# -----------------------
-		# Column 2 — Vocabulary
-		# -----------------------
-		with col_vocab:
-			st.write( f"Vocabulary: {len( vocabulary )}" )
-			st.data_editor( pd.DataFrame( vocabulary, columns=[ "Word" ] ),
-				num_rows='dynamic', width='stretch', height='stretch' )
-		
-		# -----------------------
-		# Column 3 — Frequency Histogram
-		# -----------------------
-		with col_freq:
-			st.markdown( "#### Frequency Distribution" )
-			st.caption( 'Top 100 most frequent tokens' )
-			if df_frequency is not None and not df_frequency.empty:
-				# Identify numeric frequency column
-				numeric_cols = df_frequency.select_dtypes( include="number" )				
-				if not numeric_cols.empty:
-					freq_col = numeric_cols.columns[ 0 ]
-					top_n = 100
-					df_top = (df_frequency.sort_values( freq_col, ascending=False ).head( top_n ))
-					st.bar_chart( df_top.set_index( df_top.columns[ 0 ] )[ freq_col ],
-						use_container_width=True, color='#01438A' )
-				else:
-					st.info( 'No numeric frequency column available for charting.' )
-			else:
-				st.info( 'Frequency distribution unavailable.' )
-		
-		# --------------------------------------------------
-		# Persist state
-		# --------------------------------------------------
-		st.session_state.tokens = tokens
-		st.session_state.vocabulary = vocabulary
-	else:
-		st.info( 'Run preprocessing first' )
-		
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	import pandas as pd
+	from nltk.tokenize import word_tokenize
 	
+	processed_text = st.session_state.get( 'processed_text' )
 	
+	# ------------------------------------------------------------------
+	# Guard: must have processed text to proceed
+	# ------------------------------------------------------------------
+	if not isinstance( processed_text, str ) or not processed_text.strip( ):
+		st.info( 'Run text processing before semantic analysis.' )
+		st.stop( )
 	
-	# --------------------------------------------------
-	# WordNet Synsets (Enhanced Explorer + Inline Controls)
-	# --------------------------------------------------
-	try:
-		from nltk.corpus import wordnet as wn
-		from streamlit_extras.dataframe_explorer import dataframe_explorer
-		import hashlib
+	# ------------------------------------------------------------------
+	# Local helpers (avoid relying on unknown TextParser signatures)
+	# ------------------------------------------------------------------
+	def _chunk_chars_with_overlap( text: str, size: int, overlap: int ) -> list[ str ]:
+		"""
+			Purpose:
+			--------
+			Chunk text by characters with overlap.
+
+			Parameters:
+			-----------
+			text : str
+				Input text.
+			size : int
+				Chunk size in characters.
+			overlap : int
+				Overlap in characters.
+
+			Returns:
+			--------
+			list[str]
+				List of chunk strings.
+		"""
+		if not isinstance( text, str ) or not text.strip( ):
+			return [ ]
 		
-		st.markdown( "#### WordNet Synsets" )
-		st.caption(
-			"Semantic expansions derived from the current vocabulary using "
-			"NLTK WordNet synsets (nouns, verbs, adjectives, adverbs)."
+		size = int( size )
+		overlap = int( overlap )
+		size = max( 1, size )
+		overlap = max( 0, min( overlap, size - 1 ) )
+		
+		step = size - overlap
+		chunks: list[ str ] = [ ]
+		
+		i = 0
+		n = len( text )
+		while i < n:
+			part = text[ i: i + size ].strip( )
+			if part:
+				chunks.append( part )
+			i += step
+		
+		return chunks
+	
+	def _chunk_tokens_with_overlap( tokens: list[ str ], size: int, overlap: int ) -> list[ str ]:
+		"""
+			Purpose:
+			--------
+			Chunk token list into overlapped token windows and return joined strings.
+
+			Parameters:
+			-----------
+			tokens : list[str]
+				Token list.
+			size : int
+				Tokens per chunk.
+			overlap : int
+				Overlap in tokens.
+
+			Returns:
+			--------
+			list[str]
+				Chunk strings.
+		"""
+		if not isinstance( tokens, list ) or not tokens:
+			return [ ]
+		
+		size = int( size )
+		overlap = int( overlap )
+		size = max( 1, size )
+		overlap = max( 0, min( overlap, size - 1 ) )
+		
+		step = size - overlap
+		out: list[ str ] = [ ]
+		
+		i = 0
+		n = len( tokens )
+		while i < n:
+			window = tokens[ i: i + size ]
+			s = " ".join( t for t in window if isinstance( t, str ) and t.strip( ) ).strip( )
+			if s:
+				out.append( s )
+			i += step
+		
+		return out
+	
+	# ------------------------------------------------------------------
+	# Resolve / defaults
+	# ------------------------------------------------------------------
+	chunk_modes = st.session_state.get( 'chunk_modes' )
+	if not isinstance( chunk_modes, (list, tuple) ) or not chunk_modes:
+		chunk_modes = [ 'chars',
+		                'tokens' ]
+		st.session_state.chunk_modes = list( chunk_modes )
+	
+	# ------------------------------------------------------------------
+	# Controls
+	# ------------------------------------------------------------------
+	st.subheader( "Semantic Analysis" )
+	
+	mode = st.selectbox(
+		'Chunking Mode',
+		options=list( chunk_modes ),
+		key='chunk_mode',
+		help='Select how documents are chunked',
+	)
+	
+	col_a, col_b = st.columns( 2 )
+	
+	with col_a:
+		chunk_size = st.number_input(
+			'Chunk Size',
+			min_value=100,
+			max_value=5000,
+			value=1000,
+			step=100,
+			key='chunk_count',
 		)
-		
-		# -------------------------------
-		# Safety controls
-		# -------------------------------
-		MAX_TERMS = 50  # limit vocabulary scanned
-		MAX_SYSETS_PER_WORD = 5  # limit synsets per term
-		
-		POS_MAP = {
-				"Noun": "n",
-				"Verb": "v",
-				"Adjective": "a",
-				"Adverb": "r",
-		}
-		
-		vocabulary = st.session_state.get( 'vocabulary' )
-		def _get_vocab_terms( ) -> list[ str ]:
-			"""
-			
-				Purpose:
-				--------
-				Normalize and limit the vocabulary to a stable list of terms suitable for WordNet lookups.
 	
-				Returns:
-				--------
-				list[str]: Lowercased, alpha-only terms (bounded by MAX_TERMS).
-				
-			"""
-			if vocabulary is None or (hasattr( vocabulary, "empty" ) and vocabulary.empty):
-				return [ ]
-			
-			terms = sorted(
-				{
-						w.lower( )
-						for w in vocabulary
-						if isinstance( w, str ) and w.isalpha( )
-				}
+	with col_b:
+		overlap = st.number_input(
+			'Overlap',
+			min_value=0,
+			max_value=2000,
+			value=200,
+			step=50,
+			key='overlap_input',
+		)
+	
+	col_run, col_reset = st.columns( 2 )
+	run_chunking = col_run.button( 'Chunk', key='run_button' )
+	reset_chunking = col_reset.button( 'Reset', key='reset_control' )
+	
+	# ------------------------------------------------------------------
+	# Actions
+	# ------------------------------------------------------------------
+	if reset_chunking:
+		st.session_state.chunked_documents = None
+		st.info( 'Chunking controls reset.' )
+	
+	if run_chunking:
+		if mode == 'chars':
+			chunked_documents = _chunk_chars_with_overlap(
+				text=processed_text,
+				size=int( chunk_size ),
+				overlap=int( overlap ),
 			)
-			return terms[ :MAX_TERMS ]
-		
-		def _vocab_signature( terms: list[ str ] ) -> str:
-			"""
-				Purpose:
-				--------
-				Create a stable signature for cache invalidation based on the vocabulary slice and safety
-				controls.
-	
-				Parameters:
-				-----------
-				terms (list[str]): Vocabulary terms used for WordNet expansion.
-	
-				Returns:
-				--------
-				str: Deterministic signature.
-			"""
-			payload = "|".join( terms ) + f"|MAX_TERMS={MAX_TERMS}|MAX_SYSETS_PER_WORD={MAX_SYSETS_PER_WORD}"
-			return hashlib.md5( payload.encode( "utf-8" ) ).hexdigest( )
-		
-		# --------------------------------------------------
-		# Build / Cache (both views) once per vocabulary signature
-		# --------------------------------------------------
-		vocab_terms = _get_vocab_terms( )
-		
-		if not vocab_terms:
-			st.info( "Vocabulary is empty. Load and process text first." )
-			st.stop( )
-		
-		sig = _vocab_signature( vocab_terms )
-		cache_key_sig = "wordnet_synsets_sig"
-		cache_key_syn = "df_wordnet_synsets"
-		cache_key_lem = "df_wordnet_lemmas"
-		cache_miss = ( cache_key_sig not in st.session_state 
-		               or st.session_state[ cache_key_sig ] != sig 
-		               or cache_key_syn not in st.session_state 
-		               or cache_key_lem not in st.session_state )
-		
-		if cache_miss:
-			rows_synsets: list[ dict ] = [ ]
-			rows_lemmas: list[ dict ] = [ ]			
-			for term in vocab_terms:
-				synsets = wn.synsets( term )[ :MAX_SYSETS_PER_WORD ]				
-				for syn in synsets:
-					lemmas = syn.lemmas( )
-					lemma_count = len( lemmas )					
-					hypernym_paths = syn.hypernym_paths( )
-					hypernym_depth = ( max( len( path ) for path in hypernym_paths )
-							if hypernym_paths else 0 )
-					
-					# Synset-level row
-					rows_synsets.append(
-					{
-						"Word": term,
-						"Part Of Speech": syn.pos( ),
-						"Synset": syn.name( ),
-						"Definition": syn.definition( ),
-						"Lemmas": ", ".join( l.name( ) for l in lemmas ),
-						"Lemma Count": lemma_count,
-						"Hypernym Depth": hypernym_depth,
-					} )
-					
-					# Lemma-exploded rows
-					for lemma in lemmas:
-						rows_lemmas.append(
-						{
-								"Word": term,
-								"Part Of Speech": syn.pos( ),
-								"Synset": syn.name( ),
-								"Definition": syn.definition( ),
-								"Lemma": lemma.name( ),
-								"Lemma Count": lemma_count,
-								"Hypernym Depth": hypernym_depth,
-						} )
-			
-			st.session_state[ cache_key_sig ] = sig
-			st.session_state[ cache_key_syn ] = pd.DataFrame( rows_synsets ) if rows_synsets else pd.DataFrame( )
-			st.session_state[ cache_key_lem ] = pd.DataFrame( rows_lemmas ) if rows_lemmas else pd.DataFrame( )
-		
-		df_wordnet_synsets = st.session_state[ cache_key_syn ]
-		df_wordnet_lemmas = st.session_state[ cache_key_lem ]
-		
-		# --------------------------------------------------
-		# Inline Control Row (POS / Depth / Toggle)
-		# --------------------------------------------------
-		col_pos, col_depth, col_toggle = st.columns( [ 1.4, 2.8,  1.4 ], border=True )		
-		with col_pos:
-			pos_label = st.selectbox( 'Part of Speech',
-				options=[ 'All', 
-				          'Noun', 
-				          'Verb', 
-				          'Adjective', 
-				          'Adverb', ],
-				index=0,
-				label_visibility='collapsed', )
-		
-		with col_depth:
-			# Choose a reference DF for max depth computation (synsets is usually smaller/cleaner)
-			max_depth = 0
-			if (
-					not df_wordnet_synsets.empty
-					and "Hypernym Depth" in df_wordnet_synsets.columns
-			):
-				max_depth = int( df_wordnet_synsets[ "Hypernym Depth" ].max( ) )
-			
-			depth_range = st.slider(
-				'Hypernym Depth',
-				min_value=0,
-				max_value=max_depth if max_depth > 0 else 0,
-				value=(0, max_depth if max_depth > 0 else 0),
-				label_visibility='collapsed',
+		elif mode == 'tokens':
+			toks = word_tokenize( processed_text )
+			chunked_documents = _chunk_tokens_with_overlap(
+				tokens=toks,
+				size=int( max( 1, chunk_size // 10 ) ),
+				# practical default if user picked 1000 chars
+				overlap=int( max( 0, overlap // 10 ) ),
 			)
-		
-		with col_toggle:
-			explode_lemmas = st.toggle( 'Explode Lemmas', value=False )
-		
-		# --------------------------------------------------
-		# Select view (synsets vs exploded lemmas)
-		# --------------------------------------------------
-		df_view = df_wordnet_lemmas if explode_lemmas else df_wordnet_synsets
-		
-		# --------------------------------------------------
-		# Apply POS filter
-		# --------------------------------------------------
-		if pos_label != "All" and not df_view.empty:
-			df_view = df_view[ df_view[ "Part Of Speech" ] == POS_MAP[ pos_label ] ]
-		
-		# --------------------------------------------------
-		# Apply hypernym depth filter
-		# --------------------------------------------------
-		if not df_view.empty and "Hypernym Depth" in df_view.columns:
-			min_depth, max_depth_selected = depth_range
-			df_view = df_view[
-				(df_view[ 'Hypernym Depth' ] >= min_depth)
-				& (df_view[ 'Hypernym Depth' ] <= max_depth_selected) ]
-		
-		# --------------------------------------------------
-		# Interactive Explorer + Display
-		# --------------------------------------------------
-		if not df_view.empty:
-			df_filtered = dataframe_explorer( df_view, case=False )
-			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
 		else:
-			st.info( 'No WordNet rows found for the selected filters.' )
-	
-	except LookupError:
-		st.warning(
-			"NLTK WordNet resource not available. "
-			"Run `nltk.download('wordnet')` and `nltk.download('omw-1.4')`."
+			chunked_documents = [ ]
+			st.error( f'Unsupported chunking mode: {mode}' )
+		
+		st.session_state.chunked_documents = chunked_documents
+		st.success(
+			f'Chunking complete: {len( chunked_documents )} chunks generated '
+			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
 		)
-	except Exception as e:
-		st.error( f"WordNet synset expansion failed: {e}" )
 	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	
-	# --------------------------------------------------
-	# WordNet Semantic Relations
-	# --------------------------------------------------
-	try:
-		from nltk.corpus import wordnet as wn
-		
-		st.markdown( "#### WordNet Semantic Relations" )
-		st.caption(
-			"Hierarchical and part-whole relationships derived from WordNet "
-			"(hypernyms, hyponyms, meronyms, holonyms)."
+	# ------------------------------------------------------------------
+	# Tokenization & Vocabulary
+	# ------------------------------------------------------------------
+	processor = TextParser( )
+	tokens = word_tokenize( processed_text )
+	vocabulary = processor.create_vocabulary( tokens )
+	
+	st.session_state.tokens = tokens
+	st.session_state.vocabulary = vocabulary
+	
+	# ------------------------------------------------------------------
+	# Frequency Distribution
+	# ------------------------------------------------------------------
+	df_frequency = processor.create_frequency_distribution( tokens )
+	st.session_state.df_frequency = df_frequency
+	
+	# ------------------------------------------------------------------
+	# Three-column layout
+	# ------------------------------------------------------------------
+	col_tokens, col_vocab, col_freq = st.columns( [ 1,
+	                                                1,
+	                                                2 ], border=True, vertical_alignment='center' )
+	
+	with col_tokens:
+		st.write( f"Tokens: {len( tokens )}" )
+		st.data_editor(
+			pd.DataFrame( tokens, columns=[ "Token" ] ),
+			num_rows='dynamic',
+			use_container_width=True,
+			height=520,
+			disabled=True,
 		)
+	
+	with col_vocab:
+		st.write( f"Vocabulary: {len( vocabulary )}" )
+		st.data_editor(
+			pd.DataFrame( vocabulary, columns=[ "Word" ] ),
+			num_rows='dynamic',
+			use_container_width=True,
+			height=520,
+			disabled=True,
+		)
+	
+	with col_freq:
+		st.markdown( "#### Frequency Distribution" )
+		st.caption( 'Top 100 most frequent tokens' )
 		
-		MAX_RELATIONS_PER_SYNSET = 3
-		
-		rows = [ ]
-		for term in vocab_terms:
-			for syn in wn.synsets( term ):
-				def _add_related( label: str, related ):
-					for r in related[ :MAX_RELATIONS_PER_SYNSET ]:
-						rows.append(
-							{
-									"Word": term,
-									"Synset": syn.name( ),
-									"Relation": label,
-									"Related Synset": r.name( ),
-									"Definition": r.definition( ),
-							}
-						)
+		if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
+			numeric_cols = df_frequency.select_dtypes( include="number" )
+			if not numeric_cols.empty:
+				freq_col = numeric_cols.columns[ 0 ]
+				label_col = df_frequency.columns[ 0 ]
+				df_top = df_frequency.sort_values( freq_col, ascending=False ).head( 100 )
 				
-				_add_related( "Hypernym", syn.hypernyms( ) )
-				_add_related( "Hyponym", syn.hyponyms( ) )
-				_add_related( "Meronym", syn.part_meronyms( ) )
-				_add_related( "Holonym", syn.part_holonyms( ) )
-		
-		if rows:
-			df_wordnet_relations = pd.DataFrame( rows )
-			df_filtered = dataframe_explorer( df_wordnet_relations, case=False )
-			st.dataframe( df_filtered, use_container_width=True, hide_index=True )
+				st.bar_chart(
+					df_top.set_index( label_col )[ freq_col ],
+					use_container_width=True,
+				)
+			else:
+				st.info( 'No numeric frequency column available for charting.' )
 		else:
-			st.info( 'No semantic relations found for the current vocabulary slice.' )	
-	except Exception as e:
-		st.error( f'WordNet semantic relations failed: {e}' )
+			st.info( 'Frequency distribution unavailable.' )
+	
+	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
 # ======================================================================================
 # Tab - Data Tokenizaation
 # ======================================================================================
 with tabs[ 3 ]:
-	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='center' )
+	line_col, chunk_col = st.columns( [ 0.5,
+	                                    0.5 ], border=True, vertical_alignment='center' )
 	
 	# ------------------------------------------------------------------
 	# Session-state
@@ -2565,7 +2637,7 @@ with tabs[ 3 ]:
 	active_table = st.session_state.get( 'active_table' )
 	chunk_modes = st.session_state.get( 'chunk_modes' )
 	processed_text = st.session_state.get( 'processed_text' )
-
+	
 	def pad_or_trim_row( row: list, size: int ) -> list:
 		"""
 			Purpose:
@@ -2589,25 +2661,38 @@ with tabs[ 3 ]:
 			row = [ ]
 		if len( row ) >= size:
 			return row[ :size ]
-		return row + ( [ '' ] * ( size - len( row ) ) )
+		return row + ([ '' ] * (size - len( row )))
 	
 	# ------------------------------------------------------------------
 	# Fixed vector-space schema
 	# ------------------------------------------------------------------
-	dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
-		'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
-
+	dimensions = [ 'D0',
+	               'D1',
+	               'D2',
+	               'D3',
+	               'D4',
+	               'D5',
+	               'D6',
+	               'D7',
+	               'D8',
+	               'D9',
+	               'D10',
+	               'D11',
+	               'D12',
+	               'D13',
+	               'D14' ]
+	
 	# ------------------------------------------------------------------
 	# LEFT COLUMN — Chunked Data (lines)
 	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
-
+		
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			processor = TextParser( )
 			lines = processor.split_sentences( text=processed_text, size=15 )
 			st.session_state.lines = lines
-
+			
 			st.data_editor(
 				pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
 				num_rows='dynamic',
@@ -2616,16 +2701,16 @@ with tabs[ 3 ]:
 			)
 		else:
 			st.info( 'Run preprocessing first' )
-			
+	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Vector Space View (D0..D14) + df_chunks
 	# ------------------------------------------------------------------
 	with chunk_col:
-		if isinstance( lines, ( list, tuple ) ) and isinstance( dimensions, ( list, tuple ) ):
+		if isinstance( lines, (list, tuple) ) and isinstance( dimensions, (list, tuple) ):
 			st.text( f"Vector Space: {len( lines ) * len( dimensions ):,}" )
 		else:
 			st.caption( "Vector space not available yet." )
-
+		
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			if not isinstance( lines, list ) or not lines:
 				processor = TextParser( )
@@ -2646,34 +2731,34 @@ with tabs[ 3 ]:
 	documents = st.session_state.get( 'documents' )
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
-
+	
 	if st.session_state.documents is None:
 		st.warning( 'No documents loaded. Please load documents first.' )
 	elif loader_name is None:
 		st.warning( 'No active loader found.' )
 	else:
 		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
-
+	
 	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
-
-
-# ======================================================================================
-# Diagnostics — Token & Sentence Distributions
-# ======================================================================================
+	
+	# ======================================================================================
+	# Diagnostics — Token & Sentence Distributions
+	# ======================================================================================
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Tokenization Diagnostics' )
-
-	row1_col1, row1_col2 = st.columns( [ 0.5, 0.5 ], border=True )
+	
+	row1_col1, row1_col2 = st.columns( [ 0.5,
+	                                     0.5 ], border=True )
 	
 	# ------------------------------------------------------------------
 	# Top-N Token Frequency Histogram
 	# ------------------------------------------------------------------
 	with row1_col1:
 		st.caption( 'Top-N Token Frequency Distribution' )
-	
+		
 		df_token_frequency = st.session_state.get( 'df_token_frequency' )
-	
+		
 		if isinstance( df_token_frequency, pd.DataFrame ) and not df_token_frequency.empty:
 			top_n = st.slider(
 				'Top-N Tokens',
@@ -2683,9 +2768,9 @@ with tabs[ 3 ]:
 				step=10,
 				key='token_freq_top_n'
 			)
-	
+			
 			df_top = df_token_frequency.head( top_n )
-	
+			
 			st.bar_chart(
 				df_top.set_index( 'Token' )[ 'Frequency' ],
 				use_container_width=True
@@ -2698,18 +2783,18 @@ with tabs[ 3 ]:
 	# ------------------------------------------------------------------
 	with row1_col2:
 		st.caption( 'Sentence Length Distribution (Tokens per Sentence)' )
-	
+		
 		sentences = st.session_state.get( 'sentences' )
-	
+		
 		if isinstance( sentences, list ) and sentences:
 			sentence_lengths = [ len( s.split( ) ) for s in sentences if isinstance( s, str ) ]
-	
+			
 			if sentence_lengths:
 				df_sentence_lengths = pd.DataFrame(
 					sentence_lengths,
 					columns=[ 'Tokens per Sentence' ]
 				)
-	
+				
 				st.bar_chart(
 					df_sentence_lengths[ 'Tokens per Sentence' ],
 					use_container_width=True
@@ -2718,70 +2803,71 @@ with tabs[ 3 ]:
 				st.info( 'No valid sentence lengths computed.' )
 		else:
 			st.info( 'Sentence data not available.' )
-
+	
 	# ======================================================================================
 	# Diagnostics — Sparsity & Embedding Readiness
 	# ======================================================================================
-	row2_col1, row2_col2 = st.columns( [ 0.5, 0.5 ], border=True )
+	row2_col1, row2_col2 = st.columns( [ 0.5,
+	                                     0.5 ], border=True )
 	
 	# ------------------------------------------------------------------
 	# Padding / Sparsity Analysis (D0–D14)
 	# ------------------------------------------------------------------
 	with row2_col1:
 		st.caption( 'Token Grid Sparsity (Padding Analysis)' )
-	
+		
 		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens' )
-	
+		
 		if isinstance( df_sentence_tokens, pd.DataFrame ) and not df_sentence_tokens.empty:
 			total_cells = df_sentence_tokens.shape[ 0 ] * df_sentence_tokens.shape[ 1 ]
-			empty_cells = ( df_sentence_tokens == '' ).sum( ).sum( )
+			empty_cells = (df_sentence_tokens == '').sum( ).sum( )
 			filled_cells = total_cells - empty_cells
-	
+			
 			padding_ratio = empty_cells / total_cells if total_cells > 0 else 0.0
 			fill_ratio = filled_cells / total_cells if total_cells > 0 else 0.0
-	
+			
 			m1, m2, m3 = st.columns( 3 )
 			m1.metric( 'Total Cells', f'{total_cells:,}' )
 			m2.metric( 'Filled Cells', f'{filled_cells:,}' )
 			m3.metric( 'Padding %', f'{padding_ratio:.1%}' )
-	
+			
 			st.progress( fill_ratio )
 		else:
 			st.info( 'Sentence token grid not available.' )
-	
+		
 		# ------------------------------------------------------------------
 		# Embedding Readiness Scorecard
 		# ------------------------------------------------------------------
 		with row2_col2:
 			st.caption( 'Embedding Readiness Scorecard' )
-		
+			
 			tokens = st.session_state.get( 'tokens' )
 			token_counts = (
-				Counter( tokens )
-				if isinstance( tokens, list ) and tokens
-				else None
+					Counter( tokens )
+					if isinstance( tokens, list ) and tokens
+					else None
 			)
-		
+			
 			if token_counts:
 				total_tokens = len( tokens )
 				unique_tokens = len( token_counts )
 				hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
 				hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
-		
+				
 				avg_sentence_len = (
-					sum( len( s.split( ) ) for s in sentences ) / len( sentences )
-					if isinstance( sentences, list ) and sentences
-					else 0.0
+						sum( len( s.split( ) ) for s in sentences ) / len( sentences )
+						if isinstance( sentences, list ) and sentences
+						else 0.0
 				)
-		
+				
 				r1, r2 = st.columns( 2 )
 				r1.metric( 'Total Tokens', f'{total_tokens:,}' )
 				r2.metric( 'Unique Tokens', f'{unique_tokens:,}' )
-		
+				
 				r3, r4 = st.columns( 2 )
 				r3.metric( 'Avg Tokens / Sentence', f'{avg_sentence_len:.1f}' )
 				r4.metric( 'Hapax Ratio', f'{hapax_ratio:.1%}' )
-		
+				
 				st.caption(
 					'Lower padding and moderate hapax ratios generally yield more stable embeddings.'
 				)
@@ -2794,7 +2880,7 @@ with tabs[ 3 ]:
 with tabs[ 4 ]:
 	import pandas as pd
 	
-	def project_chunks_for_embedding( chunks: list ) -> list[str]:
+	def project_chunks_for_embedding( chunks: list ) -> list[ str ]:
 		"""
 		
 			Purpose:
@@ -2818,7 +2904,7 @@ with tabs[ 4 ]:
 				Clean embedding documents
 			
 		"""
-		texts = []
+		texts = [ ]
 		if not isinstance( chunks, list ):
 			return texts
 		for c in chunks:
@@ -2830,21 +2916,21 @@ with tabs[ 4 ]:
 				if c.strip( ):
 					texts.append( c.strip( ) )
 		return texts
-			
+	
 	processed_text = st.session_state.get( "processed_text" )
 	embeddings = st.session_state.get( "embeddings" )
 	chunks = st.session_state.get( "chunks" )
 	chunked_documents = st.session_state.get( "chunked_documents" )
-
+	
 	# ------------------------------------------------------------------
-	# Normalize embedding output state 
+	# Normalize embedding output state
 	# ------------------------------------------------------------------
 	if not isinstance( st.session_state.get( "df_embedding_output" ), pd.DataFrame ):
 		st.session_state.df_embedding_output = pd.DataFrame( )
-		
+	
 	if "embedding_documents" not in st.session_state:
 		st.session_state.embedding_documents = None
-		
+	
 	def k( name: str ) -> str:
 		return f"emb__{name}"
 	
@@ -2853,49 +2939,52 @@ with tabs[ 4 ]:
 			if isinstance( processed_text, str ) and processed_text.strip( ):
 				return [ processed_text.strip( ) ]
 			return [ ]
-		elif source == "Chunked Documents": 
+		elif source == "Chunked Documents":
 			if isinstance( chunked_documents, list ) and chunked_documents:
 				return project_chunks_for_embedding( chunked_documents )
 			return [ ]
 		else:
 			return [ ]
-
+	
 	# ------------------------------------------------------------------
 	# Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ], border=True )
-
+	left, right = st.columns( [ 1,
+	                            1.5 ], border=True )
+	
 	# ==================================================
 	# LEFT COLUMN — Providers + source selection
 	# ==================================================
 	with left:
 		st.markdown( "##### Embedding Providers" )
-		embedding_source = st.radio( 'Text Source', options=[ 'Processed Text', 'Chunked Documents'],
+		embedding_source = st.radio( 'Text Source', options=[ 'Processed Text',
+		                                                      'Chunked Documents' ],
 			horizontal=True, key=k( 'text_source' ), )
-
+		
 		st.session_state.embedding_source = embedding_source
 		texts = resolve_texts( embedding_source )
 		has_texts = bool( texts )
-
+		
 		st.caption( f"Texts to embed: {len( texts ) if texts else 0:,}" )
-
+		
 		# --------------------------------------------------
 		# Derived embedding input dataframe (for right column display)
 		# --------------------------------------------------
-		df_embedding_input = ( pd.DataFrame( { "text": texts } )
-			if has_texts
-			else pd.DataFrame( columns=[ "text" ] ) )
-
+		df_embedding_input = (pd.DataFrame( {
+				"text": texts } )
+		                      if has_texts
+		                      else pd.DataFrame( columns=[ "text" ] ))
+		
 		if not has_texts:
 			st.info( "No text available. Run processing or chunking first." )
-
+		
 		# --------------------------------------------------
-		# Shared save helpers  
+		# Shared save helpers
 		# --------------------------------------------------
 		def can_save_output( ) -> bool:
-			return ( isinstance( st.session_state.get( "df_embedding_output" ), pd.DataFrame )
-				and not st.session_state.df_embedding_output.empty )
-
+			return (isinstance( st.session_state.get( "df_embedding_output" ), pd.DataFrame )
+			        and not st.session_state.df_embedding_output.empty)
+		
 		# ==================================================
 		# 🧠 OpenAI
 		# ==================================================
@@ -2904,10 +2993,10 @@ with tabs[ 4 ]:
 			col_run, col_clear, col_save = st.columns( 3 )
 			run = col_run.button( "Embed", key=k( "openai_embed" ),
 				use_container_width=True, disabled=not has_texts, )
-
+			
 			clear = col_clear.button( "Clear", key=k( "openai_clear" ),
 				use_container_width=True, disabled=st.session_state.df_embedding_output.empty, )
-
+			
 			if can_save_output( ):
 				col_save.download_button( "Save CSV",
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
@@ -2916,7 +3005,7 @@ with tabs[ 4 ]:
 			else:
 				col_save.button( "Save CSV", disabled=True,
 					use_container_width=True, key=k( "openai_save_disabled" ), )
-
+			
 			if clear:
 				st.session_state.embeddings = None
 				st.session_state.embedding_documents = None
@@ -2924,31 +3013,31 @@ with tabs[ 4 ]:
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
 				st.success( "Embeddings cleared." )
-
+			
 			if run and has_texts:
 				with st.spinner( "Embedding with OpenAI..." ):
 					embedder = GPT( )
 					vectors = embedder.embed( texts, model=model )
-
+					
 					# Store output separately (do NOT overwrite chunked_documents)
 					df_out = pd.DataFrame(
 						{
-							"provider": "OpenAI",
-							"model": model,
-							"row_index": range( len( texts ) ),
-							"text": texts,
-							"embedding": vectors,
+								"provider": "OpenAI",
+								"model": model,
+								"row_index": range( len( texts ) ),
+								"text": texts,
+								"embedding": vectors,
 						}
 					)
-
+					
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( "records" )
 					st.session_state.embeddings = vectors
 					st.session_state.embedding_provider = "OpenAI"
 					st.session_state.embedding_model = model
-
+					
 					st.success( f"Generated {len( vectors )} embedding(s)." )
-
+		
 		# ==================================================
 		# ✨ Gemini
 		# ==================================================
@@ -2959,7 +3048,7 @@ with tabs[ 4 ]:
 				key=k( "gemini_model" ),
 				disabled=not has_texts,
 			)
-
+			
 			task = st.selectbox(
 				"Task Type",
 				options=Gemini( ).task_options,
@@ -2967,7 +3056,7 @@ with tabs[ 4 ]:
 				disabled=not has_texts,
 				help="Required to determine embedding intent.",
 			)
-
+			
 			dimensions = st.number_input(
 				"Dimensions",
 				min_value=128,
@@ -2978,24 +3067,24 @@ with tabs[ 4 ]:
 				disabled=not has_texts,
 				help="Optional. Must be supported by the selected model.",
 			)
-
+			
 			col_run, col_clear, col_save = st.columns( 3 )
 			can_embed = bool( has_texts and model and task )
-
+			
 			run = col_run.button(
 				"Embed",
 				key=k( "gemini_embed" ),
 				use_container_width=True,
 				disabled=not can_embed,
 			)
-
+			
 			clear = col_clear.button(
 				"Clear",
 				key=k( "gemini_clear" ),
 				use_container_width=True,
 				disabled=st.session_state.df_embedding_output.empty,
 			)
-
+			
 			if can_save_output( ):
 				col_save.download_button(
 					"Save CSV",
@@ -3012,7 +3101,7 @@ with tabs[ 4 ]:
 					use_container_width=True,
 					key=k( "gemini_save_disabled" ),
 				)
-
+			
 			if clear:
 				st.session_state.embeddings = None
 				st.session_state.embedding_documents = None
@@ -3020,7 +3109,7 @@ with tabs[ 4 ]:
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
 				st.success( "Embeddings cleared." )
-
+			
 			if run and can_embed:
 				with st.spinner( "Embedding with Gemini..." ):
 					embedder = Gemini( )
@@ -3030,27 +3119,27 @@ with tabs[ 4 ]:
 						model=model,
 						dimensions=dimensions,
 					)
-
+					
 					df_out = pd.DataFrame(
 						{
-							"provider": "Gemini",
-							"model": model,
-							"task": task,
-							"dimensions": dimensions,
-							"row_index": range( len( texts ) ),
-							"text": texts,
-							"embedding": vectors,
+								"provider": "Gemini",
+								"model": model,
+								"task": task,
+								"dimensions": dimensions,
+								"row_index": range( len( texts ) ),
+								"text": texts,
+								"embedding": vectors,
 						}
 					)
-
+					
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( "records" )
 					st.session_state.embeddings = vectors
 					st.session_state.embedding_provider = "Gemini"
 					st.session_state.embedding_model = model
-
+					
 					st.success( f"Generated {len( vectors )} embedding(s)." )
-
+		
 		# ==================================================
 		# ⚡ Groq
 		# ==================================================
@@ -3061,29 +3150,29 @@ with tabs[ 4 ]:
 				key=k( "groq_model" ),
 				disabled=not has_texts,
 			)
-
+			
 			st.caption(
 				"Groq embeddings use provider-defined geometry. "
 				"No task type or dimensionality parameters are exposed."
 			)
-
+			
 			col_run, col_clear, col_save = st.columns( 3 )
 			can_embed = bool( has_texts and model )
-
+			
 			run = col_run.button(
 				"Embed",
 				key=k( "groq_embed" ),
 				use_container_width=True,
 				disabled=not can_embed,
 			)
-
+			
 			clear = col_clear.button(
 				"Clear",
 				key=k( "groq_clear" ),
 				use_container_width=True,
 				disabled=st.session_state.df_embedding_output.empty,
 			)
-
+			
 			if can_save_output( ):
 				col_save.download_button(
 					"Save CSV",
@@ -3100,7 +3189,7 @@ with tabs[ 4 ]:
 					use_container_width=True,
 					key=k( "groq_save_disabled" ),
 				)
-
+			
 			if clear:
 				st.session_state.embeddings = None
 				st.session_state.embedding_documents = None
@@ -3108,44 +3197,44 @@ with tabs[ 4 ]:
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
 				st.success( "Embeddings cleared." )
-
+			
 			if run and can_embed:
 				with st.spinner( "Embedding with Groq..." ):
 					embedder = Grok( )
 					vectors = embedder.embed( texts, model=model )
-
+					
 					df_out = pd.DataFrame(
 						{
-							"provider": "Groq",
-							"model": model,
-							"row_index": range( len( texts ) ),
-							"text": texts,
-							"embedding": vectors,
+								"provider": "Groq",
+								"model": model,
+								"row_index": range( len( texts ) ),
+								"text": texts,
+								"embedding": vectors,
 						}
 					)
-
+					
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( "records" )
 					st.session_state.embeddings = vectors
 					st.session_state.embedding_provider = "Groq"
 					st.session_state.embedding_model = model
-
+					
 					st.success( f"Generated {len( vectors )} embedding(s)." )
-
+	
 	# ==================================================
 	# RIGHT COLUMN — Embedding input (read-only) + results below
 	# ==================================================
 	with right:
 		st.markdown( "##### Embedding Documents" )
-
+		
 		# texts already resolved above; do not recompute
 		df_embedding_input = (
-		    pd.DataFrame( { "text": texts } )
-		    if texts
-		    else pd.DataFrame( columns=[ "text" ] )
+				pd.DataFrame( {
+						"text": texts } )
+				if texts
+				else pd.DataFrame( columns=[ "text" ] )
 		)
-
-
+		
 		st.data_editor(
 			df_embedding_input,
 			use_container_width=True,
@@ -3153,12 +3242,12 @@ with tabs[ 4 ]:
 			disabled=True,
 			key=k( "embedding_input_view" ),
 		)
-
+	
 	# --------------------------------------------------
 	# BELOW BOTH COLUMNS — Embedding Results (read-only)
 	# --------------------------------------------------
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
+	
 	st.markdown( "##### Embedding Results" )
 	if st.session_state.df_embedding_output.empty:
 		st.info( "No embeddings generated yet." )
@@ -3170,7 +3259,7 @@ with tabs[ 4 ]:
 			disabled=True,
 			key=k( "embedding_output_view" ),
 		)
-
+	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ======================================================================================
@@ -3185,7 +3274,7 @@ with tabs[ 4 ]:
 	# ------------------------------------------------------------------
 	# Guard: embeddings availability
 	# ------------------------------------------------------------------
-	if not isinstance( embeddings, ( list, np.ndarray ) ):
+	if not isinstance( embeddings, (list, np.ndarray) ):
 		st.info( 'Generate embeddings to enable dimensionality reduction diagnostics.' )
 	else:
 		emb_array = np.asarray( embeddings )
@@ -3194,9 +3283,10 @@ with tabs[ 4 ]:
 		else:
 			ctrl_col1, ctrl_col2, ctrl_col3 = st.columns( 3, border=True )
 			with ctrl_col1:
-				reduction_method = st.selectbox( 'Reduction Method', options=[ 't-SNE', 'UMAP' ],
+				reduction_method = st.selectbox( 'Reduction Method', options=[ 't-SNE',
+				                                                               'UMAP' ],
 					key='embedding_reduction_method' )
-	
+			
 			with ctrl_col2:
 				if reduction_method == 't-SNE':
 					perplexity = st.slider(
@@ -3216,7 +3306,7 @@ with tabs[ 4 ]:
 						step=5,
 						key='umap_neighbors'
 					)
-	
+			
 			with ctrl_col3:
 				random_state = st.number_input(
 					'Random Seed',
@@ -3225,17 +3315,17 @@ with tabs[ 4 ]:
 					step=1,
 					key='embedding_reduction_seed'
 				)
-	
+			
 			# ------------------------------------------------------------------
 			# Dimensionality reduction (diagnostic only)
 			# ------------------------------------------------------------------
 			reduced = None
 			error_message = None
-	
+			
 			try:
 				if reduction_method == 't-SNE':
 					from sklearn.manifold import TSNE
-	
+					
 					reducer = TSNE(
 						n_components=2,
 						perplexity=perplexity,
@@ -3243,52 +3333,53 @@ with tabs[ 4 ]:
 						init='pca',
 						learning_rate='auto'
 					)
-	
+					
 					reduced = reducer.fit_transform( emb_array )
-	
+				
 				else:
 					import umap
-	
+					
 					reducer = umap.UMAP(
 						n_components=2,
 						n_neighbors=n_neighbors,
 						random_state=random_state,
 						min_dist=0.1
 					)
-	
+					
 					reduced = reducer.fit_transform( emb_array )
-	
+			
 			except Exception as ex:
 				error_message = str( ex )
-	
+			
 			# ------------------------------------------------------------------
 			# Visualization
 			# ------------------------------------------------------------------
 			if error_message:
 				st.error( f'Dimensionality reduction failed: {error_message}' )
-	
+			
 			elif isinstance( reduced, np.ndarray ) and reduced.shape[ 1 ] == 2:
 				df_reduced = pd.DataFrame(
 					reduced,
-					columns=[ 'X', 'Y' ]
+					columns=[ 'X',
+					          'Y' ]
 				)
-	
+				
 				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
-	
+				
 				if isinstance( chunked_documents, list ):
 					df_reduced[ 'Preview' ] = [
-						( d[ :120 ] + '…' )
-						if isinstance( d, str ) and len( d ) > 120
-						else str( d )
-						for d in chunked_documents
+							(d[ :120 ] + '…')
+							if isinstance( d, str ) and len( d ) > 120
+							else str( d )
+							for d in chunked_documents
 					]
 				else:
 					df_reduced[ 'Preview' ] = ''
-	
+				
 				# ----------------------------
 				# Scatter plot container
 				# ----------------------------
-				chart_container = st.container()
+				chart_container = st.container( )
 				with chart_container:
 					st.caption(
 						'Each point represents one embedded chunk. '
@@ -3301,7 +3392,7 @@ with tabs[ 4 ]:
 						size=60,
 						use_container_width=True
 					)
-	
+				
 				# ----------------------------
 				# Tabular inspection (optional)
 				# ----------------------------
@@ -3311,7 +3402,7 @@ with tabs[ 4 ]:
 						use_container_width=True,
 						num_rows='dynamic'
 					)
-	
+				
 				# ----------------------------
 				# Interpretation notes
 				# ----------------------------
@@ -3332,9 +3423,8 @@ with tabs[ 4 ]:
 # Tab — Vector Database (sqlite-vec)
 # ======================================================================================
 with tabs[ 5 ]:
-
 	st.subheader( 'Vector Database (sqlite-vec)' )
-
+	
 	# ------------------------------------------------------------------
 	# Required upstream state
 	# ------------------------------------------------------------------
@@ -3342,48 +3432,48 @@ with tabs[ 5 ]:
 	chunked_documents = st.session_state.get( 'chunked_documents' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embedding_provider = st.session_state.get( 'embedding_provider' )
-
+	
 	# ------------------------------------------------------------------
 	# Guard: embeddings must exist before continuing
 	# ------------------------------------------------------------------
 	if not (
-		isinstance( embeddings, list ) and
-		isinstance( chunked_documents, list ) and
-		embedding_model and embedding_provider
+			isinstance( embeddings, list ) and
+			isinstance( chunked_documents, list ) and
+			embedding_model and embedding_provider
 	):
 		st.info(
 			'Generate embeddings before persisting to the vector database.'
 		)
 		st.stop( )
-
+	
 	# ------------------------------------------------------------------
 	# Derive vector metadata (SAFE)
 	# ------------------------------------------------------------------
 	emb_array = np.asarray( embeddings )
-
+	
 	if emb_array.ndim == 1:
 		emb_array = emb_array.reshape( 1, -1 )
-
+	
 	if emb_array.ndim != 2 or emb_array.shape[ 0 ] < 1:
 		st.error( 'Invalid embeddings array.' )
 		st.stop( )
-
+	
 	dim = emb_array.shape[ 1 ]
-
+	
 	document_name = st.text_input(
 		'Document / Collection Name',
 		value='default_document'
 	)
-
+	
 	table_name = (
-		f"{document_name}__"
-		f"{embedding_provider}__"
-		f"{embedding_model}__"
-		f"{dim}"
+			f"{document_name}__"
+			f"{embedding_provider}__"
+			f"{embedding_model}__"
+			f"{dim}"
 	)
-
+	
 	st.caption( f'Vector Table: `{table_name}`' )
-
+	
 	# ------------------------------------------------------------------
 	# Database connection
 	# ------------------------------------------------------------------
@@ -3391,35 +3481,35 @@ with tabs[ 5 ]:
 		'SQLite Database Path',
 		value='vectors.db'
 	)
-
+	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
+	
 	# ------------------------------------------------------------------
 	# Actions
 	# ------------------------------------------------------------------
 	col_create, col_insert, col_delete = st.columns( 3 )
-
+	
 	with col_create:
 		if st.button( 'Create Vector Table' ):
 			conn = sqlite3.connect( db_path )
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
-
+			
 			SQLiteVec.create_table(
 				conn,
 				table_name=table_name,
 				dimension=dim
 			)
-
+			
 			conn.close( )
 			st.success( f'Created vector table `{table_name}`.' )
-
+	
 	with col_insert:
 		if st.button( 'Insert Embeddings' ):
 			conn = sqlite3.connect( db_path )
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
-
+			
 			vector_store = SQLiteVec(
 				connection=conn,
 				table_name=table_name,
@@ -3427,17 +3517,17 @@ with tabs[ 5 ]:
 					model_name=embedding_model
 				)
 			)
-
+			
 			vector_store.add_texts(
 				texts=chunked_documents,
 				embeddings=embeddings
 			)
-
+			
 			conn.close( )
 			st.success(
 				f'Inserted {len( embeddings )} embeddings into `{table_name}`.'
 			)
-
+	
 	with col_delete:
 		if st.button( 'Drop Vector Table', type='secondary' ):
 			conn = sqlite3.connect( db_path )
@@ -3446,9 +3536,9 @@ with tabs[ 5 ]:
 			conn.commit( )
 			conn.close( )
 			st.warning( f'Dropped vector table `{table_name}`.' )
-
+	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-
+	
 	# ------------------------------------------------------------------
 	# Verification panel
 	# ------------------------------------------------------------------
@@ -3459,24 +3549,24 @@ with tabs[ 5 ]:
 			conn
 		)
 		conn.close( )
-
+		
 		st.data_editor(
 			df_preview,
 			use_container_width=True,
 			num_rows='dynamic'
 		)
-
+	
 	# ======================================================================================
 	# Similarity Search (sqlite-vec)
 	# ======================================================================================
 	st.subheader( 'Similarity Search' )
-
+	
 	query_text = st.text_area(
 		'Query Text',
 		placeholder='Enter text to search for semantically similar chunks…',
 		height=100
 	)
-
+	
 	top_k = st.slider(
 		'Top-K Results',
 		min_value=1,
@@ -3484,7 +3574,7 @@ with tabs[ 5 ]:
 		value=5,
 		step=1
 	)
-
+	
 	similarity_threshold = st.slider(
 		'Minimum Similarity Threshold',
 		min_value=0.0,
@@ -3493,8 +3583,8 @@ with tabs[ 5 ]:
 		step=0.01,
 		help='Only results with similarity ≥ threshold will be shown.'
 	)
-
-	if not query_text.strip():
+	
+	if not query_text.strip( ):
 		st.info( 'Enter a query to run similarity search.' )
 		results = None
 	else:
@@ -3502,53 +3592,53 @@ with tabs[ 5 ]:
 			conn = sqlite3.connect( db_path )
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
-
+			
 			embedding_fn = SentenceTransformerEmbeddings(
 				model_name=embedding_model
 			)
-
+			
 			vector_store = SQLiteVec(
 				connection=conn,
 				table_name=table_name,
 				embedding=embedding_fn
 			)
-
+			
 			results = vector_store.similarity_search_with_score(
 				query=query_text,
 				k=top_k
 			)
-
+			
 			conn.close( )
-
+		
 		except Exception as ex:
 			st.error( f'Similarity search failed: {ex}' )
 			results = None
-
+	
 	# ------------------------------------------------------------------
 	# Results Rendering (with similarity threshold)
 	# ------------------------------------------------------------------
 	if results:
 		filtered_results = [
-			( doc, score )
-			for ( doc, score ) in results
-			if score >= similarity_threshold
+				(doc, score)
+				for (doc, score) in results
+				if score >= similarity_threshold
 		]
-
+		
 		st.caption(
 			f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
-			f'{len(filtered_results)} of {len(results)} results retained.'
+			f'{len( filtered_results )} of {len( results )} results retained.'
 		)
-
+		
 		if not filtered_results:
 			st.warning(
 				'No results met the selected similarity threshold. '
 				'Try lowering the threshold or increasing Top-K.'
 			)
-
-		for rank, ( doc, score ) in enumerate( filtered_results, start=1 ):
+		
+		for rank, (doc, score) in enumerate( filtered_results, start=1 ):
 			with st.expander(
-				f'#{rank} — Similarity Score: {score:.4f}',
-				expanded=( rank == 1 )
+					f'#{rank} — Similarity Score: {score:.4f}',
+					expanded=(rank == 1)
 			):
 				st.text_area(
 					'Chunk Text',
@@ -3558,7 +3648,7 @@ with tabs[ 5 ]:
 				)
 	else:
 		st.info( 'No results to display.' )
-
+	
 	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
 
 	
