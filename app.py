@@ -1,7 +1,7 @@
 '''
   ******************************************************************************************
-      Assembly:                Name
-      Filename:                name.py
+      Assembly:                Chonky
+      Filename:                app.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
 
@@ -44,15 +44,9 @@
 from __future__ import annotations
 import sys
 import types
-
-
-if "FreeSimpleGUI" not in sys.modules:
-    sys.modules["FreeSimpleGUI"] = types.ModuleType("FreeSimpleGUI")
-
 import altair
 import base64
 from collections import Counter
-
 from lxml import etree
 
 import config as cfg
@@ -146,6 +140,40 @@ GROK_MODELS = [ 'nomic-embed-text-v1.5', 'text-embedding-3-small',
 TABS = [ 'Document Loading', 'Text Processing', 'Semantic Analysis', 'Data Tokenization',
 		'Tensor Embeddings', 'Vector Database' ]
 
+
+REQUIRED_CORPORA = [
+		'brown',
+		'gutenberg',
+		'reuters',
+		'webtext',
+		'inaugural',
+		'state_union',
+		'punkt',
+		'stopwords',
+]
+
+# ======================================================================================
+# Session State Initialization
+# ======================================================================================
+
+if 'openai_api_key' not in st.session_state:
+	st.session_state[ 'openai_api_key' ] = ''
+	
+if 'gemini_api_key' not in st.session_state:
+	st.session_state[ 'gemini_api_key' ] = ''
+	
+if 'groq_api_key' not in st.session_state:
+	st.session_state[ 'groq_api_key' ] = ''
+	
+if 'google_api_key' not in st.session_state:
+	st.session_state[ 'google_api_key' ] = ''
+	
+if 'pinecone_api_key' not in st.session_state:
+	st.session_state[ 'pinecone_api_key' ] = ''
+	
+if 'google_application_credentials' not in st.session_state:
+	st.session_state[ 'google_application_credentials' ] = ''
+	
 SESSION_STATE_DEFAULTS = {
 		# -----------------------------
 		# Ingestion
@@ -244,16 +272,9 @@ SESSION_STATE_DEFAULTS = {
 		'df_wordnet_lemmas': None,
 }
 
-REQUIRED_CORPORA = [
-		'brown',
-		'gutenberg',
-		'reuters',
-		'webtext',
-		'inaugural',
-		'state_union',
-		'punkt',
-		'stopwords',
-]
+for key, default in SESSION_STATE_DEFAULTS.items( ):
+	if key not in st.session_state:
+		st.session_state[ key ] = default
 
 for corpus in REQUIRED_CORPORA:
     try:
@@ -326,125 +347,71 @@ st.set_page_config( page_title='Chonky', layout='wide',
 # ======================================================================================
 st.logo(  cfg.LOGO, size='large' )
 
-# ======================================================================================
-# Session State Initialization
-# ======================================================================================
-for key, default in SESSION_STATE_DEFAULTS.items( ):
-	if key not in st.session_state:
-		st.session_state[ key ] = default
 
 # ======================================================================================
 # Sidebar — API Key Configuration
 # ======================================================================================
 with st.sidebar:
-    st.subheader( 'Settings' )
-    st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-    with st.expander("🔐 API Keys", expanded=False):
-
-        if "api_keys" not in st.session_state:
-            st.session_state.api_keys = {
-                "openai": None,
-                "groq": None,
-                "google": None,
-                "pinecone": None,
-                "google_credentials_path": None
-            }
-
-        # --- OpenAI ---
-        openai_key: str | None = st.text_input(
-            "OpenAI API Key",
-            value=st.session_state.api_keys.get("openai") or "",
-            type="password"
-        )
-        if openai_key:
-            os.environ["OPENAI_API_KEY"] = openai_key
-            st.session_state.api_keys["openai"] = openai_key
-
-        # --- Groq ---
-        groq_key: str | None = st.text_input(
-            "Groq API Key",
-            value=st.session_state.api_keys.get("groq") or "",
-            type="password"
-        )
-        if groq_key:
-            os.environ["GROQ_API_KEY"] = groq_key
-            st.session_state.api_keys["groq"] = groq_key
-
-        # --- Google API ---
-        google_key: str | None = st.text_input(
-            "Google API Key",
-            value=st.session_state.api_keys.get("google") or "",
-            type="password"
-        )
-        if google_key:
-            os.environ["GOOGLE_API_KEY"] = google_key
-            st.session_state.api_keys["google"] = google_key
-
-        # --- Google Application Credentials ---
-        google_creds_path: str | None = st.text_input(
-            "Google Application Credentials (JSON Path)",
-            value=st.session_state.api_keys.get("google_credentials_path") or ""
-        )
-        if google_creds_path:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_creds_path
-            st.session_state.api_keys["google_credentials_path"] = google_creds_path
-
-        # --- Pinecone ---
-        pinecone_key: str | None = st.text_input(
-            "Pinecone API Key (future)",
-            value=st.session_state.api_keys.get("pinecone") or "",
-            type="password"
-        )
-        if pinecone_key:
-            os.environ["PINECONE_API_KEY"] = pinecone_key
-            st.session_state.api_keys["pinecone"] = pinecone_key
-            
-        # ------------------------------------------------------------------
-        # API Key Status Indicator
-        # ------------------------------------------------------------------
-        st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-        st.subheader(" 🔎 Key Status")
+    st.text( 'Settings' )
+    st.divider( )
     
-        key_status: dict[str, bool] = {
-            "OpenAI": bool(st.session_state.api_keys.get("openai")),
-            "Groq": bool(st.session_state.api_keys.get("groq")),
-            "Google API": bool(st.session_state.api_keys.get("google")),
-            "Google App Credentials": bool(
-                st.session_state.api_keys.get("google_credentials_path")
-            ),
-            "Pinecone (future)": bool(st.session_state.api_keys.get("pinecone")),
-        }
+    if st.session_state.openai_api_key == '':
+	    default = cfg.OPENAI_API_KEY
     
-        for key_name, is_loaded in key_status.items():
-            if is_loaded:
-                st.success(f"{key_name}: Loaded", icon="✅")
-            else:
-                st.warning(f"{key_name}: Missing", icon="⚠️")
-                
-        # ------------------------------------------------------------------
-        # Reset / Clear API Keys
-        # ------------------------------------------------------------------
-        st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
-        if st.button("🧹 Clear All API Keys", use_container_width=True):
-            for env_key in [
-                "OPENAI_API_KEY",
-                "GROQ_API_KEY",
-                "GOOGLE_API_KEY",
-                "PINECONE_API_KEY",
-                "GOOGLE_APPLICATION_CREDENTIALS",
-            ]:
-                os.environ.pop(env_key, None)
+    if default:
+	    st.session_state.openai_api_key = default
+	    
+    if st.session_state.gemini_api_key == '':
+	    default = cfg.GEMINI_API_KEY
     
-            st.session_state.api_keys = {
-                "openai": None,
-                "groq": None,
-                "google": None,
-                "pinecone": None,
-                "google_credentials_path": None,
-            }
+    if default:
+	    st.session_state.gemini_api_key = default
+	    
+    if st.session_state.groq_api_key == '':
+	    default = cfg.GROQ_API_KEY
     
-            st.experimental_rerun()
-
+    if default:
+	    st.session_state.groq_api_key = default
+	    
+    if st.session_state.google_api_key == '':
+	    default = cfg.GOOGLE_API_KEY
+    
+    if default:
+	    st.session_state.google_api_key = default
+	    
+    if st.session_state.pinecone_api_key == '':
+	    default = cfg.PINECONE_API_KEY
+    
+    if default:
+	    st.session_state.pinecone_api_key = default
+	    
+    if st.session_state.google_application_credentials == '':
+	    default = cfg.GOOGLE_APPLICATION_CREDENTIALS
+    
+    if default:
+	    st.session_state.google_application_credentials = default
+    
+    with st.expander( "🔐 API Keys", expanded=False ):
+	    # --- OpenAI ---
+	    openai_key = st.text_input( 'OpenAI API Key',
+		    value=st.session_state.openai_api_key, type='password' )
+	    
+	    # --- Groq ---
+	    groq_key = st.text_input( 'Groq API Key',
+		    value=st.session_state.groq_api_key, type='password' )
+	    
+	    # --- Google API ---
+	    google_key = st.text_input( 'Google API Key',
+		    value=st.session_state.google_api_key, type='password' )
+	    
+	    # --- Google Application Credentials ---
+	    google_creds_path = st.text_input( 'Google Application Credentials (JSON Path)',
+		    value=st.session_state.google_application_credentials, type='password' )
+	    
+	    # --- Pinecone ---
+	    pinecone_key = st.text_input( 'Pinecone API Key (future)',
+		    value=st.session_state.pinecone_api_key, type='password' )
+        
 # ======================================================================================
 # Tabs
 # ======================================================================================
@@ -478,8 +445,7 @@ with tabs[ 0 ]:
 				st.error(
 					'NLTK resources missing.\n\n'
 					'Run:\n'
-					'`python -m nltk.downloader punkt stopwords`'
-				)
+					'`python -m nltk.downloader punkt stopwords`' )
 				return
 			
 			if not tokens:
@@ -618,8 +584,7 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	# Left Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1,
-	                            1.5 ] )
+	left, right = st.columns( [ 1, 1.5 ] )
 	with left:
 		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
@@ -637,7 +602,7 @@ with tabs[ 0 ]:
 			return text if text.strip( ) else None
 		
 		# --------------------------- Text Loader
-		with st.expander( '📄 Text Loader', expanded=False ):
+		with st.expander( label='Text Loader', icon='📄', expanded=False ):
 			files = st.file_uploader( 'Upload TXT files', type=[ 'txt' ],
 				accept_multiple_files=True, key='txt_upload' )
 			
@@ -683,7 +648,7 @@ with tabs[ 0 ]:
 				st.success( f'Loaded {len( documents )} text document(s).' )
 		
 		# --------------------------- NLTK Loader
-		with st.expander( '📚 Corpora Loader', expanded=False ):
+		with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 			import nltk
 			from nltk.corpus import (
 				brown,
@@ -696,18 +661,9 @@ with tabs[ 0 ]:
 			
 			st.markdown( '###### NLTK Corpora' )
 			
-			corpus_name = st.selectbox(
-				'Select corpus',
-				[
-						'Brown',
-						'Gutenberg',
-						'Reuters',
-						'WebText',
-						'Inaugural',
-						'State of the Union',
-				],
-				key='nltk_corpus_name',
-			)
+			corpus_name = st.selectbox( 'Select corpus',
+				[ 'Brown', 'Gutenberg', 'Reuters', 'WebText', 'Inaugural', 'State of the Union', ],
+				key='nltk_corpus_name', )
 			
 			file_ids = [ ]
 			try:
@@ -730,21 +686,15 @@ with tabs[ 0 ]:
 					"or download individual corpora."
 				)
 			
-			selected_files = st.multiselect(
-				'Select files (leave empty to load all)',
-				options=file_ids,
-				key='nltk_file_ids',
-			)
+			selected_files = st.multiselect( 'Select files (leave empty to load all)',
+				options=file_ids, key='nltk_file_ids', )
 			
 			st.divider( )
 			
 			st.markdown( '###### Local Corpus' )
 			
-			local_corpus_dir = st.text_input(
-				'Local directory',
-				placeholder='path/to/text/files',
-				key='nltk_local_dir',
-			)
+			local_corpus_dir = st.text_input( 'Local directory', placeholder='path/to/text/files',
+				key='nltk_local_dir', )
 			
 			# ------------------------------------------------------------------
 			# Load / Clear / Save controls
@@ -770,15 +720,13 @@ with tabs[ 0 ]:
 			# Clear
 			# ------------------------------------------------------------------
 			if clear_nltk and st.session_state.get( 'documents' ):
-				st.session_state.documents = [
-						d for d in st.session_state.documents
+				st.session_state.documents = [ d for d in st.session_state.documents
 						if d.metadata.get( 'loader' ) != 'NLTKLoader'
 				]
 				
 				st.session_state.raw_text = (
 						"\n\n".join( d.page_content for d in st.session_state.documents )
-						if st.session_state.documents else None
-				)
+						if st.session_state.documents else None )
 				
 				st.session_state.active_loader = None
 				
@@ -861,48 +809,31 @@ with tabs[ 0 ]:
 					st.warning( 'No documents were loaded.' )
 		
 		# --------------------------- CSV Loader
-		with st.expander( "📑 CSV Loader", expanded=False ):
-			csv_file = st.file_uploader(
-				"Upload CSV",
-				type=[ "csv" ],
-				key="csv_upload",
-			)
+		with st.expander( label="CSV Loader", icon='📑', expanded=False ):
+			csv_file = st.file_uploader( "Upload CSV", type=[ "csv" ],
+				key="csv_upload", )
 			
-			delimiter = st.text_input(
-				"Delimiter",
-				value="\n\n",
-				key="csv_delim",
-			)
-			
-			quotechar = st.text_input(
-				"Quote Character",
-				value='"',
-				key="csv_quote",
-			)
+			delimiter = st.text_input( "Delimiter", value="\n\n", key="csv_delim", )
+			quotechar = st.text_input( "Quote Character", value='"', key="csv_quote", )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			load_csv = col_load.button( "Load", key="csv_load" )
-			clear_csv = col_clear.button( "Clear", key="csv_clear" )
+			load_csv = col_load.button( 'Load', key='csv_load' )
+			clear_csv = col_clear.button( 'Clear', key='csv_clear' )
 			
 			can_save = (
-					st.session_state.get( "active_loader" ) == "CsvLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
+					st.session_state.get( 'active_loader' ) == 'CsvLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
 			)
 			
 			if can_save:
-				col_save.download_button(
-					"Save",
-					data=st.session_state.get( "raw_text" ),
-					file_name="csv_loader_output.txt",
-					mime="text/plain",
-					key="csv_save",
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='csv_loader_output.txt', mime='text/plain', key='csv_save', )
 			else:
-				col_save.button( "Save", key="csv_save_disabled", disabled=True )
+				col_save.button( 'Save', key='csv_save_disabled', disabled=True )
 			
 			# --------------------------------------------------
 			# Clear
@@ -944,7 +875,7 @@ with tabs[ 0 ]:
 				st.rerun( )
 		
 		# -------------------------- XML Loader Expander
-		with st.expander( '🧬 XML Loader', expanded=False ):
+		with st.expander( label='XML Loader', icon='🧬', expanded=False ):
 			# ------------------------------------------------------------------
 			# Session-backed loader instance
 			# ------------------------------------------------------------------
@@ -953,34 +884,20 @@ with tabs[ 0 ]:
 			
 			loader = st.session_state.xml_loader
 			
-			xml_file = st.file_uploader(
-				label='Select XML file',
-				type=[ 'xml' ],
-				accept_multiple_files=False,
-				key='xml_file_uploader'
-			)
+			xml_file = st.file_uploader( label='Select XML file', type=[ 'xml' ],
+				accept_multiple_files=False, key='xml_file_uploader' )
 			
 			st.subheader( 'Semantic XML Loading (Unstructured)' )
 			
 			col1, col2 = st.columns( 2 )
 			
 			with col1:
-				chunk_size = st.number_input(
-					'Chunk Size',
-					min_value=100,
-					max_value=5000,
-					value=1000,
-					step=100
-				)
+				chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000,
+					value=1000, step=100 )
 			
 			with col2:
-				overlap_amount = st.number_input(
-					'Chunk Overlap',
-					min_value=0,
-					max_value=1000,
-					value=200,
-					step=50
-				)
+				overlap_amount = st.number_input( 'Chunk Overlap', min_value=0, max_value=1000,
+					value=200, step=50 )
 			
 			# --------------------------------------------------
 			# Semantic Load
@@ -1023,10 +940,8 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if st.button( 'Split Semantic Documents', use_container_width=True ):
 				with st.spinner( 'Splitting documents...' ):
-					split_docs = loader.split(
-						size=int( chunk_size ),
-						amount=int( overlap_amount )
-					)
+					split_docs = loader.split( size=int( chunk_size ),
+						amount=int( overlap_amount ) )
 				
 				if split_docs:
 					st.session_state[ 'xml_split_documents' ] = split_docs
@@ -1036,73 +951,73 @@ with tabs[ 0 ]:
 			# Structured XML Tree Loading
 			# ------------------------------------------------------------------
 			st.divider( )
-			st.subheader( "Structured XML Tree Loading (XPath)" )
+			st.subheader( 'Structured XML Tree Loading (XPath)' )
 			
-			if st.button( "Load XML Tree", use_container_width=True ):
+			if st.button( 'Load XML Tree', use_container_width=True ):
 				if xml_file is None:
-					st.warning( "Please select an XML file." )
+					st.warning( 'Please select an XML file.' )
 				else:
 					with tempfile.TemporaryDirectory( ) as tmp:
 						path = os.path.join( tmp, xml_file.name )
 						with open( path, 'wb' ) as f:
 							f.write( xml_file.read( ) )
 						
-						with st.spinner( "Parsing XML into ElementTree..." ):
+						with st.spinner( 'Parsing XML into ElementTree...' ):
 							tree = loader.load_tree( path )
 					
 					if tree is not None:
 						xml_text = tree.tostring(
 							tree,
 							pretty_print=True,
-							encoding="unicode"
+							encoding='unicode'
 						)
 						
 						st.session_state.raw_text = xml_text
 						st.session_state.active_loader = 'XmlLoader'
-						st.session_state[ "xml_tree_loaded" ] = True
-						st.session_state[ "xml_namespaces" ] = loader.xml_namespaces
+						st.session_state[ 'xml_tree_loaded' ] = True
+						st.session_state[ 'xml_namespaces' ] = loader.xml_namespaces
 						
-						st.success( "XML tree loaded successfully." )
+						st.success( 'XML tree loaded successfully.' )
 					else:
-						st.warning( "Failed to parse XML tree." )
+						st.warning( 'Failed to parse XML tree.' )
 			
 			# ------------------------------------------------------------------
 			# XPath Query Interface
 			# ------------------------------------------------------------------
-			loader = st.session_state.get( "active_loader" )
+			loader = st.session_state.get( 'active_loader' )
 
 			if loader is None:
-				st.info( "No loader initialized." )
-			elif not hasattr( loader, "xml_root" ):
-				st.info( "Active loader does not support XML." )
+				st.info( 'No loader initialized.' )
+			elif not hasattr( loader, 'xml_root' ):
+				st.info( 'Active loader does not support XML.' )
 			elif loader.xml_root is None:
-				st.info( "XML loader initialized but no XML tree loaded." )
+				st.info( 'XML loader initialized but no XML tree loaded.' )
 			else:
-				st.markdown( "**XPath Query**" )
+				st.markdown( '**XPath Query**' )
 				
 				xpath_expr = st.text_input(
-					"XPath Expression",
-					value="//*",
-					help="Use namespace prefixes if applicable."
+					'XPath Expression',
+					value='//*',
+					help='Use namespace prefixes if applicable.'
 				)
 				
-				if st.button( "Run XPath Query", use_container_width=True ):
-					with st.spinner( "Executing XPath..." ):
+				if st.button( 'Run XPath Query', use_container_width=True ):
+					with st.spinner( 'Executing XPath...' ):
 						elements = loader.get_elements( xpath_expr )
 					
 					if elements is not None:
-						st.session_state[ "xml_xpath_results" ] = elements
-						st.success( f"Returned {len( elements )} elements." )
+						st.session_state[ 'xml_xpath_results' ] = elements
+						st.success( f'Returned {len( elements )} elements.' )
 				
-				if "xml_xpath_results" in st.session_state:
+				if 'xml_xpath_results' in st.session_state:
 					preview_count = min(
 						10,
-						len( st.session_state[ "xml_xpath_results" ] )
+						len( st.session_state[ 'xml_xpath_results' ] )
 					)
 					
-					st.caption( f"Previewing first {preview_count} elements" )
+					st.caption( f'Previewing first {preview_count} elements' )
 					
-					for el in st.session_state[ "xml_xpath_results" ][ :preview_count ]:
+					for el in st.session_state[ 'xml_xpath_results' ][ :preview_count ]:
 						st.code(
 							etree.tostring(
 								el,
@@ -1136,36 +1051,32 @@ with tabs[ 0 ]:
 							} )
 		
 		# --------------------------- PDF Loader
-		with st.expander( "📕 PDF Loader", expanded=False ):
-			pdf = st.file_uploader( "Upload PDF", type=[ "pdf" ], key="pdf_upload" )
-			mode = st.selectbox( "Mode", [ "single", "elements" ], key="pdf_mode" )
-			extract = st.selectbox( "Extract", [ "plain", "ocr" ], key="pdf_extract" )
-			include = st.checkbox( "Include Images", value=False, key="pdf_include" )
-			fmt = st.selectbox( "Format", [ "markdown-img", "text" ], key="pdf_fmt" )
+		with st.expander( label='PDF Loader', icon='📕', expanded=False ):
+			pdf = st.file_uploader( 'Upload PDF', type=[ 'pdf' ], key='pdf_upload' )
+			mode = st.selectbox( 'Mode', [ 'single', 'elements' ], key='pdf_mode' )
+			extract = st.selectbox( 'Extract', [ 'plain', 'ocr' ], key='pdf_extract' )
+			include = st.checkbox( 'Include Images', value=False, key='pdf_include' )
+			fmt = st.selectbox( 'Format', [ 'markdown-img', 'text' ], key='pdf_fmt' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			load_pdf = col_load.button( "Load", key="pdf_load" )
-			clear_pdf = col_clear.button( "Clear", key="pdf_clear" )
+			load_pdf = col_load.button( 'Load', key='pdf_load' )
+			clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
 			
 			can_save = (
-					st.session_state.get( "active_loader" ) == "PdfLoader"
-					and isinstance( st.session_state.get( "raw_text" ), str )
-					and st.session_state.get( "raw_text" ).strip( )
+					st.session_state.get( 'active_loader' ) == 'PdfLoader'
+					and isinstance( st.session_state.get( 'raw_text' ), str )
+					and st.session_state.get( 'raw_text' ).strip( )
 			)
 			
 			if can_save:
-				col_save.download_button(
-					"Save",
-					data=st.session_state.get( "raw_text" ),
-					file_name="pdf_loader_output.txt",
-					mime="text/plain",
-					key="pdf_save",
-				)
+				col_save.download_button( 'Save',
+					data=st.session_state.get( 'raw_text' ),
+					file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save', )
 			else:
-				col_save.button( "Save", key="pdf_save_disabled", disabled=True )
+				col_save.button( 'Save', key='pdf_save_disabled', disabled=True )
 			
 			# --------------------------------------------------
 			# Clear
@@ -1210,7 +1121,7 @@ with tabs[ 0 ]:
 				st.rerun( )
 		
 		# --------------------------- Markdown Loader
-		with st.expander( '🧾 Markdown Loader', expanded=False ):
+		with st.expander( label='Markdown Loader', icon='🧾', expanded=False ):
 			md = st.file_uploader(
 				'Upload Markdown',
 				type=[ 'md',
@@ -1281,9 +1192,8 @@ with tabs[ 0 ]:
 				st.success( f"Loaded {len( documents )} Markdown document(s)." )
 		
 		# --------------------------- HTML Loader
-		with st.expander( '🌐 HTML Loader', expanded=False ):
-			html = st.file_uploader( 'Upload HTML', type=[ 'html',
-			                                               'htm' ], key='html_upload' )
+		with st.expander( label='HTML Loader', icon='🌐', expanded=False ):
+			html = st.file_uploader( 'Upload HTML', type=[ 'html', 'htm' ], key='html_upload' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
@@ -1340,32 +1250,18 @@ with tabs[ 0 ]:
 				st.success( f"Loaded {len( documents )} HTML document(s)." )
 		
 		# --------------------------- JSON Loader
-		with st.expander( '🧩 JSON Loader', expanded=False ):
-			js = st.file_uploader(
-				'Upload JSON',
-				type=[ 'json' ],
-				key='json_upload',
-			)
+		with st.expander( label='JSON Loader', icon='🧩', expanded=False ):
+			js = st.file_uploader( 'Upload JSON', type=[ 'json' ], key='json_upload', )
 			
-			is_lines = st.checkbox(
-				'JSON Lines',
-				value=False,
-				key='json_lines',
-			)
+			is_lines = st.checkbox( 'JSON Lines', value=False, key='json_lines', )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			load_json = col_load.button(
-				'Load',
-				key='json_load',
-			)
+			load_json = col_load.button( 'Load', key='json_load', )
 			
-			clear_json = col_clear.button(
-				'Clear',
-				key='json_clear',
-			)
+			clear_json = col_clear.button( 'Clear', key='json_clear', )
 			
 			# Save enabled only when JsonLoader is active and raw_text exists
 			can_save = (
@@ -2055,15 +1951,15 @@ with tabs[ 0 ]:
 # ======================================================================================
 with tabs[ 1 ]:
     raw_text = st.session_state.get('raw_text')
-    active_loader = st.session_state.get('active_loader')
+    active_loader = st.session_state.get( 'active_loader' )
     
-    if not isinstance(raw_text, str) or not raw_text.strip():
+    if not isinstance(raw_text, str) or not raw_text.strip( ):
         st.info('Load a document before running text processing.')
-        st.stop()
+        st.stop( )
     
     if not active_loader:
         st.warning('No active loader detected. Load documents first.')
-        st.stop()
+        st.stop( )
 
     
     if isinstance( raw_text, str ):
@@ -2078,15 +1974,14 @@ with tabs[ 1 ]:
         # ------------------------------------------------------------------
         # Layout
         # ------------------------------------------------------------------
-        left, right = st.columns( [ 1,
-                                    1.5 ], border=True )
+        left, right = st.columns( [ 1, 1.5 ], border=True )
         with left:
             active = st.session_state.get( 'active_loader' )
             
             # ==============================================================
             # Common Text Processing (TextParser)
             # ==============================================================
-            with st.expander( '🧠 Text Processing', expanded=True ):
+            with st.expander( label='Text Processing', icon='🧠', expanded=True ):
                 remove_html = st.checkbox( 'Remove HTML',
                     help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
                 remove_markdown = st.checkbox( 'Remove Markdown',
@@ -2125,7 +2020,7 @@ with tabs[ 1 ]:
             # Word-Specific Processing (WordParser)
             # ==============================================================
             extract_tables = extract_paragraphs = False
-            with st.expander( '📄 Word Processing', expanded=False ):
+            with st.expander( label='Word Processing', icon='📄', expanded=False ):
                 if active == 'WordLoader':
                     extract_tables = st.checkbox( 'Extract Tables' )
                     extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
@@ -2310,11 +2205,8 @@ with tabs[ 1 ]:
             # RIGHT COLUMN — Text Views
             # ------------------------------------------------------------------
             with right:
-                st.text_area( 'Raw Text',
-                    st.session_state.raw_text or 'No text loaded yet.',
-                    height=200,
-                    disabled=True,
-                    key='raw_text_view' )
+                st.text_area( label='Raw Text', value=st.session_state.raw_text,
+                    height=200, disabled=True, key='raw_text_view' )
                 
                 raw_text = st.session_state.get( 'raw_text' )
                 
@@ -3436,14 +3328,9 @@ with tabs[ 5 ]:
 	# ------------------------------------------------------------------
 	# Guard: embeddings must exist before continuing
 	# ------------------------------------------------------------------
-	if not (
-			isinstance( embeddings, list ) and
-			isinstance( chunked_documents, list ) and
-			embedding_model and embedding_provider
-	):
-		st.info(
-			'Generate embeddings before persisting to the vector database.'
-		)
+	if not ( isinstance( embeddings, list ) and isinstance( chunked_documents, list ) and
+			embedding_model and embedding_provider ):
+		st.info( 'Generate embeddings before persisting to the vector database.' )
 		st.stop( )
 	
 	# ------------------------------------------------------------------

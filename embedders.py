@@ -53,7 +53,7 @@ from google.genai import types
 from google.genai.types import ( EmbedContentConfig, HttpOptions )
 import os
 from openai import OpenAI
-from boogr import ErrorDialog, Error
+from boogr import Error
 import requests
 
 
@@ -166,8 +166,8 @@ class GPT( ):
 			exception.module = 'embedders'
 			exception.cause = 'GPT'
 			exception.method = 'create( self, text: str, model: str ) -> List[ float ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def embed( self, texts: list[ str ], model: str="text-embedding-3-small" ) -> List[ List[ float ] ]:
 		"""
@@ -230,8 +230,8 @@ class GPT( ):
 			exception.module = 'gpt'
 			exception.cause = 'Embedding'
 			exception.method = 'count_tokens( self, text: str, coding: str ) -> int'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def __dir__( self ) -> List[ str ] | None:
 		'''
@@ -377,8 +377,8 @@ class Gemini( ):
 			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 	def embed( self, text: List[ str ],  model: str='gemini-embedding-001',
 			dimensions: int=768  ) -> List[ List[ float ] ]:
@@ -414,8 +414,8 @@ class Gemini( ):
 			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 		
 class Grok:
 	'''
@@ -495,8 +495,8 @@ class Grok:
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'create( self, text, model, format )'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def embed( self, texts: List[ str ], model: str='text-embedding-3-small' ) -> List[ List[ float ] ]:
 		"""
@@ -532,8 +532,8 @@ class Grok:
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'embed( self, text, model, format )'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def count_tokens( self, text: str, coding: str='cl100k_base' ) -> Optional[ int ]:
 		"""Purpose: Simple word-count estimation for token limits."""
@@ -547,6 +547,6 @@ class Grok:
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'count_tokens( self, text, coding )'
-			error = ErrorDialog( exception );
-			error.show( )
+			raise exception;
+			
 

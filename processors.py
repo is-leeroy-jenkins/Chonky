@@ -48,8 +48,7 @@ import string
 import docx
 from pymupdf import Page, Document
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-from boogr import Error, ErrorDialog
+from boogr import Error
 from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
@@ -377,9 +376,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'load_text( self, file_path: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def collapse_whitespace( self, text: str ) -> str | None:
 		"""
 
@@ -410,9 +408,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def compress_whitespace( self, text: str ) -> str | None:
 		"""
 
@@ -446,9 +443,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_punctuation( self, text: str ) -> str:
 		"""
 		
@@ -477,7 +473,6 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			# Define sentence delimiters to preserve
 			sentence_delimiters = {
 					".": "__PERIOD__",
 					"!": "__EXCLAMATION__",
@@ -488,8 +483,6 @@ class TextParser( Processor ):
 			protected_text = text
 			for delimiter, token in sentence_delimiters.items( ):
 				protected_text = protected_text.replace( delimiter, token )
-			
-			# Remove all punctuation (Unicode-aware)
 			without_punctuation = re.sub( r"[^\w\s]", " ", protected_text, flags=re.UNICODE )
 			restored_text = without_punctuation
 			for delimiter, token in sentence_delimiters.items( ):
@@ -501,8 +494,7 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
 			
 	def normalize_text( self, text: str ) -> str | None:
 		"""
@@ -539,9 +531,8 @@ class TextParser( Processor ):
 			exception.module = 'chonky'
 			exception.cause = 'Text'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_errors( self, text: str  ) -> str:
 		"""
 		
@@ -577,8 +568,7 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_errors( self, text: str  ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
 	
 	def remove_fragments( self, text: str ) -> str | None:
 		"""
@@ -614,9 +604,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_special( self, text: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_symbols( self, text: str ) -> str | None:
 		"""
 
@@ -690,8 +679,7 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_special( self, text: str ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
 			
 	def remove_html( self, text: str ) -> str | None:
 		"""
@@ -725,9 +713,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_html( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_xml( self, text: str ) -> str:
 		"""
 		
@@ -776,9 +763,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_xml( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_markdown( self, text: str ) -> str | None:
 		"""
 
@@ -810,9 +796,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_stopwords( self, text: str ) -> str | None:
 		"""
 
@@ -849,9 +834,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_encodings( self, text: str ) -> str | None:
 		"""
 
@@ -889,9 +873,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_headers( self, filepath: str, lines: int=50, headers: int=3, footers: int=3, ) -> str:
 		"""
 		
@@ -979,9 +962,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_headers( self, filepath: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-
+			raise exception
+			
 	def remove_numbers( self, text: str ) -> str | None:
 		"""
 
@@ -1011,9 +993,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_numerals( self, text: str ) -> str | None:
 		"""
 
@@ -1046,9 +1027,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_numerals( self, text: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def remove_images( self, text: str ) -> str:
 		"""
 			Purpose:
@@ -1105,9 +1085,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('remove_formatting( self, text: str ) -> str')
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def lemmatize_text( self, text: str ) -> str | None:
 		"""
 
@@ -1137,9 +1116,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'lemmatize( self, text: str ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> DataFrame:
 		"""
 
@@ -1177,9 +1155,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
 		"""
 		
@@ -1208,9 +1185,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def chunk_text( self, text: str, size: int=10 ) -> str:
 		"""
 
@@ -1255,9 +1231,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def chunk_sentences( self, text: str, size: int=10 ) -> DataFrame:
 		"""
 
@@ -1302,9 +1277,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_text( self, text: str, max: int=512 ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def split_sentences( self, text: str, size: int=10 ) -> List[ str ]:
 		"""
 
@@ -1342,9 +1316,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'split_sentences( self, text: str ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def split_pages( self, filepath: str, num: int=50 ) -> List[ str ] | None:
 		"""
 		    
@@ -1389,9 +1362,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'split_pages( file_path )'
-			error = ErrorDialog( exception )
-			error.show( )
-		
+			raise exception
+			
 	def split_paragraphs( self, filepath: str ) -> DataFrame:
 		"""
 
@@ -1457,9 +1429,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> Series:
 		"""
 
@@ -1494,9 +1465,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 
@@ -1525,9 +1495,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def create_vectors( self, tokens: List[ str ] ) -> DataFrame:
 		"""
 		
@@ -1574,8 +1543,7 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
 			
 	def clean_file( self, filepath: str ) -> str:
 		"""
@@ -1615,9 +1583,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'clean_file( self, src: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def clean_files( self, source: str, destination: str ) -> None:
 		"""
 
@@ -1670,9 +1637,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'clean_files( self, src: str, dest: str )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def chunk_files( self, source: str, destination: str ) -> None:
 		"""
 
@@ -1724,9 +1690,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_files( self, src: str, dest: str )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def chunk_data( self, filepath: str, size: int=10  ) -> DataFrame:
 		"""
 
@@ -1768,9 +1733,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def chunk_datasets( self, source: str, destination: str, size: int=10 ) -> DataFrame:
 		"""
 
@@ -1832,9 +1796,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'chunk_data( self, filepath: str, size: int=15  ) -> DataFrame'
-			error = ErrorDialog( exception )
-			error.show( )
-
+			raise exception
+			
 	def convert_jsonl( self, source: str, destination: str, size: int=10 ) -> None:
 		"""
 
@@ -1854,8 +1817,8 @@ class TextParser( Processor ):
 
 		"""
 		try:
-			throw_if( 'src', source )
-			throw_if( 'dest', destination )
+			throw_if( 'source', source )
+			throw_if( 'destination', destination )
 			if not os.path.exists( source ):
 				raise FileNotFoundError( f'File not found: {source}' )
 			elif not os.path.exists( destination ):
@@ -1889,9 +1852,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def encode_sentences( self, tokens: List[ str ], model: str='all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
@@ -1919,9 +1881,8 @@ class TextParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Text'
 			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def semantic_search( self, query: str, tokens: List[ str ], embeddings: np.ndarray,
 			model: SentenceTransformer, top: int=5 ) -> List[ tuple[ str, float ] ]:
 		"""
@@ -1954,10 +1915,9 @@ class TextParser( Processor ):
 			exception.method = ('semantic_search( self, query: str, tokens: List[ str ], '
 			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
 			                    'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
-
 class WordParser( Processor ):
 	"""
 
@@ -2053,9 +2013,8 @@ class WordParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Word'
 			exception.method = 'extract_text( self ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def split_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -2072,9 +2031,8 @@ class WordParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Word'
 			exception.method = 'split_sentences( self ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def clean_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -2095,9 +2053,8 @@ class WordParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Word'
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def create_vocabulary( self ) -> set | None:
 		"""
 
@@ -2121,9 +2078,8 @@ class WordParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Word'
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def compute_frequency_distribution( self ) -> Dict[ str, int ] | None:
 		"""
 
@@ -2145,9 +2101,8 @@ class WordParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'Word'
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def summarize( self ) -> List[ str ] | None:
 		"""
 
@@ -2288,10 +2243,9 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = ('extract_lines( self, path: str, count: Optional[ int ]=None ) -> '
-			                    'List[ str ]')
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'extract_lines( self, **kwargs ) ->  List[ str ]'
+			raise exception
+			
 	
 	def _extract_tables( self, page: Page ) -> List[ str ] | None:
 		"""
@@ -2324,8 +2278,8 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = '_extract_tables( self, page ) -> List[ str ]:'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def _filter_lines( self, lines: List[ str ] ) -> List[ str ] | None:
 		"""
@@ -2361,8 +2315,8 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = '_filter_lines( self, words: List[ str ] ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def _has_header( self, line: str ) -> bool | None:
 		"""
@@ -2388,8 +2342,8 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = '_has_repeating_header( self, line: str ) -> bool'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None:
 		"""
@@ -2423,9 +2377,8 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None ) -> str:'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def extract_tables( self, path: str, count: Optional[ int ]=None ) -> (
 			List[ pd.DataFrame ] | None):
 		"""
@@ -2460,12 +2413,9 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = (
-					'extract_tables( self, path: str, max: Optional[ int ] = None ) -> List[ '
-				'pd.DataFrame ]')
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			exception.method = ( 'extract_tables( self, **kwargs ) -> List[ DataFrame ]')
+			raise exception
+			
 	def export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None:
 		"""
 
@@ -2488,12 +2438,9 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'PDF'
-			exception.method = (
-				'export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> '
-				'None')
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			exception.method =  'export_csv( self, **kwargs ) -> None'
+			raise exception
+			
 	def export_text( self, lines: List[ str ], path: str ) -> None:
 		"""
 
@@ -2519,9 +2466,8 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = 'export_text( self, lines: List[ str ], path: str ) -> None'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None:
 		"""
 
@@ -2547,7 +2493,7 @@ class PdfParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'PDF'
 			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )->None'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 

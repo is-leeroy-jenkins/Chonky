@@ -1,6 +1,6 @@
 '''
   ******************************************************************************************
-      Assembly:                Name
+      Assembly:                Chonky
       Filename:                loaders.py
       Author:                  Terry D. Eppler
       Created:                 05-31-2022
@@ -44,11 +44,10 @@
 import arxiv
 import docx2txt
 
-from boogr import Error, ErrorDialog
+from boogr import Error
 import config as cfg
 import glob
 from langchain_community.chat_models import ChatOpenAI
-from langchain_core.tools import Tool
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter, CharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
@@ -183,8 +182,8 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
 			exception.method = '_ensure_existing_file( self, path: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def resolve_paths( self, pattern: str ) -> List[ str ] | None:
 		'''
@@ -220,9 +219,9 @@ class Loader( ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
-			exception.method = '_resolve_paths( self, pattern: str ) -> List[ str ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'resolve_paths( self, pattern: str ) -> List[ str ]'
+			raise exception
+			
 	
 	def load_documents( self, path: str, encoding: Optional[ str ], csv_args: Optional[Dict[ str, Any ] ],
 			source_column: Optional[ str ] ) -> List[ Document ] | None:
@@ -257,8 +256,8 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'CSV'
 			exception.method = 'loader( )'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split_documents( self, docs: List[ Document ], chunk: int=1000, overlap: int=200 ) -> \
 	List[ Document ] | None:
@@ -291,10 +290,9 @@ class Loader( ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
-			exception.method = ('split_documents( self, docs: List[ Document ], chunk: int=1000, '
-			                    'overlap: int=200 ) -> List[ Document ]')
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = ('split_documents( self, **kwargs ) -> List[ Document ]')
+			raise exception
+			
 
 class TextLoader( Loader ):
 	'''
@@ -378,8 +376,8 @@ class TextLoader( Loader ):
 			exception.module = 'Loader'
 			exception.cause = 'TextLoader'
 			exception.method = 'load( self, file_path: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split_tokens( self, size: int=1000, amount: int=200 ) -> List[ Document ] | None:
 		'''
@@ -412,8 +410,8 @@ class TextLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'TextLoader'
 			exception.method = 'split_tokens( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split_chars( self, size: int=1000, amount: int=200, seps: str="\n\n" ) -> List[ Document ] | None:
 		'''
@@ -447,8 +445,8 @@ class TextLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'TextLoader'
 			exception.method = 'split_chars( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 		
 class CsvLoader( Loader ):
 	'''
@@ -563,8 +561,8 @@ class CsvLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'CsvLoader'
 			exception.method = 'loader( )'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, size: int=1000, amount: int=200 ) -> List[ Document ] | None:
 		'''
@@ -596,10 +594,10 @@ class CsvLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'CsvLoader'
 			exception.method = 'split( self, size: int=1000, amount: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
-class XmlLoader(Loader):
+class XmlLoader( Loader ):
     """
     Purpose:
     --------
@@ -731,8 +729,8 @@ class XmlLoader(Loader):
             exception.module = "chonky"
             exception.cause = "XmlLoader"
             exception.method = "load(self, filepath: str)"
-            error = ErrorDialog(exception)
-            error.show()
+            raise exception
+            
 
     def split(self, size: int=1000, amount: int=200) -> List[Document] | None:
         """
@@ -769,8 +767,8 @@ class XmlLoader(Loader):
             exception.module = "chonky"
             exception.cause = "XmlLoader"
             exception.method = "split(self, size: int = 1000, amount: int = 200)"
-            error = ErrorDialog(exception)
-            error.show()
+            raise exception
+            
 
     def load_tree(self, filepath: str) -> etree._ElementTree | None:
         """
@@ -798,7 +796,7 @@ class XmlLoader(Loader):
             self.xml_root = self.xml_tree.getroot()
             self.xml_namespaces = {
                 prefix if prefix is not None else "default": uri
-                for prefix, uri in (self.xml_root.nsmap or {}).items()
+                for prefix, uri in (self.xml_root.nsmap or {} ).items()
             }
 
             return self.xml_tree
@@ -807,8 +805,8 @@ class XmlLoader(Loader):
             exception.module = "chonky"
             exception.cause = "XmlLoader"
             exception.method = "load_tree(self, filepath: str)"
-            error = ErrorDialog(exception)
-            error.show()
+            raise exception
+            
 
     def get_elements(self, xpath: str) -> List[etree._Element] | None:
         """
@@ -839,8 +837,8 @@ class XmlLoader(Loader):
             exception.module = "chonky"
             exception.cause = "XmlLoader"
             exception.method = "get_elements(self, xpath: str)"
-            error = ErrorDialog(exception)
-            error.show()
+            raise exception
+            
 		    
 class WebLoader( Loader ):
 	'''
@@ -959,9 +957,9 @@ class WebLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
-			exception.method = 'load_recursive( self, url: str, depth: int=2, max_time: int=10, ignore: bool=True ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'load_recursive( self, **kwargs ) -> List[ Document ]'
+			raise exception
+			
 	
 	def load_pages( self, urls: List[ str ], depth: int=2, timeout: int=10,
 			ignore: bool=True, progress: bool=True ) -> List[ Document ] | None:
@@ -996,8 +994,8 @@ class WebLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
 			exception.method = 'load( self, urls: List[ str ] ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1028,9 +1026,9 @@ class WebLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
-			exception.method = 'split( self, chunk: int=1000 , overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'split( self, **kwargs ) -> List[ Document ]'
+			raise exception
+			
 
 class PdfLoader( Loader ):
 	"""
@@ -1159,9 +1157,9 @@ class PdfLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'PdfLoader'
-			exception.method = 'load( self, path: str, mode: str=single, extract: str=plain ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'load( self, **kwargs ) -> List[ Document ]'
+			raise exception
+			
 
 class ExcelLoader( Loader ):
 	'''
@@ -1246,7 +1244,7 @@ class ExcelLoader( Loader ):
 		'''
 		return [ 'single', 'page' ]
 	
-	def load( self, path: str, mode: str='elements', headers: bool=True ) -> List[
+	def load( self, path: str, mode: str='elements', has_headers: bool=True ) -> List[
 		                                                                             Document ] | None:
 		'''
 
@@ -1270,6 +1268,7 @@ class ExcelLoader( Loader ):
 		try:
 			throw_if( 'path', path )
 			self.mode = mode
+			self.has_headers = has_headers
 			self.file_path = self.verify_exists( path )
 			self.loader = UnstructuredExcelLoader( file_path=self.file_path, mode=self.mode )
 			self.documents = self.loader.load( )
@@ -1278,9 +1277,9 @@ class ExcelLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'ExcelLoader'
-			exception.method = 'load( self, path: str, mode: str=elements, include_headers: bool=True ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'load( self, **kwargs ) -> List[ Document ]'
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1313,9 +1312,9 @@ class ExcelLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'ExcelLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'split( self,  **kwargs  ) -> List[ Document ]'
+			raise exception
+			
 
 class WordLoader( Loader ):
 	'''
@@ -1415,8 +1414,8 @@ class WordLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WordLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1450,8 +1449,8 @@ class WordLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WordLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class MarkdownLoader( Loader ):
 	'''
@@ -1532,8 +1531,7 @@ class MarkdownLoader( Loader ):
 			A List[ str ] of mode options
 
 		'''
-		return [ 'page',
-		         'single' ]
+		return [ 'page', 'single' ]
 	
 	def load( self, path: str, mode: str='single' ) -> List[ Document ] | None:
 		'''
@@ -1563,8 +1561,8 @@ class MarkdownLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'MarkdownLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ] '
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1596,8 +1594,8 @@ class MarkdownLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'MarkdownLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class HtmlLoader( Loader ):
 	'''
@@ -1692,8 +1690,8 @@ class HtmlLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'HTML'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1725,8 +1723,8 @@ class HtmlLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'HtmlLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class JsonLoader( Loader ):
 	'''
@@ -1830,8 +1828,8 @@ class JsonLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'JsonLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -1863,8 +1861,8 @@ class JsonLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'JsonLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 			
 class YouTubeLoader( Loader ):
 	'''
@@ -2008,8 +2006,8 @@ class YouTubeLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'YoutubeLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2041,8 +2039,8 @@ class YouTubeLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'YoutubeLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class ArXivLoader( Loader ):
 	'''
@@ -2150,8 +2148,8 @@ class ArXivLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'ArxivLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2183,8 +2181,8 @@ class ArXivLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'ArxivLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class WikiLoader( Loader ):
 	'''
@@ -2294,8 +2292,8 @@ class WikiLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2327,8 +2325,8 @@ class WikiLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class GithubLoader( Loader ):
 	'''
@@ -2453,9 +2451,9 @@ class GithubLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'GithubLoader'
-			exception.method = 'load( self, url: str, repo: str, branch: str, filetype: str=md ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			exception.method = 'load( self, **kwargs  ) -> List[ Document ]'
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2487,8 +2485,8 @@ class GithubLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GithubLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class PowerPointLoader( Loader ):
 	'''
@@ -2590,8 +2588,8 @@ class PowerPointLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'PowerPointLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def load_multiple( self, path: str ) -> List[ Document ] | None:
 		'''
@@ -2621,8 +2619,8 @@ class PowerPointLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'PowerPointLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2654,8 +2652,8 @@ class PowerPointLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'PowerPointLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 			
 class OutlookLoader( Loader ):
@@ -2760,8 +2758,8 @@ class OutlookLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'OutlookLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2792,8 +2790,8 @@ class OutlookLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'OutlookLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class SpfxLoader( Loader ):
 	'''
@@ -2918,8 +2916,8 @@ class SpfxLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def load_folder( self, library_id: str, folder_id: str ) -> List[ Document ] | None:
 		'''
@@ -2950,8 +2948,8 @@ class SpfxLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -2982,8 +2980,8 @@ class SpfxLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 			
 class OneDriveLoader( Loader ):
 	'''
@@ -3101,8 +3099,8 @@ class OneDriveLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def load_folder( self, id: str, path: str ) -> List[ Document ] | None:
 		'''
@@ -3132,8 +3130,8 @@ class OneDriveLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -3164,8 +3162,8 @@ class OneDriveLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 
 class GoogleLoader( Loader ):
 	'''
@@ -3290,8 +3288,8 @@ class GoogleLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
 			exception.method = 'load_File( self, file_id: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def load_folder( self, folder_id: str, recursive: bool=False ) -> List[ Document ] | None:
 		'''
@@ -3321,9 +3319,8 @@ class GoogleLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
 			exception.method = 'load_folder( self, path: str ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
-	
+			raise exception
+			
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
 
@@ -3353,9 +3350,8 @@ class GoogleLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
-
+			raise exception
+			
 class EmailLoader( Loader ):
 	'''
 
@@ -3465,8 +3461,8 @@ class EmailLoader( Loader ):
 			exception.cause = 'EmailLoader'
 			exception.method = ('load( self, path: str, mode: str=elements, '
 			                    'include_headers: bool=True ) -> List[ Document ]')
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
 	
 	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
 		'''
@@ -3498,5 +3494,5 @@ class EmailLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'EmailLoader'
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
-			error = ErrorDialog( exception )
-			error.show( )
+			raise exception
+			
