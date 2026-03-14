@@ -1960,7 +1960,6 @@ with tabs[ 1 ]:
     if not active_loader:
         st.warning('No active loader detected. Load documents first.')
         st.stop( )
-
     
     if isinstance( raw_text, str ):
         st.session_state.raw_text_view = raw_text
