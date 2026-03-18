@@ -42,17 +42,17 @@
   ******************************************************************************************
 '''
 from groq.types import CreateEmbeddingResponse
+from groq import Groq
 from requests.models import Response
 
+from openai import OpenAI
+from google import genai
+from google.genai import types
+from google.genai.types import (EmbedContentConfig, HttpOptions)
 import config as cfg
 from typing import List, Optional, Any, Union, Dict
 import tiktoken
-from google import genai
-from groq import Groq
-from google.genai import types
-from google.genai.types import ( EmbedContentConfig, HttpOptions )
 import os
-from openai import OpenAI
 from boogr import Error
 import requests
 
@@ -87,6 +87,7 @@ class GPT( ):
 
 
     """
+
 	web_options: Optional[ List[ str ] ]
 	input: Optional[ List[ str ] ]
 	client: Optional[ OpenAI ]
@@ -312,7 +313,7 @@ class Gemini( ):
 	def __init__( self, version: str='v1alpha', use_ai: bool=False, dimensions: int=768 ):
 		super( ).__init__( )
 		self.api_key = cfg.VERTEX_API_KEY
-		self.project = cfg.GOOGLE_CLOUD_PROJECT
+		self.project = cfg.GOOGLE_CLOUD_PROJECT_ID
 		self.location = cfg.GOOGLE_CLOUD_LOCATION
 		self.credentials = cfg.GOOGLE_APPLICATION_CREDENTIALS
 		self.model = None
