@@ -1086,9 +1086,13 @@ with tabs[ 0 ]:
 			)
 			
 			if can_save:
-				col_save.download_button( 'Save',
+				col_save.download_button(
+					'Save',
 					data=st.session_state.get( 'raw_text' ),
-					file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save', )
+					file_name='pdf_loader_output.txt',
+					mime='text/plain',
+					key='pdf_save',
+				)
 			else:
 				col_save.button( 'Save', key='pdf_save_disabled', disabled=True )
 			
@@ -1115,6 +1119,7 @@ with tabs[ 0 ]:
 						path,
 						mode=mode,
 						extract=extract,
+						include=include,
 						format=fmt,
 					) or [ ]
 				
@@ -1122,7 +1127,9 @@ with tabs[ 0 ]:
 				raw_text = "\n\n".join(
 					d.page_content for d in documents
 					if
-					hasattr( d, "page_content" ) and isinstance( d.page_content, str ) and d.page_content.strip( )
+					hasattr( d, "page_content" )
+					and isinstance( d.page_content, str )
+					and d.page_content.strip( )
 				)
 				
 				st.session_state.documents = documents
@@ -1131,7 +1138,8 @@ with tabs[ 0 ]:
 				st.session_state.processed_text = raw_text
 				st.session_state.active_loader = "PdfLoader"
 				
-				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} PDF document(s)."
+				st.session_state[ "_loader_status" ] = \
+					f"Loaded {len( documents )} PDF document(s)."
 				st.rerun( )
 		
 		# --------------------------- Markdown Loader
@@ -2642,8 +2650,6 @@ with tabs[ 3 ]:
 	# ------------------------------------------------------------------
 	# Canonical diagnostics state
 	# ------------------------------------------------------------------
-	# Token frequency stays tied to the token-frequency pipeline already
-	# produced in this tab.
 	if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
 		if 'Word' in df_frequency.columns and 'Frequency' in df_frequency.columns:
 			st.session_state.df_token_frequency = df_frequency.rename(
@@ -2703,8 +2709,6 @@ with tabs[ 3 ]:
 	# RIGHT COLUMN — Vector Space View
 	# ------------------------------------------------------------------
 	with chunk_col:
-		st.text( 'Vector Space View' )
-		
 		if isinstance( lines, (list, tuple) ) and isinstance( dimensions, (list, tuple) ):
 			st.text( f"Vector Space: {len( lines ) * len( dimensions ):,}" )
 		else:

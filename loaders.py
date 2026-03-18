@@ -837,8 +837,7 @@ class XmlLoader( Loader ):
             exception.cause = "XmlLoader"
             exception.method = "get_elements(self, xpath: str)"
             raise exception
-            
-		    
+
 class WebLoader( Loader ):
 	'''
 
@@ -846,11 +845,6 @@ class WebLoader( Loader ):
 		--------
 		Functionality to load all text from HTML webpages into
 		a document format that we can use downstream.
-		To bypass SSL verification errors during fetching, you can set the “verify” option:
-		
-		You can also pass in a list of pages to load from.
-			loader_multiple_pages = WebBaseLoader(
-			    ["https://www.example.com/", "https://google.com"] )
 
 		Attributes:
 		----------
@@ -871,12 +865,12 @@ class WebLoader( Loader ):
 		verify_exists( self, path: str ) -> str,
 		resolve_paths( self, pattern: str ) -> List[ str ],
 		split_documents( self, docs: List[ Document ]  ) -> List[ Document ]
-		load( urls: List[ str ] ) -> List[ Documents ]
-		split( ) -> List[ Document ]
+		load( self, urls: str | List[ str ] ) -> List[ Document ]
+		split( self ) -> List[ Document ]
 
 	'''
 	loader: Optional[ RecursiveUrlLoader | WebBaseLoader ]
-	url: Optional[ str  ]
+	url: Optional[ str ]
 	web_paths: Optional[ str | List[ str ] ]
 	documents: Optional[ List[ Document ] ]
 	file_path: Optional[ str ]
@@ -884,11 +878,40 @@ class WebLoader( Loader ):
 	tiemout: Optional[ int ]
 	ignore: Optional[ bool ]
 	with_progress: Optional[ bool ]
+	recursive: Optional[ bool ]
+	prevent_outside: Optional[ bool ]
 	
-	def __init__( self ) -> None:
+	def __init__( self, recursive: bool = False, max_depth: int = 2,
+			prevent_outside: bool = True, timeout: int = 10,
+			ignore: bool = True, progress: bool = True ) -> None:
+		'''
+
+			Purpose:
+			--------
+			Initialize a WebLoader instance for either single-page loading
+			or recursive crawling.
+
+			Parameters:
+			-----------
+			recursive (bool): Indicates whether the loader should crawl
+				recursively from a starting URL.
+			max_depth (int): Maximum recursive crawl depth to use when
+				recursive mode is enabled.
+			prevent_outside (bool): Indicates whether recursively loaded
+				documents should be restricted to the starting domain.
+			timeout (int): Maximum request timeout in seconds.
+			ignore (bool): Indicates whether fetch failures should be ignored.
+			progress (bool): Indicates whether WebBaseLoader should display
+				progress while loading multiple pages.
+
+			Returns:
+			--------
+			None.
+
+		'''
 		super( ).__init__( )
-		self.max_depth = None
-		self.tiemout = None
+		self.max_depth = max_depth
+		self.tiemout = timeout
 		self.url = None
 		self.documents = None
 		self.file_path = None
@@ -897,14 +920,26 @@ class WebLoader( Loader ):
 		self.chunk_size = None
 		self.overlap_amount = None
 		self.loader = None
+		self.ignore = ignore
+		self.with_progress = progress
+		self.recursive = recursive
+		self.prevent_outside = prevent_outside
 	
 	def __dir__( self ):
 		'''
 
+			Purpose:
+			--------
+			Return a list of all available members.
+
+			Parameters:
+			-----------
+			None.
+
 			Returns:
 			--------
-			A list of all available members.
-
+			List[ str ]: A list of attribute and method names available on
+				the class.
 
 		'''
 		return [ 'loader',
@@ -923,58 +958,197 @@ class WebLoader( Loader ):
 		         'resolve_paths',
 		         'split_documents',
 		         'load',
+		         'load_pages',
+		         'load_recursive',
 		         'split',
-		         'urls', ]
+		         'urls',
+		         'recursive',
+		         'prevent_outside', ]
 	
-	def load_recursive( self, url: str, depth: int=2, max_time: int=10, ignore: bool=True ) -> List[ Document ] | None:
+	def _same_domain_only( self, docs: List[ Document ], source_url: str ) -> \
+			List[ Document ] | None:
 		'''
 
 			Purpose:
 			--------
-			Load one or more web pages and convert to Document objects.
+			Filter recursively crawled documents so only documents from the
+			same network location as the starting URL are retained.
 
 			Parameters:
 			-----------
-			urls (str | List[str]): A single URL string or list of URL strings.
+			docs (List[ Document ]): Documents returned by the recursive
+				web loader.
+			source_url (str): Starting URL used to seed the crawl.
 
 			Returns:
 			--------
-			List[Document]: Parsed Document objects from fetched HTML content.
+			List[ Document ] | None: Documents restricted to the same
+				domain as the starting URL.
+
+		'''
+		try:
+			throw_if( 'docs', docs )
+			throw_if( 'source_url', source_url )
+			
+			from urllib.parse import urlparse
+			
+			_origin = urlparse( source_url ).netloc.lower( )
+			_results = [ ]
+			
+			for d in docs:
+				if not hasattr( d, 'metadata' ) or not isinstance( d.metadata, dict ):
+					continue
+				
+				_source = d.metadata.get( 'source' ) or d.metadata.get( 'url' )
+				if not isinstance( _source, str ) or not _source.strip( ):
+					continue
+				
+				_netloc = urlparse( _source ).netloc.lower( )
+				if _netloc == _origin:
+					_results.append( d )
+			
+			return _results
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'WebLoader'
+			exception.method = ('_same_domain_only( self, docs: List[ Document ], '
+			                    'source_url: str ) -> List[ Document ]')
+			raise exception
+	
+	def load( self, urls: str | List[ str ] ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Load either one or more web pages or recursively crawl from a
+			starting URL, depending on the loader configuration.
+
+			Parameters:
+			-----------
+			urls (str | List[ str ]): A single URL string or a list of URL
+				strings to load.
+
+			Returns:
+			--------
+			List[ Document ] | None: Parsed Document objects from fetched
+				HTML content.
+
+		'''
+		try:
+			throw_if( 'urls', urls )
+			
+			if self.recursive:
+				if isinstance( urls, list ):
+					if not urls:
+						raise ValueError( 'No URLs were provided!' )
+					self.url = urls[ 0 ]
+				else:
+					self.url = urls
+				
+				self.documents = self.load_recursive(
+					url=self.url,
+					depth=self.max_depth,
+					max_time=self.tiemout,
+					ignore=self.ignore
+				)
+				return self.documents
+			else:
+				if isinstance( urls, str ):
+					self.web_paths = [ urls ]
+				else:
+					self.web_paths = urls
+				
+				self.documents = self.load_pages(
+					urls=self.web_paths,
+					depth=self.max_depth,
+					timeout=self.tiemout,
+					ignore=self.ignore,
+					progress=self.with_progress
+				)
+				return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'chonky'
+			exception.cause = 'WebLoader'
+			exception.method = 'load( self, urls: str | List[ str ] ) -> List[ Document ]'
+			raise exception
+	
+	def load_recursive( self, url: str, depth: int = 2, max_time: int = 10,
+			ignore: bool = True ) -> List[ Document ] | None:
+		'''
+
+			Purpose:
+			--------
+			Recursively crawl a starting URL and convert fetched HTML pages
+			into Document objects.
+
+			Parameters:
+			-----------
+			url (str): Starting URL for the crawl.
+			depth (int): Maximum recursive crawl depth.
+			max_time (int): Maximum request timeout in seconds.
+			ignore (bool): Indicates whether fetch failures should be
+				ignored.
+
+			Returns:
+			--------
+			List[ Document ] | None: Parsed Document objects from fetched
+				HTML content.
 
 		'''
 		try:
 			throw_if( 'url', url )
-			self.url= url
+			self.url = url
 			self.max_depth = depth
 			self.tiemout = max_time
 			self.ignore = ignore
-			self.loader = RecursiveUrlLoader( self.url, max_depth=self.max_depth,
-				timeout=self.tiemout, continue_on_failure=self.ignore )
+			self.loader = RecursiveUrlLoader(
+				self.url,
+				max_depth=self.max_depth,
+				timeout=self.tiemout,
+				continue_on_failure=self.ignore
+			)
 			self.documents = self.loader.load( )
+			
+			if self.prevent_outside:
+				self.documents = self._same_domain_only(
+					docs=self.documents,
+					source_url=self.url
+				)
+			
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
-			exception.method = 'load_recursive( self, **kwargs ) -> List[ Document ]'
+			exception.method = ('load_recursive( self, url: str, depth: int=2, '
+			                    'max_time: int=10, ignore: bool=True ) -> List[ Document ]')
 			raise exception
-			
 	
-	def load_pages( self, urls: List[ str ], depth: int=2, timeout: int=10,
-			ignore: bool=True, progress: bool=True ) -> List[ Document ] | None:
+	def load_pages( self, urls: List[ str ], depth: int = 2, timeout: int = 10,
+			ignore: bool = True, progress: bool = True ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
 			--------
-			Load one or more web pages and convert to Document objects.
+			Load one or more web pages and convert them into Document objects.
 
 			Parameters:
 			-----------
-			urls (str | List[str]): A single URL string or list of URL strings.
+			urls (List[ str ]): One or more URL strings to load.
+			depth (int): Preserved for API compatibility with the recursive
+				loader configuration.
+			timeout (int): Maximum request timeout in seconds.
+			ignore (bool): Indicates whether fetch failures should be
+				ignored.
+			progress (bool): Indicates whether WebBaseLoader should display
+				progress while loading.
 
 			Returns:
 			--------
-			List[Document]: Parsed Document objects from fetched HTML content.
+			List[ Document ] | None: Parsed Document objects from fetched
+				HTML content.
 
 		'''
 		try:
@@ -984,50 +1158,59 @@ class WebLoader( Loader ):
 			self.tiemout = timeout
 			self.ignore = ignore
 			self.with_progress = progress
-			self.loader = WebBaseLoader( web_paths=self.web_paths, show_progress=self.with_progress,
-				continue_on_failure=self.ignore )
+			self.loader = WebBaseLoader(
+				web_paths=self.web_paths,
+				show_progress=self.with_progress,
+				continue_on_failure=self.ignore
+			)
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
-			exception.method = 'load( self, urls: List[ str ] ) -> List[ Document ]'
+			exception.method = ('load_pages( self, urls: List[ str ], depth: int=2, '
+			                    'timeout: int=10, ignore: bool=True, '
+			                    'progress: bool=True ) -> List[ Document ]')
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
 		'''
 
 			Purpose:
 			--------
-			Split loaded web documents into smaller chunks for better LLM processing.
+			Split loaded web documents into smaller chunks for better
+			LLM processing.
 
 			Parameters:
 			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlap between chunks in characters.
+			chunk (int): Maximum number of characters per chunk.
+			overlap (int): Number of overlapping characters between chunks.
 
 			Returns:
 			--------
-			List[Document]: Chunked Document objects.
+			List[ Document ] | None: Chunked Document objects.
 
 		'''
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
+			
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
-			_documents = self.split_documents( docs=self.documents, chunk=self.chunk_size,
-				overlap=self.overlap_amount )
+			_documents = self.split_documents(
+				docs=self.documents,
+				chunk=self.chunk_size,
+				overlap=self.overlap_amount
+			)
 			return _documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WebLoader'
-			exception.method = 'split( self, **kwargs ) -> List[ Document ]'
+			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
 			raise exception
-			
+		
 
 class PdfLoader( Loader ):
 	"""
