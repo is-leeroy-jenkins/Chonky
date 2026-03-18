@@ -293,7 +293,6 @@ class Loader( ):
 			exception.method = ('split_documents( self, **kwargs ) -> List[ Document ]')
 			raise exception
 			
-
 class TextLoader( Loader ):
 	'''
 		
@@ -1144,7 +1143,7 @@ class PdfLoader( Loader ):
 			if self.include_images:
 				self.image_parser = RapidOCRBlobParser( )
 				self.loader = PyPDFLoader( file_path=self.file_path, mode=self.mode,
-					extraction_mode=self.extraction, extract_images=self.inlude_images,
+					extraction_mode=self.extraction, extract_images=self.include_images,
 					images_inner_format=self.image_format, images_parser=self.image_parser )
 				self.documents = self.loader.load( )
 				return self.documents

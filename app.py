@@ -876,25 +876,39 @@ with tabs[ 0 ]:
 			# ------------------------------------------------------------------
 			# Session-backed loader instance
 			# ------------------------------------------------------------------
-			if 'xml_loader' not in st.session_state:
+			if 'xml_loader' not in st.session_state or st.session_state.xml_loader is None:
 				st.session_state.xml_loader = XmlLoader( )
 			
 			loader = st.session_state.xml_loader
 			
-			xml_file = st.file_uploader( label='Select XML file', type=[ 'xml' ],
-				accept_multiple_files=False, key='xml_file_uploader' )
+			xml_file = st.file_uploader(
+				label='Select XML file',
+				type=[ 'xml' ],
+				accept_multiple_files=False,
+				key='xml_file_uploader'
+			)
 			
 			st.subheader( 'Semantic XML Loading (Unstructured)' )
 			
 			col1, col2 = st.columns( 2 )
 			
 			with col1:
-				chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000,
-					value=1000, step=100 )
+				chunk_size = st.number_input(
+					'Chunk Size',
+					min_value=100,
+					max_value=5000,
+					value=1000,
+					step=100
+				)
 			
 			with col2:
-				overlap_amount = st.number_input( 'Chunk Overlap', min_value=0, max_value=1000,
-					value=200, step=50 )
+				overlap_amount = st.number_input(
+					'Chunk Overlap',
+					min_value=0,
+					max_value=1000,
+					value=200,
+					step=50
+				)
 			
 			# --------------------------------------------------
 			# Semantic Load
@@ -915,20 +929,21 @@ with tabs[ 0 ]:
 						raw_text = '\n\n'.join(
 							d.page_content
 							for d in documents
-							if isinstance( d.page_content, str )
+							if hasattr( d, 'page_content' )
+							and isinstance( d.page_content, str )
 							and d.page_content.strip( )
 						)
 						
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 						st.session_state.raw_text = raw_text
+						st.session_state.processed_text = None
 						st.session_state.active_loader = 'XmlLoader'
 						st.session_state[ 'xml_documents' ] = documents
+						st.session_state[ 'xml_tree_loaded' ] = False
+						st.session_state[ 'xml_xpath_results' ] = None
+						st.session_state[ 'xml_namespaces' ] = None
 						st.rerun( )
-						
-						st.success(
-							f'Loaded {len( documents )} semantic document elements.'
-						)
 					else:
 						st.warning( 'No extractable text found in XML.' )
 			
@@ -937,8 +952,10 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if st.button( 'Split Semantic Documents', use_container_width=True ):
 				with st.spinner( 'Splitting documents...' ):
-					split_docs = loader.split( size=int( chunk_size ),
-						amount=int( overlap_amount ) )
+					split_docs = loader.split(
+						size=int( chunk_size ),
+						amount=int( overlap_amount )
+					)
 				
 				if split_docs:
 					st.session_state[ 'xml_split_documents' ] = split_docs
@@ -963,16 +980,18 @@ with tabs[ 0 ]:
 							tree = loader.load_tree( path )
 					
 					if tree is not None:
-						xml_text = tree.tostring(
+						xml_text = etree.tostring(
 							tree,
 							pretty_print=True,
 							encoding='unicode'
 						)
 						
 						st.session_state.raw_text = xml_text
+						st.session_state.processed_text = None
 						st.session_state.active_loader = 'XmlLoader'
 						st.session_state[ 'xml_tree_loaded' ] = True
 						st.session_state[ 'xml_namespaces' ] = loader.xml_namespaces
+						st.session_state[ 'xml_xpath_results' ] = None
 						
 						st.success( 'XML tree loaded successfully.' )
 					else:
@@ -981,13 +1000,13 @@ with tabs[ 0 ]:
 			# ------------------------------------------------------------------
 			# XPath Query Interface
 			# ------------------------------------------------------------------
-			loader = st.session_state.get( 'active_loader' )
+			xml_loader = st.session_state.get( 'xml_loader' )
 			
-			if loader is None:
+			if xml_loader is None:
 				st.info( 'No loader initialized.' )
-			elif not hasattr( loader, 'xml_root' ):
-				st.info( 'Active loader does not support XML.' )
-			elif loader.xml_root is None:
+			elif not hasattr( xml_loader, 'xml_root' ):
+				st.info( 'XML loader does not support XML tree operations.' )
+			elif xml_loader.xml_root is None:
 				st.info( 'XML loader initialized but no XML tree loaded.' )
 			else:
 				st.markdown( '**XPath Query**' )
@@ -1000,13 +1019,14 @@ with tabs[ 0 ]:
 				
 				if st.button( 'Run XPath Query', use_container_width=True ):
 					with st.spinner( 'Executing XPath...' ):
-						elements = loader.get_elements( xpath_expr )
+						elements = xml_loader.get_elements( xpath_expr )
 					
 					if elements is not None:
 						st.session_state[ 'xml_xpath_results' ] = elements
 						st.success( f'Returned {len( elements )} elements.' )
 				
-				if 'xml_xpath_results' in st.session_state:
+				if 'xml_xpath_results' in st.session_state and \
+						st.session_state[ 'xml_xpath_results' ] is not None:
 					preview_count = min(
 						10,
 						len( st.session_state[ 'xml_xpath_results' ] )
@@ -1019,33 +1039,30 @@ with tabs[ 0 ]:
 							etree.tostring(
 								el,
 								pretty_print=True,
-								encoding="unicode"
+								encoding='unicode'
 							),
-							language="xml"
+							language='xml'
 						)
 			
 			# ------------------------------------------------------------------
 			# Debug / Introspection
 			# ------------------------------------------------------------------
 			with st.expander( "ℹ Loader State" ):
-				loader = st.session_state.get( "active_loader" )
-			
-			if loader is None:
-				st.info( "No loader initialized." )
-				file_path = None
-			elif not hasattr( loader, "file_path" ):
-				file_path = None
-			else:
-				file_path = loader.file_path
+				xml_loader = st.session_state.get( 'xml_loader' )
 				
-				st.json( {
-						"file_path": loader.file_path,
-						"documents_loaded": loader.documents is not None,
-						"xml_tree_loaded": loader.xml_tree is not None,
-						"namespaces": loader.xml_namespaces,
-						"chunk_size": loader.chunk_size,
-						"overlap_amount": loader.overlap_amount,
-				} )
+				if xml_loader is None:
+					st.info( "No loader initialized." )
+				else:
+					st.json(
+						{
+								"file_path": getattr( xml_loader, 'file_path', None ),
+								"documents_loaded": getattr( xml_loader, 'documents', None ) is not None,
+								"xml_tree_loaded": getattr( xml_loader, 'xml_tree', None ) is not None,
+								"namespaces": getattr( xml_loader, 'xml_namespaces', None ),
+								"chunk_size": getattr( xml_loader, 'chunk_size', None ),
+								"overlap_amount": getattr( xml_loader, 'overlap_amount', None ),
+						}
+					)
 		
 		# --------------------------- PDF Loader
 		with st.expander( label='PDF Loader', icon='📕', expanded=False ):
@@ -2462,7 +2479,7 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	# Three-column layout
 	# ------------------------------------------------------------------
-	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='center' )
+	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='top' )
 	
 	with col_tokens:
 		st.write( f"Tokens: {len( tokens )}" )
@@ -2470,7 +2487,7 @@ with tabs[ 2 ]:
 			pd.DataFrame( tokens, columns=[ "Token" ] ),
 			num_rows='dynamic',
 			use_container_width=True,
-			height=520,
+			height='stretch',
 			disabled=True, )
 	
 	with col_vocab:
@@ -2479,7 +2496,7 @@ with tabs[ 2 ]:
 			pd.DataFrame( vocabulary, columns=[ "Word" ] ),
 			num_rows='dynamic',
 			use_container_width=True,
-			height=520,
+			height='stretch',
 			disabled=True, )
 	
 	with col_freq:
@@ -2511,7 +2528,7 @@ with tabs[ 3 ]:
 	line_col, chunk_col = st.columns(
 		[ 0.5, 0.5 ],
 		border=True,
-		vertical_alignment='center'
+		vertical_alignment='top'
 	)
 	
 	# ------------------------------------------------------------------
