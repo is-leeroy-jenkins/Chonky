@@ -2005,39 +2005,59 @@ with tabs[ 0 ]:
 						"_loader_status"
 					] = f"Fetched {len( documents )} GitHub document(s)."
 					st.rerun( )
-			
+		
 		# --------------------------- Web Loader
-		with st.expander( label='Web Loader', icon='🔗', expanded=False ):
+		with st.expander( "Web Loader", icon='🔗', expanded=False ):
 			urls = st.text_area(
-				'Enter one URL per line',
-				placeholder='https://example.com\nhttps://another.com',
-				key='web_urls', )
+				"Enter one URL per line",
+				placeholder="https://example.com\nhttps://another.com",
+				key="web_urls",
+			)
+			
+			web_timeout = st.number_input(
+				"Timeout (seconds)",
+				min_value=1,
+				max_value=120,
+				value=10,
+				step=1,
+				key="web_timeout",
+			)
+			
+			web_ignore = st.checkbox(
+				"Continue On Failure",
+				value=True,
+				key="web_ignore",
+				help="Keep loading remaining URLs if one page fails."
+			)
 			
 			col_fetch, col_clear, col_save = st.columns( 3 )
-			load_web = col_fetch.button( 'Load', key='web_fetch' )
-			clear_web = col_clear.button( 'Clear', key='web_clear' )
-			can_save = (st.session_state.get( 'active_loader' ) == 'WebLoader'
-			            and isinstance( st.session_state.get( 'raw_text' ), str )
-			            and st.session_state.get( 'raw_text' ).strip( ))
+			load_web = col_fetch.button( "Load", key="web_fetch" )
+			clear_web = col_clear.button( "Clear", key="web_clear" )
+			
+			can_save = (
+					st.session_state.get( "active_loader" ) == "WebLoader"
+					and isinstance( st.session_state.get( "raw_text" ), str )
+					and st.session_state.get( "raw_text" ).strip( )
+			)
 			
 			if can_save:
 				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='web_loader_output.txt',
-					mime='text/plain',
-					key='web_save',
+					"Save",
+					data=st.session_state.get( "raw_text" ),
+					file_name="web_loader_output.txt",
+					mime="text/plain",
+					key="web_save",
 				)
 			else:
-				col_save.button( 'Save', key='web_save_disabled', disabled=True )
+				col_save.button( "Save", key="web_save_disabled", disabled=True )
 			
-			if clear_web and st.session_state.get( 'documents' ):
+			if clear_web and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( 'loader' ) != 'WebLoader'
+						if d.metadata.get( "loader" ) != "WebLoader"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state[ '_loader_status' ] = 'WebLoader documents removed.'
+				st.session_state[ "_loader_status" ] = "WebLoader documents removed."
 				st.rerun( )
 			
 			if load_web and urls.strip( ):
@@ -2045,119 +2065,137 @@ with tabs[ 0 ]:
 				new_docs = [ ]
 				
 				for url in [ u.strip( ) for u in urls.splitlines( ) if u.strip( ) ]:
-					documents = loader.load( url ) or [ ]
+					documents = loader.load(
+						urls=url,
+						timeout=int( web_timeout ),
+						ignore=bool( web_ignore ),
+						progress=True
+					) or [ ]
+					
 					for d in documents:
-						d.metadata[ 'loader' ] = 'WebLoader'
-						d.metadata[ 'source' ] = url
+						if not isinstance( getattr( d, "metadata", None ), dict ):
+							d.metadata = { }
+						d.metadata[ "loader" ] = "WebLoader"
+						d.metadata[ "source" ] = url
+					
 					new_docs.extend( documents )
 				
 				if new_docs:
-					if st.session_state.get( 'documents' ):
+					if st.session_state.get( "documents" ):
 						st.session_state.documents.extend( new_docs )
 					else:
 						st.session_state.documents = new_docs
 						st.session_state.raw_documents = list( new_docs )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.active_loader = 'WebLoader'
+					st.session_state.active_loader = "WebLoader"
 					
 					st.session_state[
-						'_loader_status' ] = f'Fetched {len( new_docs )} web document(s).'
+						"_loader_status"
+					] = f"Fetched {len( new_docs )} web document(s)."
 					st.rerun( )
 		
 		# --------------------------- Web Crawler
-		with st.expander( label='Web Crawler', icon='🕷️', expanded=False ):
+		with st.expander( "Web Crawler", icon='🕷️', expanded=False ):
 			start_url = st.text_input(
-				'Start URL',
-				placeholder='https://example.com',
-				key='crawl_start_url',
+				"Start URL",
+				placeholder="https://example.com",
+				key="crawl_start_url",
 			)
 			
 			max_depth = st.number_input(
-				'Max crawl depth',
+				"Max crawl depth",
 				min_value=1,
 				max_value=5,
 				value=2,
 				step=1,
-				key='crawl_depth',
+				key="crawl_depth",
+			)
+			
+			crawl_timeout = st.number_input(
+				"Timeout (seconds)",
+				min_value=1,
+				max_value=120,
+				value=10,
+				step=1,
+				key="crawl_timeout",
 			)
 			
 			stay_on_domain = st.checkbox(
-				'Stay on starting domain',
+				"Stay on starting domain",
 				value=True,
-				key='crawl_domain_lock',
+				key="crawl_domain_lock",
 			)
 			
 			col_run, col_clear, col_save = st.columns( 3 )
-			run_crawl = col_run.button( 'Load', key='crawl_run' )
-			clear_crawl = col_clear.button( 'Clear', key='crawl_clear' )
+			run_crawl = col_run.button( "Load", key="crawl_run" )
+			clear_crawl = col_clear.button( "Clear", key="crawl_clear" )
 			
 			can_save = (
-					st.session_state.get( 'active_loader' ) == 'WebCrawler'
-					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
+					st.session_state.get( "active_loader" ) == "WebCrawler"
+					and isinstance( st.session_state.get( "raw_text" ), str )
+					and st.session_state.get( "raw_text" ).strip( )
 			)
 			
 			if can_save:
 				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='web_crawler_output.txt',
-					mime='text/plain',
-					key='crawl_save',
+					"Save",
+					data=st.session_state.get( "raw_text" ),
+					file_name="web_crawler_output.txt",
+					mime="text/plain",
+					key="crawl_save",
 				)
 			else:
-				col_save.button( 'Save', key='crawl_save_disabled', disabled=True )
+				col_save.button( "Save", key="crawl_save_disabled", disabled=True )
 			
-			if clear_crawl and st.session_state.get( 'documents' ):
+			if clear_crawl and st.session_state.get( "documents" ):
 				st.session_state.documents = [
 						d for d in st.session_state.documents
-						if d.metadata.get( 'loader' ) != 'WebCrawler'
+						if d.metadata.get( "loader" ) != "WebCrawler"
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-				st.session_state[ '_loader_status' ] = 'WebCrawler documents removed.'
+				st.session_state[ "_loader_status" ] = "WebCrawler documents removed."
 				st.rerun( )
 			
-			if run_crawl and start_url:
+			if run_crawl and start_url.strip( ):
 				loader = WebLoader(
 					recursive=True,
-					max_depth=max_depth,
-					prevent_outside=stay_on_domain,
+					max_depth=int( max_depth ),
+					prevent_outside=bool( stay_on_domain ),
+					timeout=int( crawl_timeout ),
+					ignore=True,
+					progress=True
 				)
 				
-				documents = loader.load( start_url ) or [ ]
+				documents = loader.load(
+					urls=start_url.strip( ),
+					depth=int( max_depth ),
+					timeout=int( crawl_timeout ),
+					ignore=True,
+					progress=True,
+					prevent_outside=bool( stay_on_domain )
+				) or [ ]
+				
 				for d in documents:
-					d.metadata[ 'loader' ] = 'WebCrawler'
-					d.metadata[ 'source' ] = start_url
+					if not isinstance( getattr( d, "metadata", None ), dict ):
+						d.metadata = { }
+					d.metadata[ "loader" ] = "WebCrawler"
+					d.metadata.setdefault( "source", start_url.strip( ) )
 				
 				if documents:
-					if st.session_state.get( 'documents' ):
+					if st.session_state.get( "documents" ):
 						st.session_state.documents.extend( documents )
 					else:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
-					st.session_state.active_loader = 'WebCrawler'
+					st.session_state.active_loader = "WebCrawler"
+					
 					st.session_state[
-						'_loader_status' ] = f'Crawled {len( documents )} document(s).'
-					st.rerun( )
-			
-			# ------------------------------------------------------------------
-			# RIGHT COLUMN — Document Preview
-			# ------------------------------------------------------------------
-			with right:
-				documents = st.session_state.documents
-				if not documents:
-					st.info( 'No documents loaded.' )
-				else:
-					st.caption( f'Active Loader: {st.session_state.active_loader}' )
-					st.write( f'Documents: {len( documents )}' )
-					for i, d in enumerate( documents[ :5 ] ):
-						with st.expander( f'Document {i + 1}', expanded=True ):
-							st.json( d.metadata )
-							st.text_area( 'Content', d.page_content[ :5000 ],
-								height=500, key=f'preview_doc_{i}' )
+				"_loader_status"
+			] = f"Fetched {len( documents )} crawled web document(s)."
+			st.rerun( )
 
 # ======================================================================================
 # Tab — Text Processing
