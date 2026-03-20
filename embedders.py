@@ -41,7 +41,6 @@
   </summary>
   ******************************************************************************************
 '''
-from groq.types import CreateEmbeddingResponse
 from groq import Groq
 from requests.models import Response
 
@@ -94,7 +93,7 @@ class GPT( ):
 	prompt: Optional[ str ]
 	response_format: Optional[ str ]
 	input: Optional[ List[ str ] ]
-	response: Optional[ CreateEmbeddingResponse ]
+	response: Optional[ Response ]
 	embedding: Optional[ List[ float ] ]
 	encoding_format: Optional[ str ]
 	dimensions: Optional[ int ]
@@ -203,7 +202,7 @@ class GPT( ):
 			exception.method = 'embed( self, text: str, model: str ) -> List[ List[ float ] ]'
 			raise exception
 			
-	def count_tokens( self, text: str, coding: str ) -> int:
+	def count_tokens( self, text: str, coding: str ) -> int | None:
 		'''
 
 	        Purpose:
@@ -417,7 +416,6 @@ class Gemini( ):
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
 			raise exception
 			
-		
 class Grok:
 	'''
 
