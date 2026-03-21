@@ -886,7 +886,6 @@ with tabs[ 0 ]:
 				clear_if_active( "CsvLoader" )
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "CSV Loader state cleared."
-				st.rerun( )
 			
 			# --------------------------------------------------
 			# Load
@@ -917,10 +916,9 @@ with tabs[ 0 ]:
 				st.session_state.active_loader = "CsvLoader"
 				
 				st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} CSV document(s)."
-				st.rerun( )
 		
 		# -------------------------- XML Loader Expander
-		with st.expander( label='XML Loader', icon='🧬', expanded=False ):
+		with st.expander( label='XML Loader', icon='🧬' ,expanded=False ):
 			# ------------------------------------------------------------------
 			# Session-backed loader instance
 			# ------------------------------------------------------------------
@@ -991,7 +989,6 @@ with tabs[ 0 ]:
 						st.session_state[ 'xml_tree_loaded' ] = False
 						st.session_state[ 'xml_xpath_results' ] = None
 						st.session_state[ 'xml_namespaces' ] = None
-						st.rerun( )
 					else:
 						st.warning( 'No extractable text found in XML.' )
 			
@@ -1174,7 +1171,6 @@ with tabs[ 0 ]:
 				clear_if_active( 'PdfLoader' )
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'PDF Loader state cleared.'
-				st.rerun( )
 			
 			# --------------------------------------------------
 			# Load
@@ -1204,12 +1200,14 @@ with tabs[ 0 ]:
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
 				st.session_state.raw_text = raw_text
-				st.session_state.processed_text = raw_text
+				st.session_state.processed_text = None
+				st.session_state.lines = None
+				st.session_state.chunked_documents = None
+				st.session_state.df_chunks = None
 				st.session_state.active_loader = 'PdfLoader'
 				
 				st.session_state[ '_loader_status' ] = \
 					f'Loaded {len( documents )} PDF document(s).'
-				st.rerun( )
 		
 		# --------------------------- Markdown Loader
 		with st.expander( label='Markdown Loader', icon='🧾', expanded=False ):
@@ -1794,7 +1792,6 @@ with tabs[ 0 ]:
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'ArXivLoader documents removed.'
-				st.rerun( )
 			
 			if arxiv_fetch and arxiv_query:
 				loader = ArXivLoader( )
@@ -1817,9 +1814,7 @@ with tabs[ 0 ]:
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = 'ArXivLoader'
 					
-					st.session_state[
-						'_loader_status' ] = f'Fetched {len( documents )} arXiv document(s).'
-					st.rerun( )
+					st.session_state['_loader_status' ] = f'Fetched {len( documents )} document(s).'
 		
 		# --------------------------- Wikipedia Loader
 		with st.expander( label='Wikipedia Loader', icon='📚', expanded=False ):
@@ -1877,7 +1872,6 @@ with tabs[ 0 ]:
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'WikiLoader documents removed.'
-				st.rerun( )
 			
 			if wiki_fetch and wiki_query:
 				loader = WikiLoader( )
@@ -1903,7 +1897,6 @@ with tabs[ 0 ]:
 					
 					st.session_state[
 						'_loader_status' ] = f'Fetched {len( documents )} Wikipedia document(s).'
-					st.rerun( )
 		
 		# --------------------------- GitHub Loader
 		with st.expander( label='GitHub Loader', icon='🐙', expanded=False ):
@@ -1973,7 +1966,6 @@ with tabs[ 0 ]:
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "GithubLoader documents removed."
-				st.rerun( )
 			
 			if gh_fetch and gh_repo and gh_branch:
 				loader = GithubLoader( )
@@ -2004,10 +1996,9 @@ with tabs[ 0 ]:
 					st.session_state[
 						"_loader_status"
 					] = f"Fetched {len( documents )} GitHub document(s)."
-					st.rerun( )
 		
 		# --------------------------- Web Loader
-		with st.expander( "Web Loader", icon='🔗', expanded=False ):
+		with st.expander( label="Web Loader", icon='🔗', expanded=False ):
 			urls = st.text_area(
 				"Enter one URL per line",
 				placeholder="https://example.com\nhttps://another.com",
@@ -2058,7 +2049,6 @@ with tabs[ 0 ]:
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "WebLoader documents removed."
-				st.rerun( )
 			
 			if load_web and urls.strip( ):
 				loader = WebLoader( recursive=False )
@@ -2093,7 +2083,6 @@ with tabs[ 0 ]:
 					st.session_state[
 						"_loader_status"
 					] = f"Fetched {len( new_docs )} web document(s)."
-					st.rerun( )
 		
 		# --------------------------- Web Crawler
 		with st.expander( "Web Crawler", icon='🕷️', expanded=False ):
@@ -2155,7 +2144,6 @@ with tabs[ 0 ]:
 				]
 				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "WebCrawler documents removed."
-				st.rerun( )
 			
 			if run_crawl and start_url.strip( ):
 				loader = WebLoader(
@@ -2188,15 +2176,10 @@ with tabs[ 0 ]:
 					else:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
-					
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebCrawler"
-					
-					st.session_state[
-				"_loader_status"
-			] = f"Fetched {len( documents )} crawled web document(s)."
-			st.rerun( )
-
+					st.session_state[ "_loader_status" ] = f"Crawled {len( documents )} document(s)."
+		
 # ======================================================================================
 # Tab — Text Processing
 # ======================================================================================
