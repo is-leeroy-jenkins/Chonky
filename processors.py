@@ -84,6 +84,47 @@ from tiktoken.core import Encoding
 import unicodedata
 from lxml import etree
 
+DELIMITERS: Set[ str ] = { '. ', '; ', '? ', '! ' }
+
+SYMBOLS: Set[ str ] = {
+		"@",
+		"#",
+		"$",
+		"^",
+		"*",
+		"<",
+		">",
+		"+",
+		"=",
+		"|",
+		"\\",
+		"<",
+		">",
+		":",
+		"[",
+		"]",
+		"{",
+		"}",
+		"(",
+		")",
+		"`",
+		"~"
+}
+
+ASCII_LETTERS: Set[ str ] = set( string.ascii_letters )
+
+DIGITS: Set[ str ] = set( string.digits )
+
+PUNCTUATION: Set[ str ] = set( string.punctuation )
+
+WHITESPACE: Set[ str ] = {
+		" ", "\t", "\n", "\r", "\v", "\f"
+}
+
+CONTROL_CHARACTERS: Set[ str ] = {
+		chr( i ) for i in range( 0x00, 0x20 )
+}.union( { chr( 0x7F ) } )
+
 try:
 	nltk.data.find( 'tokenizers/punkt' )
 except LookupError:
@@ -233,6 +274,8 @@ class TextParser( Processor ):
 	conditional_distribution: Optional[ DataFrame ]
 	PUNCTUATION: Optional[ Set[ str ] ]
 	CONTROL_CHARACTERS: Optional[ Set[ str ] ]
+	DELIMITERS: Optional[ Set[ str ] ]
+	DIGITS: Optional[ Set[ str ]]
 
 	def __init__( self ):
 		'''
@@ -243,8 +286,10 @@ class TextParser( Processor ):
 
 		'''
 		super( ).__init__( )
-		self.PUNCTUATION = set( string.punctuation )
+		self.PUNCTUATION = PUNCTUATION
 		self.CONTROL_CHARACTERS = ( {chr(i) for i in range(0x00, 0x20)} | {chr(0x7F)} )
+		self.DELIMITERS = DELIMITERS
+		self.DIGITS = DIGITS
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.encoding = tiktoken.get_encoding( 'cl100k_base' )
@@ -373,8 +418,8 @@ class TextParser( Processor ):
 			return raw_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'load_text( self, file_path: str ) -> str'
 			raise exception
 			
@@ -399,14 +444,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			extra_lines = re.sub( r'[\r\n]+', ' ', self.raw_input )
-			self.cleaned_lines = [ line for line in extra_lines ]
-			return ''.join( self.cleaned_lines )
+			return ' '.join( text.split( ) )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			raise exception
 			
@@ -431,17 +473,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			lines = [ ]
-			for line in self.raw_input.splitlines( ):
-				lines.append( re.sub( r"[ \t\s{2,1}]+", " ", line ).strip( ) )
-			
-			self.parsed_text = "\n".join( lines )
-			return self.parsed_text
+			return ' '.join( text.split( ) )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			raise exception
 			
@@ -473,26 +509,14 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			sentence_delimiters = {
-					'. ': '__PERIOD__',
-					'! ': '__EXCLAMATION__',
-					'? ': '__QUESTION__',
-					'; ': '__SEMICOLON__'
-			}
-			
-			protected_text = text
-			for delimiter, token in sentence_delimiters.items( ):
-				protected_text = protected_text.replace( delimiter, token )
-			without_punctuation = re.sub( r"[^\w\s]", " ", protected_text, flags=re.UNICODE )
-			restored_text = without_punctuation
-			for delimiter, token in sentence_delimiters.items( ):
-				restored_text = restored_text.replace( token, delimiter )
-			
-			return restored_text
+			tokens = word_tokenize( text )
+			cleaned_tokens = [ re.sub( r'[^\w\s]', '', token ) for token in tokens if
+			                   re.sub( r'[^\w\s]', '', token ) ]
+			return ' '.join( cleaned_tokens )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
 			raise exception
 			
@@ -520,16 +544,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			lower_cased = [ ]
-			tokens = text.split( )
-			for char in tokens:
-				lower = char.lower( )
-				lower_cased.append( lower )
-			return ' '.join( lower_cased )
+			return text.lower( )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'chonky'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
 			raise exception
 			
@@ -565,8 +584,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_errors( self, text: str  ) -> str'
 			raise exception
 	
@@ -596,13 +615,13 @@ class TextParser( Processor ):
 			_cleaned = [ ]
 			_fragments = text.split( )
 			for char in _fragments:
-				if char.isalpha( ) and len( char) > 2:
+				if len( char) > 2:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_special( self, text: str ) -> str:'
 			raise exception
 			
@@ -633,51 +652,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			MEANING_CRITICAL = {
-					"&",  # AT&T, R&D, P&G, M&A
-					"-",
-					"--",
-					"/",  # and/or, input/output
-					"_",  # snake_case, file_names
-					"%",  # percentage semantics
-			}
-			
-			REMOVE_SYMBOLS = {
-					"@",
-					"#",
-					"$",
-					"^",
-					"*",
-					"=",
-					"|",
-					"\\",
-					"<",
-					">",
-					"~"
-			}
-			
-			cleaned = [ ]
-			for ch in self.raw_input:
-				if ch in MEANING_CRITICAL:
-					cleaned.append( ' ' )
-					continue
-				if ch in REMOVE_SYMBOLS:
-					continue
-				cat = unicodedata.category( ch )
-				if cat.startswith( "S" ):  # Symbol categories: Sc, Sk, Sm, So
-					if ch in MEANING_CRITICAL:
-						cleaned.append( ch )
-					continue
-				
-				cleaned.append( ch )
-			
-			self.parsed_text = "".join( cleaned )
-			return self.parsed_text
+			return "".join( c for c in text if c not in self.PUNCTUATION )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_special( self, text: str ) -> str:'
 			raise exception
 			
@@ -710,8 +689,8 @@ class TextParser( Processor ):
 			return cleaned_html
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_html( self, text: str ) -> str'
 			raise exception
 			
@@ -760,8 +739,8 @@ class TextParser( Processor ):
 			return "".join( text_parts )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_xml( self, text: str ) -> str'
 			raise exception
 			
@@ -793,8 +772,8 @@ class TextParser( Processor ):
 			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
 			raise exception
 			
@@ -823,16 +802,12 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.stop_words = set( stopwords.words( 'english' ) )
-			_words = text.split( None )
-			_tokens = [ t for t in _words ]
-			cleaned_tokens = [ w for w in _tokens if w not in self.stop_words ]
-			cleaned_text = ' '.join( cleaned_tokens )
-			return cleaned_text
+			tokens = word_tokenize( text )
+			return [ w for w in tokens if w.lower( ) not in stopwords.words( 'english' ) ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
 			raise exception
 			
@@ -870,8 +845,8 @@ class TextParser( Processor ):
 			return cleaned_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
 			raise exception
 			
@@ -959,8 +934,8 @@ class TextParser( Processor ):
 			return '\n'.join( cleaned_pages )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_headers( self, filepath: str ) -> str'
 			raise exception
 			
@@ -984,14 +959,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			_clean = [ c for c in self.raw_input if not c.isdigit( ) ]
-			self.cleaned_text = ''.join( _clean )
-			return self.cleaned_text
+			return re.sub( r'\d+', '', text )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
 			raise exception
 			
@@ -1024,7 +996,7 @@ class TextParser( Processor ):
 			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_numerals( self, text: str ) -> str'
 			raise exception
@@ -1082,8 +1054,8 @@ class TextParser( Processor ):
 			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = ('remove_formatting( self, text: str ) -> str')
 			raise exception
 			
@@ -1113,8 +1085,8 @@ class TextParser( Processor ):
 			return _lemmmatized
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'lemmatize( self, text: str ) -> List[ str ]'
 			raise exception
 			
@@ -1152,8 +1124,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
 			raise exception
 			
@@ -1182,8 +1154,8 @@ class TextParser( Processor ):
 			return self.parts_of_speech
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ]'
 			raise exception
 			
@@ -1228,8 +1200,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
 			raise exception
 			
@@ -1274,8 +1246,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'chunk_text( self, text: str, max: int=512 ) -> DataFrame'
 			raise exception
 			
@@ -1303,7 +1275,7 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = nltk.word_tokenize( text )
+			_tokens = nltk.sent_tokenize( text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			_data = [ ]
 			for index, chunk in enumerate( _sentences ):
@@ -1313,8 +1285,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'split_sentences( self, text: str ) -> DataFrame'
 			raise exception
 			
@@ -1359,8 +1331,8 @@ class TextParser( Processor ):
 			return self.pages
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'split_pages( file_path )'
 			raise exception
 			
@@ -1426,8 +1398,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
 			raise exception
 			
@@ -1462,8 +1434,8 @@ class TextParser( Processor ):
 			return _words
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
 			raise exception
 			
@@ -1492,8 +1464,8 @@ class TextParser( Processor ):
 			return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
 			raise exception
 			
@@ -1540,8 +1512,8 @@ class TextParser( Processor ):
 			return embeddings
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
 			raise exception
 			
@@ -1580,8 +1552,8 @@ class TextParser( Processor ):
 				return _stops
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'clean_file( self, src: str ) -> str'
 			raise exception
 			
@@ -1634,8 +1606,8 @@ class TextParser( Processor ):
 					_clean.write( _lines )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'clean_files( self, src: str, dest: str )'
 			raise exception
 			
@@ -1687,8 +1659,8 @@ class TextParser( Processor ):
 						_clean.write( p )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'chunk_files( self, src: str, dest: str )'
 			raise exception
 			
@@ -1730,8 +1702,8 @@ class TextParser( Processor ):
 				return _data
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
 			raise exception
 			
@@ -1793,8 +1765,8 @@ class TextParser( Processor ):
 					_data.to_excel( _savepath, sheet_name='Dataset', index=False, columns=[ 'Data', ] )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=15  ) -> DataFrame'
 			raise exception
 			
@@ -1849,8 +1821,8 @@ class TextParser( Processor ):
 						_clean.write( p )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
 			raise exception
 			
@@ -1878,8 +1850,8 @@ class TextParser( Processor ):
 			return ( self.cleaned_tokens, np.array( _encoding ) )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
 			raise exception
 			
@@ -1910,13 +1882,334 @@ class TextParser( Processor ):
 			return [ ( tokens[ i ], sims[ i ] ) for i in top_indices ]
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
-			exception.cause = 'Text'
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
 			exception.method = ('semantic_search( self, query: str, tokens: List[ str ], '
 			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
 			                    'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
 			raise exception
+
+class NltkParser( Processor ):
+	'''
+
+		Purpose:
+		---------
+		Class providing NLTK-based natural language processing functionality for text that
+		has already been cleaned and normalized by the Text Processing expander.
+
+		Methods:
+		--------
+		word_tokenize_text( self, text: str ) -> str
+		sentence_tokenize_text( self, text: str ) -> str
+		stem_text( self, text: str ) -> str
+		lemmatize_text( self, text: str ) -> str
+		pos_tag_text( self, text: str ) -> str
+		named_entity_text( self, text: str ) -> str
+
+	'''
+	word_tokens: Optional[ List[ str ] ]
+	sentence_tokens: Optional[ List[ str ] ]
+	stemmed_tokens: Optional[ List[ str ] ]
+	lemmatized_tokens: Optional[ List[ str ] ]
+	tagged_tokens: Optional[ List[ Tuple[ str, str ] ] ]
+	named_entities: Optional[ List[ Tuple[ str, str ] ] ]
+	
+	def __init__( self ) -> None:
+		'''
+
+			Purpose:
+			---------
+			Initializes the NltkParser and prepares internal containers used by the
+			NLTK processing methods.
+
+			Parameters:
+			-----------
+			- self
+
+			Returns:
+			--------
+			- None
+
+		'''
+		super( ).__init__( )
+		self.word_tokens = [ ]
+		self.sentence_tokens = [ ]
+		self.stemmed_tokens = [ ]
+		self.lemmatized_tokens = [ ]
+		self.tagged_tokens = [ ]
+		self.named_entities = [ ]
+		self._ensure_nltk_resources( )
+	
+	def __dir__( self ) -> List[ str ] | None:
+		'''
+
+			Purpose:
+			---------
+			Provides a list of strings representing class members.
+
+			Parameters:
+			-----------
+			- self
+
+			Returns:
+			--------
+			- List[ str ] | None
+
+		'''
+		return [
+				'word_tokenize',
+				'sentence_tokenize',
+				'stem_text',
+				'lemmatize',
+				'pos_tag',
+				'named_entity_recognition',
+				'word_tokens',
+				'sentence_tokens',
+				'stemmed_tokens',
+				'lemmatized_tokens',
+				'tagged_tokens',
+				'named_entities'
+		]
+	
+	def _ensure_nltk_resources( self ) -> None:
+		'''
+
+			Purpose:
+			---------
+			Ensures the NLTK tokenizers, taggers, and corpora required by this class
+			are available before processing begins.
+
+			Parameters:
+			-----------
+			- self
+
+			Returns:
+			--------
+			- None
+
+		'''
+		try:
+			required_resources: List[ Tuple[ str, str ] ] = [
+					('tokenizers/punkt', 'punkt'),
+					('tokenizers/punkt_tab', 'punkt_tab'),
+					('corpora/wordnet', 'wordnet'),
+					('corpora/omw-1.4', 'omw-1.4'),
+					('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger'),
+					('taggers/averaged_perceptron_tagger_eng', 'averaged_perceptron_tagger_eng'),
+					('chunkers/maxent_ne_chunker', 'maxent_ne_chunker'),
+					('chunkers/maxent_ne_chunker_tab', 'maxent_ne_chunker_tab'),
+					('corpora/words', 'words'),
+			]
 			
+			for resource_path, resource_name in required_resources:
+				try:
+					nltk.data.find( resource_path )
+				except LookupError:
+					nltk.download( resource_name )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'NltkParser._ensure_nltk_resources( self ) -> None'
+			raise exception
+	
+	def word_tokenizer( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Tokenizes the input text into word tokens and returns a display-ready
+			string with one token per line.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to tokenize into words.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.word_tokens = word_tokenize( text )
+			return '\n'.join( token for token in self.word_tokens if isinstance( token, str ) )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'word_tokenizer( self, text: str ) -> str'
+			raise exception
+	
+	def sentence_tokenizer( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Tokenizes the input text into sentences and returns a display-ready
+			numbered string.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to tokenize into sentences.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.sentence_tokens = sent_tokenize( text )
+			return '\n'.join(
+				f'{index + 1}. {sentence}'
+				for index, sentence in enumerate( self.sentence_tokens )
+				if isinstance( sentence, str ) and sentence.strip( )
+			)
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'r( self, text: str ) -> str'
+			raise exception
+	
+	def stemmer( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Applies stemming to the input text and returns a whitespace-joined
+			display-ready string of stemmed tokens.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to stem.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.word_tokens = word_tokenize( text )
+			self.stemmed_tokens = [ self.stemmer.stem( token ) for token in self.word_tokens
+			                        if isinstance( token, str ) and token.strip( ) ]
+			
+			return ' '.join( self.stemmed_tokens )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'stemmer( self, text: str ) -> str'
+			raise exception
+	
+	def lemmatizer( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Applies WordNet lemmatization to the input text and returns a
+			whitespace-joined display-ready string of lemmatized tokens.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to lemmatize.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.word_tokens = word_tokenize( text )
+			self.lemmatized_tokens = [ self.lemmatizer.lemmatize( token ) for token in self.word_tokens
+			                           if isinstance( token, str ) and token.strip( ) ]
+			
+			return ' '.join( self.lemmatized_tokens )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'lemmatizer( self, text: str ) -> str'
+			raise exception
+	
+	def pos_tag( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Applies part-of-speech tagging to the input text and returns a
+			display-ready string containing one token-tag pair per line.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to tag.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.word_tokens = word_tokenize( text )
+			self.tagged_tokens = nltk.pos_tag( self.word_tokens )
+			return '\n'.join( f'{token}\t{tag}' for token, tag in self.tagged_tokens
+			                  if isinstance( token, str ) and token.strip( ) )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'pos_tag( self, text: str ) -> str'
+			raise exception
+	
+	def named_entity_recognition( self, text: str ) -> str:
+		'''
+
+			Purpose:
+			---------
+			Applies named entity recognition to the input text and returns a
+			display-ready string containing one extracted entity per line.
+
+			Parameters:
+			-----------
+			- text: str
+				The cleaned text to analyze for named entities.
+
+			Returns:
+			--------
+			- str
+
+		'''
+		try:
+			throw_if( 'text', text )
+			self.word_tokens = word_tokenize( text )
+			self.tagged_tokens = nltk.pos_tag( self.word_tokens )
+			tree = nltk.ne_chunk( self.tagged_tokens )
+			self.named_entities = [ ]
+			for node in tree:
+				if hasattr( node, 'label' ):
+					label = node.label( )
+					entity_text = ' '.join( token for token, _ in node.leaves( )
+					                        if isinstance( token, str ) and token.strip( ) )
+					
+					if entity_text:
+						self.named_entities.append( (entity_text, label) )
+			
+			return '\n'.join( f'{entity}\t{label}' for entity, label in self.named_entities )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processing'
+			exception.cause = 'NltkParser'
+			exception.method = 'named_entity_text( self, text: str ) -> str'
+			raise exception
 	
 class WordParser( Processor ):
 	"""
@@ -2010,7 +2303,7 @@ class WordParser( Processor ):
 			return self.raw_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'extract_text( self ) -> str'
 			raise exception
@@ -2028,7 +2321,7 @@ class WordParser( Processor ):
 			return self.sentences
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'split_sentences( self ) -> List[ str ]'
 			raise exception
@@ -2050,7 +2343,7 @@ class WordParser( Processor ):
 			return self.cleaned_sentences
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
 			raise exception
@@ -2075,7 +2368,7 @@ class WordParser( Processor ):
 			return self.vocabulary
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
 			raise exception
@@ -2098,7 +2391,7 @@ class WordParser( Processor ):
 			return self.frequency_distribution
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
 			raise exception
@@ -2241,7 +2534,7 @@ class PdfParser( Processor ):
 			return self.extracted_lines
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = 'extract_lines( self, **kwargs ) ->  List[ str ]'
 			raise exception
@@ -2275,7 +2568,7 @@ class PdfParser( Processor ):
 			return lines
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = '_extract_tables( self, page ) -> List[ str ]:'
 			raise exception
@@ -2312,7 +2605,7 @@ class PdfParser( Processor ):
 				return clean
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = '_filter_lines( self, words: List[ str ] ) -> List[ str ]'
 			raise exception
@@ -2339,7 +2632,7 @@ class PdfParser( Processor ):
 			return any( kw in line.lower( ) for kw in _keywords )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = '_has_repeating_header( self, line: str ) -> bool'
 			raise exception
@@ -2374,7 +2667,7 @@ class PdfParser( Processor ):
 				return '\n'.join( self.lines )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None ) -> str:'
 			raise exception
@@ -2411,7 +2704,7 @@ class PdfParser( Processor ):
 			return self.tables
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = ( 'extract_tables( self, **kwargs ) -> List[ DataFrame ]')
 			raise exception
@@ -2436,7 +2729,7 @@ class PdfParser( Processor ):
 				df.to_csv( f'{filename}_{i + 1}.csv', index=False )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method =  'export_csv( self, **kwargs ) -> None'
 			raise exception
@@ -2463,7 +2756,7 @@ class PdfParser( Processor ):
 					f.write( line + '\n' )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = 'export_text( self, lines: List[ str ], path: str ) -> None'
 			raise exception
@@ -2490,7 +2783,7 @@ class PdfParser( Processor ):
 					df.to_excel( _writer, sheet_name=_sheet, index=False )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = 'processing'
+			exception.module = 'processors'
 			exception.cause = 'PDF'
 			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )->None'
 			raise exception

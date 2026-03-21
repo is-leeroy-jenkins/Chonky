@@ -109,47 +109,6 @@ from nltk import sent_tokenize
 from nltk.corpus import stopwords, wordnet, words
 from nltk.tokenize import word_tokenize
 
-# ================================================================================
-# Contants / Helpers / Utilities
-# ============================================================================
-BASE_DIR = os.path.dirname( os.path.abspath( __file__ ) )
-
-CHUNKABLE_LOADERS = {
-		'TextLoader': [ 'chars', 'tokens' ],
-		'CsvLoader': [ 'chars' ],
-		'PdfLoader': [ 'chars' ],
-		'ExcelLoader': [ 'chars' ],
-		'WordLoader': [ 'chars' ],
-		'MarkdownLoader': [ 'chars' ],
-		'HtmlLoader': [ 'chars' ],
-		'JsonLoader': [ 'chars' ],
-		'PowerPointLoader': [ 'chars' ],
-}
-
-BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 0 10px 0;'></div>"
-
-PROVIDERS = [ 'OpenAI', 'Gemini', 'Groq' ]
-
-GPT_MODELS = [ 'text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002' ]
-
-GEMINI_MODELS = [ 'text-embedding-004', 'text-multilingual-embedding-002' ]
-
-GROK_MODELS = [ 'nomic-embed-text-v1.5', 'text-embedding-3-small',
-                'text-embedding-3-large', 'text-embedding-ada-002' ]
-
-TABS = [ 'Loading', 'Processing', 'Analysis', 'Tokenization',
-         'Embeddings', 'Database' ]
-
-REQUIRED_CORPORA = [
-		'brown',
-		'gutenberg',
-		'reuters',
-		'webtext',
-		'inaugural',
-		'state_union',
-		'punkt',
-		'stopwords',
-]
 
 # ======================================================================================
 # Session State Initialization
@@ -182,6 +141,28 @@ for corpus in cfg.REQUIRED_CORPORA:
 		nltk.data.find( f'corpora/{corpus}' )
 	except LookupError:
 		nltk.download( corpus )
+
+def style_subheaders( ) -> None:
+	"""
+	
+		Purpose:
+		_________
+		Sets the style of subheaders in the main UI
+		
+	"""
+	st.markdown(
+		"""
+		<style>
+		div[data-testid="stMarkdownContainer"] h2,
+		div[data-testid="stMarkdownContainer"] h3,
+		div[data-testid="stChatMessage"] div[data-testid="stMarkdownContainer"] h2,
+		div[data-testid="stChatMessage"] div[data-testid="stMarkdownContainer"] h3 {
+			color: rgb(0, 120, 252) !important;
+		}
+		</style>
+		""",
+		unsafe_allow_html=True,
+	)
 
 def encode_image_base64( path: str ) -> str:
 	data = Path( path ).read_bytes( )
@@ -261,6 +242,7 @@ st.logo( cfg.LOGO, size='large' )
 # ======================================================================================
 # Sidebar — API Key Configuration
 # ======================================================================================
+style_subheaders( )
 with st.sidebar:
 	st.text( 'Settings' )
 	st.divider( )
@@ -1745,9 +1727,9 @@ with tabs[ 0 ]:
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
 					st.text_area( 'Content', d.page_content[ :5000 ],
-						height=500, key=f'preview_doc_{i}' )
-	
-	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+						height=800, key=f'preview_doc_{i}' )
+			
+	st.divider( )
 	
 	# ------------------------------------------------------------------
 	# NLP METRIC CALCULATIONS
@@ -1790,15 +1772,20 @@ with tabs[ 0 ]:
 				lexical_density = 1.0 - stopword_ratio
 			except LookupError:
 				pass
-		
+			
+			st.subheader( 'Top Tokens' )
+			
 			# ------------ Top Tokens
-			with st.expander( label='Top Tokens', icon='🉑', expanded=True ):
+			with st.expander( label='Tokens', icon='🉑', expanded=True ):
 				top_tokens = counts.most_common( 10 )
 				df_top = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
 				st.bar_chart( df_top, color='#01438A' )
 			
+			st.divider( )
+			st.subheader( 'Corpus Metrics')
+			
 			# ------------ Corpus Metrics
-			with st.expander( label='Corpus Metrics', icon='📖', expanded=True ):
+			with st.expander( label='Text', icon='📖', expanded=True ):
 				
 				col1, col2, col3, col4 = st.columns( 4, border=True )
 				with col1:
@@ -1836,8 +1823,11 @@ with tabs[ 0 ]:
 						f'{lexical_density:.2%}',
 						'Proportion of content-bearing words.' )
 			
+			st.divider( )
+			st.subheader( 'Comprehension Metrics' )
+			
 			# ------------ Readability
-			with st.expander( label='Readability', icon='👀', expanded=True ):
+			with st.expander( label='Words', icon='👀', expanded=True ):
 				if TEXTSTAT_AVAILABLE:
 					r1, r2, r3, r4 = st.columns( 4, border=True )
 					with r1:
@@ -1944,7 +1934,7 @@ with tabs[ 1 ]:
 			# PDF-Specific Processing (PdfParser)
 			# ==============================================================
 			remove_headers = join_hyphenated = False
-			with st.expander( '📕 PDF Processing', expanded=False ):
+			with st.expander( 'PDF Processing', icon='📕', expanded=False ):
 				if active == 'PdfLoader':
 					remove_headers = st.checkbox( 'Remove Headers/Footers' )
 					join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
@@ -1955,7 +1945,7 @@ with tabs[ 1 ]:
 			# HTML-Specific Processing (Structural)
 			# ==============================================================
 			strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
-			with st.expander( '🌐 HTML Processing', expanded=False ):
+			with st.expander( 'HTML Processing', icon='🌐', expanded=False ):
 				if active == 'HtmlLoader':
 					strip_scripts = st.checkbox( 'Strip <script> / <style>' )
 					keep_headings = st.checkbox( 'Keep Headings' )
@@ -2162,8 +2152,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Processed Text (output)
 				# ----------------------------
-				st.text_area( 'Processed Text', st.session_state.processed_text or '',
-					height=700, key='processed_text_view' )
+				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=700 )
 
 # ======================================================================================
 # Tab - Semantic Analysis
