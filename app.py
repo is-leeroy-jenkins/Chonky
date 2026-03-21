@@ -419,167 +419,10 @@ tabs = st.tabs( TABS )
 # Tab - Document Loading
 # ======================================================================================
 with tabs[ 0 ]:
-	metrics_container = st.container( )
 	tokens = st.session_state.get( 'tokens' )
-	def render_metrics_panel( ):
-		raw_text = st.session_state.get( 'raw_text' )
-		processed_text = st.session_state.get( 'processed_text' )
-		if isinstance( processed_text, str ) and processed_text.strip( ):
-			text = processed_text
-		elif isinstance( raw_text, str ) and raw_text.strip( ):
-			text = raw_text
-		else:
-			st.info( 'Load a document to compute metrics.' )
-			return
-		
-		# ----------------------------------------------
-		# Tokenization (session-cached)
-		# ----------------------------------------------
-		if st.session_state.tokens is None:
-			try:
-				tokens = [ t.lower( ) for t in word_tokenize( text ) if t.isalpha( ) ]
-			except LookupError:
-				st.error(
-					'NLTK resources missing.\n\n'
-					'Run:\n'
-					'`python -m nltk.downloader punkt stopwords`' )
-				return
-			
-			if not tokens:
-				st.warning( 'No valid alphabetic tokens found.' )
-				return
-			
-			st.session_state.tokens = tokens
-			st.session_state.vocabulary = set( tokens )
-			st.session_state.token_counts = Counter( tokens )
-		tokens = st.session_state.tokens
-		vocabulary = st.session_state.vocabulary
-		counts = st.session_state.token_counts
-		
-		# ----------------------------------------------
-		# Metric calculations (derived only)
-		# ----------------------------------------------
-		char_count = len( text )
-		token_count = len( tokens )
-		vocab_size = len( vocabulary )
-		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
-		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
-		avg_word_len = sum( len( t ) for t in tokens ) / token_count
-		ttr = vocab_size / token_count
-		stopword_ratio = 0.0
-		lexical_density = 0.0
-		try:
-			stop_words = set( stopwords.words( 'english' ) )
-			stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
-			lexical_density = 1.0 - stopword_ratio
-		except LookupError:
-			pass
-		
-		# -------------------------------
-		# Top Tokens
-		# -------------------------------
-		with st.expander( label='Top Tokens', icon='🔤', expanded=False ):
-			top_tokens = counts.most_common( 10 )
-			df_top = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
-			st.bar_chart( df_top, color='#01438A' )
-		
-		# -------------------------------
-		# Corpus Metrics
-		# -------------------------------
-		with st.expander( label='Corpus Metrics', icon='📊', expanded=False ):
-			col1, col2, col3, col4 = st.columns( 4, border=True )
-			with col1:
-				metric_with_tooltip(
-					'Characters',
-					f'{char_count:,}',
-					'Total number of characters in the selected text.'
-				)
-			with col2:
-				metric_with_tooltip(
-					'Tokens',
-					f'{token_count:,}',
-					'Token Count: total number of tokenized words after cleanup.'
-				)
-			with col3:
-				metric_with_tooltip(
-					'Unique Tokens',
-					f'{vocab_size:,}',
-					'Vocabulary Size: number of distinct word types in the text.'
-				)
-			with col4:
-				metric_with_tooltip(
-					'TTR',
-					f'{ttr:.3f}',
-					'Type–Token Ratio: unique words ÷ total words.'
-				)
-			
-			col5, col6, col7, col8 = st.columns( 4, border=True )
-			with col5:
-				metric_with_tooltip(
-					'Hapax Ratio',
-					f'{hapax_ratio:.3f}',
-					'Hapax Ratio: proportion of words that occur only once.'
-				)
-			with col6:
-				metric_with_tooltip(
-					'Avg Length',
-					f'{avg_word_len:.2f}',
-					'Average number of characters per token.'
-				)
-			with col7:
-				metric_with_tooltip(
-					'Stopword Ratio',
-					f'{stopword_ratio:.2%}',
-					'Percentage of stopwords in the text.'
-				)
-			with col8:
-				metric_with_tooltip(
-					'Lexical Density',
-					f'{lexical_density:.2%}',
-					'Proportion of content-bearing words.'
-				)
-		
-		# -------------------------------
-		# Readability
-		# -------------------------------
-		with st.expander( label='Readability', icon='📖', expanded=False ):
-			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3, r4 = st.columns( 4, border=True )
-				with r1:
-					metric_with_tooltip(
-						'Flesch Reading Ease',
-						f'{textstat.flesch_reading_ease( text ):.1f}',
-						'Higher scores indicate easier readability.'
-					)
-				with r2:
-					metric_with_tooltip(
-						'Flesch–Kincaid Grade',
-						f'{textstat.flesch_kincaid_grade( text ):.1f}',
-						'Estimated U.S. grade level required.'
-					)
-				with r3:
-					metric_with_tooltip(
-						'Gunning Fog',
-						f'{textstat.gunning_fog( text ):.1f}',
-						'Readability based on sentence length and complex words.'
-					)
-				with r4:
-					metric_with_tooltip(
-						'Coleman–Liau Index',
-						f'{textstat.coleman_liau_index( text ):.1f}',
-						'Readability based on characters and sentences.'
-					)
-			else:
-				st.caption( 'Install `textstat` to enable readability metrics.' )
 	
 	# ------------------------------------------------------------------
-	# SINGLE metrics
-	# ------------------------------------------------------------------
-	with metrics_container:
-		render_metrics_panel( )
-	
-	# ------------------------------------------------------------------
-	# Left Layout
+	# LEFT COLUMN - LOADERS
 	# ------------------------------------------------------------------
 	left, right = st.columns( [ 1, 1.5 ] )
 	with left:
@@ -600,12 +443,8 @@ with tabs[ 0 ]:
 		
 		# --------------------------- Text Loader
 		with st.expander( label='Text Loader', icon='📝', expanded=False ):
-			files = st.file_uploader(
-				'Upload Text File(s)',
-				type=[ 'txt', 'text', 'log' ],
-				accept_multiple_files=True,
-				key='txt_upload'
-			)
+			files = st.file_uploader( 'Upload Text File(s)', type=[ 'txt', 'text', 'log' ],
+				accept_multiple_files=True, key='txt_upload' )
 			
 			# ------------------------------------------------------------------
 			# Buttons: Load / Clear / Save
@@ -613,21 +452,15 @@ with tabs[ 0 ]:
 			col_load, col_clear, col_save = st.columns( 3 )
 			load_txt = col_load.button( 'Load', key='txt_load' )
 			clear_txt = col_clear.button( 'Clear', key='txt_clear' )
-			
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'TextLoader'
+			can_save = ( st.session_state.get( 'active_loader' ) == 'TextLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+					and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
+				col_save.download_button( 'Save',
 					data=st.session_state.get( 'raw_text' ),
-					file_name='text_loader_output.txt',
-					mime='text/plain',
-					key='txt_save'
-				)
+					file_name='text_loader_output.txt', mime='text/plain',
+					key='txt_save' )
 			else:
 				col_save.button( 'Save', key='txt_save_disabled', disabled=True )
 			
@@ -1452,64 +1285,34 @@ with tabs[ 0 ]:
 		
 		# --------------------------- PowerPoint Loader
 		with st.expander( label='Power Point Loader', icon='📽', expanded=False ):
-			pptx = st.file_uploader(
-				'Upload PPTX',
-				type=[ 'pptx' ],
-				key='pptx_upload',
-			)
-			
-			mode = st.selectbox(
-				'Mode',
-				[ 'single', 'elements' ],
-				key='pptx_mode',
-			)
+			pptx = st.file_uploader( 'Upload PPTX', type=[ 'pptx' ], key='pptx_upload', )
+			mode = st.selectbox( 'Mode', [ 'single', 'elements' ], key='pptx_mode', )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
-			load_pptx = col_load.button(
-				'Load',
-				key='pptx_load',
-			)
+			load_pptx = col_load.button( 'Load', key='pptx_load', )
 			
-			clear_pptx = col_clear.button(
-				'Clear',
-				key='pptx_clear',
-			)
+			clear_pptx = col_clear.button( 'Clear', key='pptx_clear', )
 			
-			# Save enabled only when PowerPointLoader is active and raw_text exists
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'PowerPointLoader'
+			# ---------- Save
+			can_save = ( st.session_state.get( 'active_loader' ) == 'PowerPointLoader'
 					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+					and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='powerpoint_loader_output.txt',
-					mime='text/plain',
-					key='pptx_save',
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='powerpoint_loader_output.txt', mime='text/plain', key='pptx_save', )
 			else:
-				col_save.button(
-					'Save',
-					key='pptx_save_disabled',
-					disabled=True,
-				)
+				col_save.button( 'Save', key='pptx_save_disabled', disabled=True, )
 			
-			# --------------------------------------------------
-			# Clear
-			# --------------------------------------------------
+			# ---------- Clear
 			if clear_pptx:
 				clear_if_active( 'PowerPointLoader' )
 				st.info( 'PowerPoint Loader state cleared.' )
 			
-			# --------------------------------------------------
-			# Load
-			# --------------------------------------------------
+			# ---------- Load
 			if load_pptx and pptx:
 				with tempfile.TemporaryDirectory( ) as tmp:
 					path = os.path.join( tmp, pptx.name )
@@ -1521,54 +1324,29 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-					if hasattr( d, 'page_content' )
-					and isinstance( d.page_content, str )
-					and d.page_content.strip( )
-				)
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
+					if hasattr( d, 'page_content' ) and isinstance( d.page_content, str )
+					                                     and d.page_content.strip( ) )
 				st.session_state.active_loader = "PowerPointLoader"
 				st.success( f"Loaded {len( documents )} PowerPoint document(s)." )
 		
 		# --------------------------- Excel Loader
 		with st.expander( label='Excel Loader', icon='📊', expanded=False ):
-			excel_file = st.file_uploader(
-				'Upload Excel file',
-				type=[ 'xlsx',
-				       'xls' ],
-				key='excel_upload',
-			)
+			excel_file = st.file_uploader( 'Upload Excel file', type=[ 'xlsx', 'xls' ],
+				key='excel_upload', )
 			
-			load_mode = st.selectbox(
-				'Load Mode',
-				[ 'Tabular + SQLite', 'Unstructured Document' ],
-				index=0,
-				key='excel_load_mode',
-				help=(
-						'Use "Tabular + SQLite" to preserve the current sheet-to-SQLite workflow. '
-						'Use "Unstructured Document" to route through ExcelLoader.'
-				),
-			)
+			load_mode = st.selectbox( 'Load Mode', [ 'Tabular + SQLite', 'Unstructured Document' ],
+				index=0, key='excel_load_mode',
+				help=( 'Use "Tabular + SQLite" to preserve the current sheet-to-SQLite workflow. '
+						'Use "Unstructured Document" to route through ExcelLoader.' ), )
 			
-			sheet_name = st.text_input(
-				'Sheet name (leave blank for all sheets)',
-				key='excel_sheet',
-			)
+			sheet_name = st.text_input( 'Sheet name (leave blank for all sheets)', key='excel_sheet' )
 			
-			table_prefix = st.text_input(
-				'SQLite table prefix',
-				value='excel',
-				help='Each sheet will be written as <prefix>_<sheetname>',
-				key='excel_table_prefix',
-			)
+			table_prefix = st.text_input( 'table prefix', value='excel',
+				help='Each sheet will be written as <prefix>_<sheetname>', key='excel_table_prefix')
 			
-			unstructured_mode = st.selectbox(
-				'Document Mode',
-				[ 'single', 'elements' ],
-				index=0,
-				key='excel_unstructured_mode',
-				help='Used only when Load Mode is "Unstructured Document".'
-			)
+			unstructured_mode = st.selectbox( 'Document Mode', [ 'single', 'elements' ], index=0,
+				key='excel_unstructured_mode', help='Used only with "Unstructured Documents".' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save
@@ -1577,50 +1355,30 @@ with tabs[ 0 ]:
 			load_excel = col_load.button( 'Load', key='excel_load' )
 			clear_excel = col_clear.button( 'Clear', key='excel_clear' )
 			
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'ExcelLoader'
-					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+			can_save = ( st.session_state.get( 'active_loader' ) == 'ExcelLoader'
+			             and isinstance( st.session_state.get( 'raw_text' ), str )
+			             and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='excel_loader_output.txt',
-					mime='text/plain',
-					key='excel_save',
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='excel_loader_output.txt', mime='text/plain', key='excel_save', )
 			else:
-				col_save.button(
-					'Save',
-					key='excel_save_disabled',
-					disabled=True,
-				)
+				col_save.button( 'Save', key='excel_save_disabled', disabled=True, )
 			
 			# --------------------------------------------------
 			# Clear (remove only ExcelLoader documents)
 			# --------------------------------------------------
 			if clear_excel and st.session_state.get( 'documents' ):
-				st.session_state.documents = [
-						d for d in st.session_state.documents
-						if d.metadata.get( 'loader' ) != 'ExcelLoader'
-				]
+				st.session_state.documents = [ d for d in st.session_state.documents
+				                               if d.metadata.get( 'loader' ) != 'ExcelLoader' ]
 				
-				st.session_state.raw_documents = [
-						d for d in st.session_state.documents
-						if isinstance( getattr( d, 'metadata', None ), dict )
-				] if st.session_state.documents else [ ]
+				st.session_state.raw_documents = [ d for d in st.session_state.documents
+                   if isinstance( getattr( d, 'metadata', None ), dict ) ] if st.session_state.documents else [ ]
 				
-				st.session_state.raw_text = (
-						"\n\n".join(
-							d.page_content
-							for d in st.session_state.documents
-							if isinstance( d.page_content, str )
-							and d.page_content.strip( )
-						)
-						if st.session_state.documents else None
-				)
+				st.session_state.raw_text = ( '\n\n'.join( d.page_content for d in st.session_state.documents
+				                                           if isinstance( d.page_content, str )
+				                                           and d.page_content.strip( ) )
+				                              if st.session_state.documents else None )
 				
 				st.session_state.processed_text = None
 				st.session_state.active_loader = None
@@ -1637,67 +1395,38 @@ with tabs[ 0 ]:
 						f.write( excel_file.read( ) )
 					
 					documents = [ ]
-					
 					if load_mode == 'Tabular + SQLite':
 						sqlite_path = os.path.join( "stores", "sqlite", "data.db" )
 						os.makedirs( os.path.dirname( sqlite_path ), exist_ok=True )
 						
 						if sheet_name.strip( ):
-							dfs = {
-									sheet_name: pd.read_excel(
-										excel_path,
-										sheet_name=sheet_name,
-									)
-							}
+							dfs = {sheet_name: pd.read_excel( excel_path, sheet_name=sheet_name,)}
 						else:
-							dfs = pd.read_excel(
-								excel_path,
-								sheet_name=None,
-							)
+							dfs = pd.read_excel( excel_path, sheet_name=None, )
 						
 						conn = sqlite3.connect( sqlite_path )
-						
 						try:
 							for sheet, df in dfs.items( ):
 								if df.empty:
 									continue
-								
-								table_name = f"{table_prefix}_{sheet}".replace(
-									" ", "_"
-								).lower( )
-								
-								df.to_sql(
-									table_name,
-									conn,
-									if_exists="replace",
-									index=False,
-								)
-								
+								table_name = f"{table_prefix}_{sheet}".replace( " ", "_" ).lower( )
+								df.to_sql( table_name, conn, if_exists="replace", index=False, )
 								text = df.to_csv( index=False )
-								
 								documents.append(
-									Document(
-										page_content=text,
-										metadata={
-												'loader': 'ExcelLoader',
+									Document( page_content=text,
+										metadata={ 'loader': 'ExcelLoader',
 												'source': excel_file.name,
 												'sheet': sheet,
 												'table': table_name,
 												'sqlite_db': sqlite_path,
-												'load_mode': 'Tabular + SQLite',
-										},
-									)
-								)
+												'load_mode': 'Tabular + SQLite', }, ) )
 						finally:
 							conn.close( )
 					
 					else:
 						loader = ExcelLoader( )
-						documents = loader.load(
-							excel_path,
-							mode=unstructured_mode,
-							has_headers=True
-						) or [ ]
+						documents = loader.load( excel_path, mode=unstructured_mode,
+							has_headers=True ) or [ ]
 						
 						for document in documents:
 							if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -1710,41 +1439,28 @@ with tabs[ 0 ]:
 				
 				if documents:
 					existing_documents = st.session_state.get( 'documents' )
-					
 					if isinstance( existing_documents, list ) and existing_documents:
 						st.session_state.documents.extend( documents )
 					else:
 						st.session_state.documents = list( documents )
 					
 					st.session_state.raw_documents = list( st.session_state.documents )
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content
-						for d in st.session_state.documents
-						if isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in st.session_state.documents
+					                                         if isinstance( d.page_content, str )
+					                                         and d.page_content.strip( ) )
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = 'ExcelLoader'
 					
 					if load_mode == 'Tabular + SQLite':
-						st.success(
-							f"Loaded {len( documents )} sheet(s) and stored in SQLite."
-						)
+						st.success( f"Loaded {len( documents )} sheet(s) and stored in SQLite." )
 					else:
-						st.success(
-							f"Loaded {len( documents )} Excel document(s) in "
-							f"{unstructured_mode!r} mode."
-						)
+						st.success( f"Loaded {len( documents )} Excel {unstructured_mode!r} mode." )
 				else:
 					if load_mode == 'Tabular + SQLite':
-						st.warning(
-							"No data loaded (empty sheets or invalid selection)."
-						)
+						st.warning( "No data loaded (empty sheets or invalid selection)." )
 					else:
-						st.warning(
-							"No Excel document content was loaded."
-						)
+						st.warning( "No Excel document content was loaded." )
 		
 		# --------------------------- ArXiv Loader
 		with st.expander( label='ArXiv Loader', icon='🧠', expanded=False ):
@@ -2179,7 +1895,144 @@ with tabs[ 0 ]:
 					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebCrawler"
 					st.session_state[ "_loader_status" ] = f"Crawled {len( documents )} document(s)."
+				
+	# ------------------------------------------------------------------
+	# RIGHT COLUMN — DOCUMENT RENDERING
+	# ------------------------------------------------------------------
+	with right:
+		documents = st.session_state.documents
+		if not documents:
+			st.info( 'No documents loaded.' )
+		else:
+			st.caption( f'Active Loader: {st.session_state.active_loader}' )
+			st.write( f'Documents: {len( documents )}' )
+			for i, d in enumerate( documents[ :5 ] ):
+				with st.expander( f'Document {i + 1}', expanded=True ):
+					st.json( d.metadata )
+					st.text_area( 'Content', d.page_content[ :5000 ],
+						height=500, key=f'preview_doc_{i}' )
+	
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+	
+	# ------------------------------------------------------------------
+	# NLP METRICS AREA
+	# ------------------------------------------------------------------
+	metrics_container = st.container( )
+	with metrics_container:
+		raw_text = st.session_state.get( 'raw_text' )
+		processed_text = st.session_state.get( 'processed_text' )
+		if isinstance( processed_text, str ) and processed_text.strip( ):
+			text = processed_text
+		elif isinstance( raw_text, str ) and raw_text.strip( ):
+			text = raw_text
+		else:
+			st.info( 'Load a document to compute metrics.' )
 		
+		# ----------------------------------------------
+		# Tokenization (session-cached)
+		# ----------------------------------------------
+		if st.session_state.tokens is None:
+			try:
+				tokens = [ t.lower( ) for t in word_tokenize( text ) if t.isalpha( ) ]
+			except LookupError:
+				st.error( 'NLTK resources missing' )
+			
+			if not tokens:
+				st.warning( 'No valid alphabetic tokens found.' )
+			
+			st.session_state.tokens = tokens
+			st.session_state.vocabulary = set( tokens )
+			st.session_state.token_counts = Counter( tokens )
+		tokens = st.session_state.tokens
+		vocabulary = st.session_state.vocabulary
+		counts = st.session_state.token_counts
+		char_count = len( text )
+		token_count = len( tokens )
+		vocab_size = len( vocabulary )
+		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
+		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
+		avg_word_len = sum( len( t ) for t in tokens ) / token_count
+		ttr = vocab_size / token_count
+		stopword_ratio = 0.0
+		lexical_density = 0.0
+		try:
+			stop_words = set( stopwords.words( 'english' ) )
+			stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
+			lexical_density = 1.0 - stopword_ratio
+		except LookupError:
+			pass
+	
+		# ------------ Top Tokens
+		with st.expander( label='Top Tokens', icon='🉑', expanded=True ):
+			top_tokens = counts.most_common( 10 )
+			df_top = pd.DataFrame( top_tokens, columns=[ 'token',
+			                                             'count' ] ).set_index( 'token' )
+			st.bar_chart( df_top, color='#01438A' )
+		
+		# ------------ Corpus Metrics
+		with st.expander( label='Corpus Metrics', icon='📖', expanded=True ):
+			
+			col1, col2, col3, col4 = st.columns( 4, border=True )
+			with col1:
+				metric_with_tooltip( 'Characters', f'{char_count:,}',
+					'Total number of characters in the selected text.' )
+				
+			with col2:
+				metric_with_tooltip( 'Tokens', f'{token_count:,}',
+					'Token Count: total number of tokenized words after cleanup.' )
+				
+			with col3:
+				metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
+					'Vocabulary Size: number of distinct word types in the text.' )
+				
+			with col4:
+				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
+					'Type–Token Ratio: unique words ÷ total words.' )
+			
+			col5, col6, col7, col8 = st.columns( 4, border=True )
+			with col5:
+				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
+					'Hapax Ratio: proportion of words that occur only once.' )
+				
+			with col6:
+				metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
+					'Average number of characters per token.' )
+				
+			with col7:
+				metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
+					'Percentage of stopwords in the text.' )
+				
+			with col8:
+				metric_with_tooltip(
+					'Lexical Density',
+					f'{lexical_density:.2%}',
+					'Proportion of content-bearing words.' )
+		
+		# ------------ Readability
+		with st.expander( label='Readability', icon='👀', expanded=True ):
+			if TEXTSTAT_AVAILABLE:
+				r1, r2, r3, r4 = st.columns( 4, border=True )
+				with r1:
+					metric_with_tooltip( 'Flesch Reading Ease', f'{textstat.flesch_reading_ease( text ):.1f}',
+						'Higher scores indicate easier readability.' )
+				
+				with r2:
+					metric_with_tooltip( 'Flesch–Kincaid Grade',
+						f'{textstat.flesch_kincaid_grade( text ):.1f}',
+						'Estimated U.S. grade level required.' )
+				
+				with r3:
+					metric_with_tooltip( 'Gunning Fog', f'{textstat.gunning_fog( text ):.1f}',
+						'Readability based on sentence length and complex words.' )
+				
+				with r4:
+					metric_with_tooltip(
+						'Coleman–Liau Index',
+						f'{textstat.coleman_liau_index( text ):.1f}',
+						'Readability based on characters and sentences.' )
+			else:
+				st.caption( 'Install `textstat` to enable readability metrics.' )
+
 # ======================================================================================
 # Tab — Text Processing
 # ======================================================================================
