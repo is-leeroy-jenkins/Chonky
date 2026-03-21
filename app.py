@@ -173,109 +173,11 @@ if 'pinecone_api_key' not in st.session_state:
 if 'google_application_credentials' not in st.session_state:
 	st.session_state[ 'google_application_credentials' ] = ''
 
-SESSION_STATE_DEFAULTS = {
-		# -----------------------------
-		# Ingestion
-		# -----------------------------
-		'documents': None,
-		'raw_documents': None,
-		'active_loader': None,
-		# -----------------------------
-		# Input
-		# -----------------------------
-		'raw_text': None,
-		'raw_tokens': None,
-		'raw_text_view': None,
-		# -----------------------------
-		# Processing
-		# -----------------------------
-		'parser': None,
-		'processed_text': None,
-		'processed_text_view': None,
-		# -----------------------------
-		# Performance
-		# -----------------------------
-		'start_time': None,
-		'end_time': None,
-		'total_time': None,
-		# -----------------------------
-		# Tokenization / Vocabulary
-		# -----------------------------
-		'tokens': None,
-		'vocabulary': None,
-		'token_counts': None,
-		'df_synsets': None,
-		# -----------------------------
-		# SQLite / Excel
-		# -----------------------------
-		'active_table': None,
-		# -----------------------------
-		# Chunking
-		# -----------------------------
-		'lines': None,
-		'chunks': None,
-		'chunk_modes': None,
-		'chunked_documents': None,
-		# -----------------------------
-		# Embeddings
-		# -----------------------------
-		'embedder': None,
-		'embeddings': None,
-		'embedding_provider': None,
-		'embedding_model': None,
-		'embedding_source': None,
-		'embedding_documents': None,
-		'df_embedding_input': None,
-		'df_embedding_output': None,
-		# -----------------------------
-		# Retrieval / Search
-		# -----------------------------
-		'search_results': None,
-		# -----------------------------
-		# DataFrames
-		# -----------------------------
-		'df_frequency': None,
-		'df_tables': None,
-		'df_schema': None,
-		'df_preview': None,
-		'df_count': None,
-		'df_chunks': None,
-		# -----------------------------
-		# Data
-		# -----------------------------
-		'data_connection': None,
-		# -----------------------------
-		# Sidebar / API Keys
-		# -----------------------------
-		'api_keys': {
-				'openai': None,
-				'groq': None,
-				'google': None,
-				'pinecone': None,
-				'google_credentials_path': None,
-		},
-		# -----------------------------
-		# XML Loader (explicit contract)
-		# -----------------------------
-		'xml_loader': None,
-		'xml_documents': None,
-		'xml_split_documents': None,
-		'xml_tree_loaded': None,
-		'xml_namespaces': None,
-		'xml_xpath_results': None,
-		# -----------------------------
-		# WordNet Caches
-		# -----------------------------
-		'wordnet_synsets_sig': None,
-		'df_wordnet_synsets': None,
-		'df_wordnet_lemmas': None,
-}
-
-for key, default in SESSION_STATE_DEFAULTS.items( ):
+for key, default in cfg.SESSION_STATE_DEFAULTS.items( ):
 	if key not in st.session_state:
 		st.session_state[ key ] = default
 
-for corpus in REQUIRED_CORPORA:
+for corpus in cfg.REQUIRED_CORPORA:
 	try:
 		nltk.data.find( f'corpora/{corpus}' )
 	except LookupError:
@@ -423,7 +325,7 @@ with st.sidebar:
 # ======================================================================================
 # Tabs
 # ======================================================================================
-tabs = st.tabs( TABS )
+tabs = st.tabs( cfg.TABS )
 
 # ======================================================================================
 # Tab - Document Loading
@@ -458,10 +360,8 @@ with tabs[ 0 ]:
 					and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button( 'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='text_loader_output.txt', mime='text/plain',
-					key='txt_save' )
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='text_loader_output.txt', mime='text/plain', key='txt_save' )
 			else:
 				col_save.button( 'Save', key='txt_save_disabled', disabled=True )
 			
@@ -471,6 +371,7 @@ with tabs[ 0 ]:
 			if clear_txt:
 				clear_if_active( 'TextLoader' )
 				st.info( 'Text Loader state cleared.' )
+				st.rerun( )
 			
 			# ------------------------------------------------------------------
 			# Load
@@ -487,7 +388,6 @@ with tabs[ 0 ]:
 						
 						loader = TextLoader( )
 						loaded = loader.load( path ) or [ ]
-						
 						for document in loaded:
 							if not isinstance( getattr( document, 'metadata', None ), dict ):
 								document.metadata = { }
@@ -499,16 +399,13 @@ with tabs[ 0 ]:
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
-				st.session_state.raw_text = "\n\n".join(
-					d.page_content for d in documents
-					if hasattr( d, 'page_content' )
-					and isinstance( d.page_content, str )
-					and d.page_content.strip( )
-				)
+				st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
+					if hasattr( d, 'page_content' ) and isinstance( d.page_content, str )
+					                                     and d.page_content.strip( ) )
 				st.session_state.active_loader = 'TextLoader'
 				st.success( f'Loaded {len( documents )} text document(s).' )
 		
-		# --------------------------- NLTK Loader
+		# --------------------------- NLTK Loader Expander
 		with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 			import nltk
 			from nltk.corpus import (
@@ -669,7 +566,7 @@ with tabs[ 0 ]:
 				else:
 					st.warning( 'No documents were loaded.' )
 		
-		# --------------------------- CSV Loader
+		# --------------------------- CSV Loader Expander
 		with st.expander( label="CSV Loader", icon='📑', expanded=False ):
 			csv_file = st.file_uploader(
 				"Upload CSV",
@@ -761,34 +658,20 @@ with tabs[ 0 ]:
 			
 			loader = st.session_state.xml_loader
 			
-			xml_file = st.file_uploader(
-				label='Select XML file',
-				type=[ 'xml' ],
-				accept_multiple_files=False,
-				key='xml_file_uploader'
-			)
+			xml_file = st.file_uploader( label='Select XML file', type=[ 'xml' ],
+				accept_multiple_files=False, key='xml_file_uploader' )
 			
 			st.subheader( 'Semantic XML Loading (Unstructured)' )
 			
 			col1, col2 = st.columns( 2 )
 			
 			with col1:
-				chunk_size = st.number_input(
-					'Chunk Size',
-					min_value=100,
-					max_value=5000,
-					value=1000,
-					step=100
-				)
+				chunk_size = st.number_input( 'Chunk Size', min_value=100, max_value=5000,
+					value=1000, step=100 )
 			
 			with col2:
-				overlap_amount = st.number_input(
-					'Chunk Overlap',
-					min_value=0,
-					max_value=1000,
-					value=200,
-					step=50
-				)
+				overlap_amount = st.number_input( 'Chunk Overlap', min_value=0, max_value=1000,
+					value=200, step=50 )
 			
 			# --------------------------------------------------
 			# Semantic Load
@@ -831,10 +714,7 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if st.button( 'Split Semantic Documents', use_container_width=True ):
 				with st.spinner( 'Splitting documents...' ):
-					split_docs = loader.split(
-						size=int( chunk_size ),
-						amount=int( overlap_amount )
-					)
+					split_docs = loader.split( size=int( chunk_size ), amount=int( overlap_amount ))
 				
 				if split_docs:
 					st.session_state[ 'xml_split_documents' ] = split_docs
@@ -859,11 +739,7 @@ with tabs[ 0 ]:
 							tree = loader.load_tree( path )
 					
 					if tree is not None:
-						xml_text = etree.tostring(
-							tree,
-							pretty_print=True,
-							encoding='unicode'
-						)
+						xml_text = etree.tostring( tree, pretty_print=True, encoding='unicode' )
 						
 						st.session_state.raw_text = xml_text
 						st.session_state.processed_text = None
@@ -890,11 +766,8 @@ with tabs[ 0 ]:
 			else:
 				st.markdown( '**XPath Query**' )
 				
-				xpath_expr = st.text_input(
-					'XPath Expression',
-					value='//*',
-					help='Use namespace prefixes if applicable.'
-				)
+				xpath_expr = st.text_input( 'XPath Expression', value='//*',
+					help='Use namespace prefixes if applicable.' )
 				
 				if st.button( 'Run XPath Query', use_container_width=True ):
 					with st.spinner( 'Executing XPath...' ):
@@ -906,22 +779,13 @@ with tabs[ 0 ]:
 				
 				if 'xml_xpath_results' in st.session_state and \
 						st.session_state[ 'xml_xpath_results' ] is not None:
-					preview_count = min(
-						10,
-						len( st.session_state[ 'xml_xpath_results' ] )
-					)
+					preview_count = min( 10, len( st.session_state[ 'xml_xpath_results' ] ) )
 					
 					st.caption( f'Previewing first {preview_count} elements' )
 					
 					for el in st.session_state[ 'xml_xpath_results' ][ :preview_count ]:
-						st.code(
-							etree.tostring(
-								el,
-								pretty_print=True,
-								encoding='unicode'
-							),
-							language='xml'
-						)
+						st.code( etree.tostring( el, pretty_print=True, encoding='unicode' ),
+							language='xml' )
 			
 			# ------------------------------------------------------------------
 			# Debug / Introspection
@@ -943,7 +807,7 @@ with tabs[ 0 ]:
 						}
 					)
 		
-		# --------------------------- PDF Loader
+		# --------------------------- PDF Loader Expander
 		with st.expander( label='PDF Loader', icon='📕', expanded=False ):
 			pdf = st.file_uploader( 'Upload PDF', type=[ 'pdf' ], key='pdf_upload' )
 			
@@ -981,8 +845,7 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if clear_pdf:
 				clear_if_active( 'PdfLoader' )
-				st.session_state.raw_text = rebuild_raw_text_from_documents( )
-				st.session_state[ '_loader_status' ] = 'PDF Loader state cleared.'
+				st.session_state[ '_loader_status' ] = 'Loader state cleared.'
 				st.rerun( )
 			
 			# --------------------------------------------------
@@ -1773,7 +1636,7 @@ with tabs[ 0 ]:
 					] = f"Fetched {len( new_docs )} web document(s)."
 		
 		# --------------------------- Web Crawler
-		with st.expander( "Web Crawler", icon='🕷️', expanded=False ):
+		with st.expander( label="Web Crawler", icon='🕷️', expanded=False ):
 			start_url = st.text_input(
 				"Start URL",
 				placeholder="https://example.com",
@@ -1887,7 +1750,7 @@ with tabs[ 0 ]:
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ------------------------------------------------------------------
-	# NLP METRICS AREA
+	# NLP METRIC CALCULATIONS
 	# ------------------------------------------------------------------
 	metrics_container = st.container( )
 	with metrics_container:
@@ -2245,8 +2108,7 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				# Commit processed text
 				# ----------------------------------------------------------
-				st.session_state.processed_text = (
-						processed_text if isinstance( processed_text, str ) else str(
+				st.session_state.processed_text = ( processed_text if isinstance( processed_text, str ) else str(
 							processed_text ))
 				st.session_state.processed_text_view = st.session_state.processed_text
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
@@ -2255,14 +2117,10 @@ with tabs[ 1 ]:
 			# RIGHT COLUMN — Text Views
 			# ------------------------------------------------------------------
 			with right:
-				st.text_area( label='Raw Text',
-					height=200, disabled=True, key='raw_text_view' )
-				
+				st.text_area( label='Raw Text', height=200, disabled=True, key='raw_text_view' )
 				raw_text = st.session_state.get( 'raw_text' )
-				
 				with st.expander( '📊 Processing Statistics:', expanded=False ):
 					processed_text = st.session_state.get( 'processed_text' )
-					
 					if (isinstance( raw_text, str ) and raw_text.strip( ) and
 							isinstance( processed_text, str ) and processed_text.strip( )):
 						raw_tokens = raw_text.split( )
@@ -2488,7 +2346,7 @@ with tabs[ 2 ]:
 			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
 		)
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ------------------------------------------------------------------
 	# Tokenization & Vocabulary
@@ -2556,17 +2414,13 @@ with tabs[ 2 ]:
 		else:
 			st.info( 'Frequency distribution unavailable.' )
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 
 # ======================================================================================
 # Tab - Data Tokenization
 # ======================================================================================
 with tabs[ 3 ]:
-	line_col, chunk_col = st.columns(
-		[ 0.5, 0.5 ],
-		border=True,
-		vertical_alignment='top'
-	)
+	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='top' )
 	
 	# ------------------------------------------------------------------
 	# Session-state
@@ -2776,7 +2630,7 @@ with tabs[ 3 ]:
 	elif loader_name is None:
 		st.warning( 'No active loader found.' )
 	else:
-		chunk_modes = CHUNKABLE_LOADERS.get( loader_name )
+		chunk_modes = cfg.CHUNKABLE_LOADERS.get( loader_name )
 	
 	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
@@ -2784,7 +2638,7 @@ with tabs[ 3 ]:
 	# ======================================================================================
 	# Diagnostics — Token & Sentence Distributions
 	# ======================================================================================
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Tokenization Diagnostics' )
 	
 	row1_col1, row1_col2 = st.columns(
@@ -3043,7 +2897,7 @@ with tabs[ 4 ]:
 		# 🧠 OpenAI
 		# ==================================================
 		with st.expander( "🧠 OpenAI Embeddings", expanded=False ):
-			model = st.selectbox( "Model", options=GPT_MODELS, key=k( "openai_model" ), )
+			model = st.selectbox( "Model", options=cfg.GPT_MODELS, key=k( "openai_model" ), )
 			col_run, col_clear, col_save = st.columns( 3 )
 			run = col_run.button( "Embed", key=k( "openai_embed" ),
 				use_container_width=True, disabled=not has_texts, )
@@ -3098,7 +2952,7 @@ with tabs[ 4 ]:
 		with st.expander( "✨ Gemini Embeddings", expanded=False ):
 			model = st.selectbox(
 				"Model",
-				options=GEMINI_MODELS,
+				options=cfg.GEMINI_MODELS,
 				key=k( "gemini_model" ),
 				disabled=not has_texts,
 			)
@@ -3200,7 +3054,7 @@ with tabs[ 4 ]:
 		with st.expander( "⚡ Groq Embeddings", expanded=False ):
 			model = st.selectbox(
 				"Model",
-				options=GROK_MODELS,
+				options=cfg.GROK_MODELS,
 				key=k( "groq_model" ),
 				disabled=not has_texts,
 			)
@@ -3300,7 +3154,7 @@ with tabs[ 4 ]:
 	# --------------------------------------------------
 	# BELOW BOTH COLUMNS — Embedding Results (read-only)
 	# --------------------------------------------------
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	st.markdown( "##### Embedding Results" )
 	if st.session_state.df_embedding_output.empty:
@@ -3314,12 +3168,12 @@ with tabs[ 4 ]:
 			key=k( "embedding_output_view" ),
 		)
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ======================================================================================
 	# Tensor Embedding — Dimensionality Reduction Diagnostics (t-SNE / UMAP)
 	# ======================================================================================
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Embedding Diagnostics (t-SNE / UMAP)' )
 	
 	embeddings = st.session_state.get( 'embeddings' )
@@ -3531,7 +3385,7 @@ with tabs[ 5 ]:
 		value='vectors.db'
 	)
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ------------------------------------------------------------------
 	# Actions
@@ -3586,7 +3440,7 @@ with tabs[ 5 ]:
 			conn.close( )
 			st.warning( f'Dropped vector table `{table_name}`.' )
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ------------------------------------------------------------------
 	# Verification panel
@@ -3698,6 +3552,6 @@ with tabs[ 5 ]:
 	else:
 		st.info( 'No results to display.' )
 	
-	st.markdown( BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 
 	

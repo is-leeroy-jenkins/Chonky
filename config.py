@@ -67,5 +67,139 @@ VERTEX_API_KEY = os.getenv( 'VERTEX_API_KEY' )
 
 
 # ------- CONSTANTS ------------------------------
-
 BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 0 10px 0;'></div>"
+
+TABS = [ 'Loading', 'Processing', 'Analysis', 'Tokenization',
+         'Embeddings', 'Database' ]
+
+REQUIRED_CORPORA = [
+		'brown',
+		'gutenberg',
+		'reuters',
+		'webtext',
+		'inaugural',
+		'state_union',
+		'punkt',
+		'stopwords',
+]
+
+PROVIDERS = [ 'OpenAI', 'Gemini', 'Groq' ]
+
+GPT_MODELS = [ 'text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002' ]
+
+GEMINI_MODELS = [ 'text-embedding-004', 'text-multilingual-embedding-002' ]
+
+GROK_MODELS = [ 'nomic-embed-text-v1.5', 'text-embedding-3-small',
+                'text-embedding-3-large', 'text-embedding-ada-002' ]
+
+SESSION_STATE_DEFAULTS = {
+		# -----------------------------
+		# Ingestion
+		# -----------------------------
+		'documents': None,
+		'raw_documents': None,
+		'active_loader': None,
+		# -----------------------------
+		# Input
+		# -----------------------------
+		'raw_text': None,
+		'raw_tokens': None,
+		'raw_text_view': None,
+		# -----------------------------
+		# Processing
+		# -----------------------------
+		'parser': None,
+		'processed_text': None,
+		'processed_text_view': None,
+		# -----------------------------
+		# Performance
+		# -----------------------------
+		'start_time': None,
+		'end_time': None,
+		'total_time': None,
+		# -----------------------------
+		# Tokenization / Vocabulary
+		# -----------------------------
+		'tokens': None,
+		'vocabulary': None,
+		'token_counts': None,
+		'df_synsets': None,
+		# -----------------------------
+		# SQLite / Excel
+		# -----------------------------
+		'active_table': None,
+		# -----------------------------
+		# Chunking
+		# -----------------------------
+		'lines': None,
+		'chunks': None,
+		'chunk_modes': None,
+		'chunked_documents': None,
+		# -----------------------------
+		# Embeddings
+		# -----------------------------
+		'embedder': None,
+		'embeddings': None,
+		'embedding_provider': None,
+		'embedding_model': None,
+		'embedding_source': None,
+		'embedding_documents': None,
+		'df_embedding_input': None,
+		'df_embedding_output': None,
+		# -----------------------------
+		# Retrieval / Search
+		# -----------------------------
+		'search_results': None,
+		# -----------------------------
+		# DataFrames
+		# -----------------------------
+		'df_frequency': None,
+		'df_tables': None,
+		'df_schema': None,
+		'df_preview': None,
+		'df_count': None,
+		'df_chunks': None,
+		# -----------------------------
+		# Data
+		# -----------------------------
+		'data_connection': None,
+		# -----------------------------
+		# Sidebar / API Keys
+		# -----------------------------
+		'api_keys': {
+				'openai': None,
+				'groq': None,
+				'google': None,
+				'pinecone': None,
+				'google_credentials_path': None,
+		},
+		# -----------------------------
+		# XML Loader (explicit contract)
+		# -----------------------------
+		'xml_loader': None,
+		'xml_documents': None,
+		'xml_split_documents': None,
+		'xml_tree_loaded': None,
+		'xml_namespaces': None,
+		'xml_xpath_results': None,
+		# -----------------------------
+		# WordNet Caches
+		# -----------------------------
+		'wordnet_synsets_sig': None,
+		'df_wordnet_synsets': None,
+		'df_wordnet_lemmas': None,
+}
+
+BASE_DIR = os.path.dirname( os.path.abspath( __file__ ) )
+
+CHUNKABLE_LOADERS = {
+		'TextLoader': [ 'chars', 'tokens' ],
+		'CsvLoader': [ 'chars' ],
+		'PdfLoader': [ 'chars' ],
+		'ExcelLoader': [ 'chars' ],
+		'WordLoader': [ 'chars' ],
+		'MarkdownLoader': [ 'chars' ],
+		'HtmlLoader': [ 'chars' ],
+		'JsonLoader': [ 'chars' ],
+		'PowerPointLoader': [ 'chars' ],
+}
