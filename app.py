@@ -334,6 +334,16 @@ def normalize_embeddings( emb_array: np.ndarray ) -> np.ndarray:
 	if isinstance( emb_array, np.ndarray ) and emb_array.ndim == 1:
 		return emb_array.reshape( 1, -1 )
 	return emb_array
+	
+def rebuild_raw_text_from_documents( ) -> str | None:
+		docs = st.session_state.get( "documents" ) or [ ]
+		if not docs:
+			return None
+		text = "\n\n".join( d.page_content for d in docs
+		                    if hasattr( d, "page_content" )
+		                    and isinstance( d.page_content, str )
+		                    and d.page_content.strip( ) )
+		return text if text.strip( ) else None
 
 # ======================================================================================
 # Page Configuration
@@ -419,7 +429,9 @@ tabs = st.tabs( TABS )
 # Tab - Document Loading
 # ======================================================================================
 with tabs[ 0 ]:
-	tokens = st.session_state.get( 'tokens' )
+	tokens = st.session_state[ 'tokens' ]
+	documents = st.session_state[ 'documents' ]
+	raw_text = st.session_state[ 'raw_text' ]
 	
 	# ------------------------------------------------------------------
 	# LEFT COLUMN - LOADERS
@@ -429,17 +441,6 @@ with tabs[ 0 ]:
 		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
-		
-		def _rebuild_raw_text_from_documents( ) -> str | None:
-			docs = st.session_state.get( "documents" ) or [ ]
-			if not docs:
-				return None
-			text = "\n\n".join(
-				d.page_content for d in docs
-				if
-				hasattr( d, "page_content" ) and isinstance( d.page_content, str ) and d.page_content.strip( )
-			)
-			return text if text.strip( ) else None
 		
 		# --------------------------- Text Loader
 		with st.expander( label='Text Loader', icon='📝', expanded=False ):
@@ -717,7 +718,7 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if clear_csv:
 				clear_if_active( "CsvLoader" )
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "CSV Loader state cleared."
 			
 			# --------------------------------------------------
@@ -946,54 +947,32 @@ with tabs[ 0 ]:
 		with st.expander( label='PDF Loader', icon='📕', expanded=False ):
 			pdf = st.file_uploader( 'Upload PDF', type=[ 'pdf' ], key='pdf_upload' )
 			
-			mode = st.selectbox(
-				'Mode',
-				[ 'single', 'page' ],
-				key='pdf_mode',
-				help='Use "single" for one combined document or "page" for page-wise loading.'
-			)
+			mode = st.selectbox( 'Mode', [ 'single', 'page' ], key='pdf_mode',
+				help='Use "single" for one combined document or "page" for page-wise loading.' )
 			
-			extract = st.selectbox(
-				'Extract',
-				[ 'plain', 'layout' ],
-				key='pdf_extract',
-				help='Use "plain" for standard text extraction or "layout" for layout-aware extraction.'
-			)
+			extract = st.selectbox( 'Extract', [ 'plain', 'layout' ], key='pdf_extract',
+				help='Use "plain" for standard extraction or "layout" for layout-aware extraction.')
 			
-			include = st.checkbox(
-				'Include Images',
-				value=False,
-				key='pdf_include'
-			)
+			include = st.checkbox( 'Include Images', value=False, key='pdf_include' )
 			
-			fmt = st.selectbox(
-				'Format',
-				[ 'markdown-img', 'html-img', 'text-img' ],
-				key='pdf_fmt',
-				help='Inner representation to use when image extraction is enabled.'
-			)
+			fmt = st.selectbox( 'Format', [ 'markdown-img', 'html-img', 'text-img' ], key='pdf_fmt',
+				help='Inner representation to use when image extraction is enabled.' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save
 			# --------------------------------------------------
 			col_load, col_clear, col_save = st.columns( 3 )
+			
 			load_pdf = col_load.button( 'Load', key='pdf_load' )
 			clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
 			
-			can_save = (
-					st.session_state.get( 'active_loader' ) == 'PdfLoader'
-					and isinstance( st.session_state.get( 'raw_text' ), str )
-					and st.session_state.get( 'raw_text' ).strip( )
-			)
+			can_save = ( st.session_state.get( 'active_loader' ) == 'PdfLoader' 
+			             and isinstance( st.session_state.get( 'raw_text' ), str ) 
+			             and st.session_state.get( 'raw_text' ).strip( ) )
 			
 			if can_save:
-				col_save.download_button(
-					'Save',
-					data=st.session_state.get( 'raw_text' ),
-					file_name='pdf_loader_output.txt',
-					mime='text/plain',
-					key='pdf_save',
-				)
+				col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+					file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save', )
 			else:
 				col_save.button( 'Save', key='pdf_save_disabled', disabled=True )
 			
@@ -1002,8 +981,9 @@ with tabs[ 0 ]:
 			# --------------------------------------------------
 			if clear_pdf:
 				clear_if_active( 'PdfLoader' )
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'PDF Loader state cleared.'
+				st.rerun( )
 			
 			# --------------------------------------------------
 			# Load
@@ -1015,20 +995,12 @@ with tabs[ 0 ]:
 						f.write( pdf.read( ) )
 					
 					loader = PdfLoader( )
-					documents = loader.load(
-						path,
-						mode=mode,
-						extract=extract,
-						include=include,
-						format=fmt,
-					) or [ ]
+					documents = loader.load( path, mode=mode, extract=extract, include=include,
+						format=fmt, ) or [ ]
 				
-				raw_text = '\n\n'.join(
-					d.page_content for d in documents
-					if hasattr( d, 'page_content' )
-					and isinstance( d.page_content, str )
-					and d.page_content.strip( )
-				)
+				raw_text = '\n\n'.join( d.page_content for d in documents if hasattr( d, 'page_content' ) 
+				                        and isinstance( d.page_content, str ) 
+				                        and d.page_content.strip( ) )
 				
 				st.session_state.documents = documents
 				st.session_state.raw_documents = list( documents )
@@ -1506,7 +1478,7 @@ with tabs[ 0 ]:
 						d for d in st.session_state.documents
 						if d.metadata.get( 'loader' ) != 'ArXivLoader'
 				]
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'ArXivLoader documents removed.'
 			
 			if arxiv_fetch and arxiv_query:
@@ -1527,7 +1499,7 @@ with tabs[ 0 ]:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 					
-					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = 'ArXivLoader'
 					
 					st.session_state['_loader_status' ] = f'Fetched {len( documents )} document(s).'
@@ -1586,7 +1558,7 @@ with tabs[ 0 ]:
 						d for d in st.session_state.documents
 						if d.metadata.get( 'loader' ) != 'WikiLoader'
 				]
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ '_loader_status' ] = 'WikiLoader documents removed.'
 			
 			if wiki_fetch and wiki_query:
@@ -1608,7 +1580,7 @@ with tabs[ 0 ]:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 					
-					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = 'WikiLoader'
 					
 					st.session_state[
@@ -1680,7 +1652,7 @@ with tabs[ 0 ]:
 						d for d in st.session_state.documents
 						if d.metadata.get( "loader" ) != "GithubLoader"
 				]
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "GithubLoader documents removed."
 			
 			if gh_fetch and gh_repo and gh_branch:
@@ -1706,7 +1678,7 @@ with tabs[ 0 ]:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
 					
-					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "GithubLoader"
 					
 					st.session_state[
@@ -1763,7 +1735,7 @@ with tabs[ 0 ]:
 						d for d in st.session_state.documents
 						if d.metadata.get( "loader" ) != "WebLoader"
 				]
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "WebLoader documents removed."
 			
 			if load_web and urls.strip( ):
@@ -1793,7 +1765,7 @@ with tabs[ 0 ]:
 						st.session_state.documents = new_docs
 						st.session_state.raw_documents = list( new_docs )
 					
-					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebLoader"
 					
 					st.session_state[
@@ -1858,7 +1830,7 @@ with tabs[ 0 ]:
 						d for d in st.session_state.documents
 						if d.metadata.get( "loader" ) != "WebCrawler"
 				]
-				st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+				st.session_state.raw_text = rebuild_raw_text_from_documents( )
 				st.session_state[ "_loader_status" ] = "WebCrawler documents removed."
 			
 			if run_crawl and start_url.strip( ):
@@ -1892,7 +1864,7 @@ with tabs[ 0 ]:
 					else:
 						st.session_state.documents = documents
 						st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = _rebuild_raw_text_from_documents( )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state.active_loader = "WebCrawler"
 					st.session_state[ "_loader_status" ] = f"Crawled {len( documents )} document(s)."
 				
@@ -1919,125 +1891,118 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	metrics_container = st.container( )
 	with metrics_container:
-		raw_text = st.session_state.get( 'raw_text' )
-		processed_text = st.session_state.get( 'processed_text' )
-		if isinstance( processed_text, str ) and processed_text.strip( ):
-			text = processed_text
-		elif isinstance( raw_text, str ) and raw_text.strip( ):
-			text = raw_text
-		else:
-			st.info( 'Load a document to compute metrics.' )
-		
-		# ----------------------------------------------
-		# Tokenization (session-cached)
-		# ----------------------------------------------
-		if st.session_state.tokens is None:
+		if documents is not None:
+			# ----------------------------------------------
+			# Tokenization (session-cached)
+			# ----------------------------------------------
+			if st.session_state.tokens is None:
+				try:
+					raw_text = rebuild_raw_text_from_documents( )
+					tokens = [ t.lower( ) for t in word_tokenize( raw_text ) if t.isalpha( ) ]
+				except LookupError:
+					st.error( 'NLTK resources missing' )
+				
+				if not tokens:
+					st.warning( 'No valid alphabetic tokens found.' )
+				
+				st.session_state.tokens = tokens
+				st.session_state.vocabulary = set( tokens )
+				st.session_state.token_counts = Counter( tokens )
+				
+			tokens = st.session_state.tokens
+			vocabulary = st.session_state.vocabulary
+			counts = st.session_state.token_counts
+			char_count = len( raw_text )
+			token_count = len( tokens )
+			vocab_size = len( vocabulary )
+			hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
+			hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
+			avg_word_len = sum( len( t ) for t in tokens ) / token_count
+			ttr = vocab_size / token_count
+			stopword_ratio = 0.0
+			lexical_density = 0.0
 			try:
-				tokens = [ t.lower( ) for t in word_tokenize( text ) if t.isalpha( ) ]
+				stop_words = set( stopwords.words( 'english' ) )
+				stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
+				lexical_density = 1.0 - stopword_ratio
 			except LookupError:
-				st.error( 'NLTK resources missing' )
-			
-			if not tokens:
-				st.warning( 'No valid alphabetic tokens found.' )
-			
-			st.session_state.tokens = tokens
-			st.session_state.vocabulary = set( tokens )
-			st.session_state.token_counts = Counter( tokens )
-		tokens = st.session_state.tokens
-		vocabulary = st.session_state.vocabulary
-		counts = st.session_state.token_counts
-		char_count = len( text )
-		token_count = len( tokens )
-		vocab_size = len( vocabulary )
-		hapax_count = sum( 1 for c in counts.values( ) if c == 1 )
-		hapax_ratio = hapax_count / vocab_size if vocab_size else 0.0
-		avg_word_len = sum( len( t ) for t in tokens ) / token_count
-		ttr = vocab_size / token_count
-		stopword_ratio = 0.0
-		lexical_density = 0.0
-		try:
-			stop_words = set( stopwords.words( 'english' ) )
-			stopword_ratio = sum( 1 for t in tokens if t in stop_words ) / token_count
-			lexical_density = 1.0 - stopword_ratio
-		except LookupError:
-			pass
-	
-		# ------------ Top Tokens
-		with st.expander( label='Top Tokens', icon='🉑', expanded=True ):
-			top_tokens = counts.most_common( 10 )
-			df_top = pd.DataFrame( top_tokens, columns=[ 'token',
-			                                             'count' ] ).set_index( 'token' )
-			st.bar_chart( df_top, color='#01438A' )
+				pass
 		
-		# ------------ Corpus Metrics
-		with st.expander( label='Corpus Metrics', icon='📖', expanded=True ):
+			# ------------ Top Tokens
+			with st.expander( label='Top Tokens', icon='🉑', expanded=True ):
+				top_tokens = counts.most_common( 10 )
+				df_top = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
+				st.bar_chart( df_top, color='#01438A' )
 			
-			col1, col2, col3, col4 = st.columns( 4, border=True )
-			with col1:
-				metric_with_tooltip( 'Characters', f'{char_count:,}',
-					'Total number of characters in the selected text.' )
+			# ------------ Corpus Metrics
+			with st.expander( label='Corpus Metrics', icon='📖', expanded=True ):
 				
-			with col2:
-				metric_with_tooltip( 'Tokens', f'{token_count:,}',
-					'Token Count: total number of tokenized words after cleanup.' )
+				col1, col2, col3, col4 = st.columns( 4, border=True )
+				with col1:
+					metric_with_tooltip( 'Characters', f'{char_count:,}',
+						'Total number of characters in the selected text.' )
+					
+				with col2:
+					metric_with_tooltip( 'Tokens', f'{token_count:,}',
+						'Token Count: total number of tokenized words after cleanup.' )
+					
+				with col3:
+					metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
+						'Vocabulary Size: number of distinct word types in the text.' )
+					
+				with col4:
+					metric_with_tooltip( 'TTR', f'{ttr:.3f}',
+						'Type–Token Ratio: unique words ÷ total words.' )
 				
-			with col3:
-				metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
-					'Vocabulary Size: number of distinct word types in the text.' )
-				
-			with col4:
-				metric_with_tooltip( 'TTR', f'{ttr:.3f}',
-					'Type–Token Ratio: unique words ÷ total words.' )
-			
-			col5, col6, col7, col8 = st.columns( 4, border=True )
-			with col5:
-				metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
-					'Hapax Ratio: proportion of words that occur only once.' )
-				
-			with col6:
-				metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
-					'Average number of characters per token.' )
-				
-			with col7:
-				metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
-					'Percentage of stopwords in the text.' )
-				
-			with col8:
-				metric_with_tooltip(
-					'Lexical Density',
-					f'{lexical_density:.2%}',
-					'Proportion of content-bearing words.' )
-		
-		# ------------ Readability
-		with st.expander( label='Readability', icon='👀', expanded=True ):
-			if TEXTSTAT_AVAILABLE:
-				r1, r2, r3, r4 = st.columns( 4, border=True )
-				with r1:
-					metric_with_tooltip( 'Flesch Reading Ease', f'{textstat.flesch_reading_ease( text ):.1f}',
-						'Higher scores indicate easier readability.' )
-				
-				with r2:
-					metric_with_tooltip( 'Flesch–Kincaid Grade',
-						f'{textstat.flesch_kincaid_grade( text ):.1f}',
-						'Estimated U.S. grade level required.' )
-				
-				with r3:
-					metric_with_tooltip( 'Gunning Fog', f'{textstat.gunning_fog( text ):.1f}',
-						'Readability based on sentence length and complex words.' )
-				
-				with r4:
+				col5, col6, col7, col8 = st.columns( 4, border=True )
+				with col5:
+					metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
+						'Hapax Ratio: proportion of words that occur only once.' )
+					
+				with col6:
+					metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
+						'Average number of characters per token.' )
+					
+				with col7:
+					metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
+						'Percentage of stopwords in the text.' )
+					
+				with col8:
 					metric_with_tooltip(
-						'Coleman–Liau Index',
-						f'{textstat.coleman_liau_index( text ):.1f}',
-						'Readability based on characters and sentences.' )
-			else:
-				st.caption( 'Install `textstat` to enable readability metrics.' )
+						'Lexical Density',
+						f'{lexical_density:.2%}',
+						'Proportion of content-bearing words.' )
+			
+			# ------------ Readability
+			with st.expander( label='Readability', icon='👀', expanded=True ):
+				if TEXTSTAT_AVAILABLE:
+					r1, r2, r3, r4 = st.columns( 4, border=True )
+					with r1:
+						metric_with_tooltip( 'Flesch Reading Ease', f'{textstat.flesch_reading_ease( raw_text ):.1f}',
+							'Higher scores indicate easier readability.' )
+					
+					with r2:
+						metric_with_tooltip( 'Flesch–Kincaid Grade',
+							f'{textstat.flesch_kincaid_grade( raw_text ):.1f}',
+							'Estimated U.S. grade level required.' )
+					
+					with r3:
+						metric_with_tooltip( 'Gunning Fog', f'{textstat.gunning_fog( raw_text ):.1f}',
+							'Readability based on sentence length and complex words.' )
+					
+					with r4:
+						metric_with_tooltip( 'Coleman–Liau Index',
+							f'{textstat.coleman_liau_index( raw_text ):.1f}',
+							'Readability based on characters and sentences.' )
+				else:
+					st.caption( 'Install `textstat` to enable readability metrics.' )
 
 # ======================================================================================
 # Tab — Text Processing
 # ======================================================================================
 with tabs[ 1 ]:
 	raw_text = st.session_state.get( 'raw_text' )
+	processed_text = st.session_state.get( 'processed_text' )
 	active_loader = st.session_state.get( 'active_loader' )
 	
 	if not isinstance( raw_text, str ) or not raw_text.strip( ):
@@ -2050,7 +2015,6 @@ with tabs[ 1 ]:
 	
 	if isinstance( raw_text, str ):
 		st.session_state.raw_text_view = raw_text
-		
 		processed_text = st.session_state.get( 'processed_text' )
 		start_time = st.session_state.get( 'start_time', 0.0 )
 		end_time = st.session_state.get( 'end_time', 0.0 )
