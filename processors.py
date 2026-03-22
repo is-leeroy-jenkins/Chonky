@@ -84,7 +84,7 @@ from tiktoken.core import Encoding
 import unicodedata
 from lxml import etree
 
-DELIMITERS: Set[ str ] = { '. ', '; ', '? ', '! ' }
+DELIMITERS: Set[ str ] = { '.', ';', '?', '!' }
 
 SYMBOLS: Set[ str ] = {
 		"@",
@@ -108,7 +108,9 @@ SYMBOLS: Set[ str ] = {
 		"(",
 		")",
 		"`",
-		"~"
+		"~",
+		"-",
+		"_"
 }
 
 ASCII_LETTERS: Set[ str ] = set( string.ascii_letters )
@@ -124,6 +126,10 @@ WHITESPACE: Set[ str ] = {
 CONTROL_CHARACTERS: Set[ str ] = {
 		chr( i ) for i in range( 0x00, 0x20 )
 }.union( { chr( 0x7F ) } )
+
+NUMERALS = (r"\bM{0,4}(CM|CD|D?C{0,3})"
+            r"(XC|XL|L?X{0,3})"
+            r"(IX|IV|V?I{0,3})\b")
 
 try:
 	nltk.data.find( 'tokenizers/punkt' )
@@ -275,7 +281,9 @@ class TextParser( Processor ):
 	PUNCTUATION: Optional[ Set[ str ] ]
 	CONTROL_CHARACTERS: Optional[ Set[ str ] ]
 	DELIMITERS: Optional[ Set[ str ] ]
-	DIGITS: Optional[ Set[ str ]]
+	DIGITS: Optional[ Set[ str ] ]
+	SYMBOLS: Optional[ Set[ str ] ]
+	NUMERALS: Optional[ str ]
 
 	def __init__( self ):
 		'''
@@ -290,6 +298,8 @@ class TextParser( Processor ):
 		self.CONTROL_CHARACTERS = ( {chr(i) for i in range(0x00, 0x20)} | {chr(0x7F)} )
 		self.DELIMITERS = DELIMITERS
 		self.DIGITS = DIGITS
+		self.SYMBOLS = SYMBOLS
+		self.NUMERALS = NUMERALS
 		self.lemmatizer = WordNetLemmatizer( )
 		self.stemmer = PorterStemmer( )
 		self.encoding = tiktoken.get_encoding( 'cl100k_base' )
@@ -628,7 +638,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
-			return "".join( c for c in _text if c not in self.PUNCTUATION )
+			return ''.join( c for c in _text if c not in self.SYMBOLS )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -965,12 +975,8 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			roman_pattern = (r"\bM{0,4}(CM|CD|D?C{0,3})"
-			                 r"(XC|XL|L?X{0,3})"
-			                 r"(IX|IV|V?I{0,3})\b" )
-		
-			self.parsed_text = re.sub( roman_pattern, ' ', self.raw_input, flags=re.IGNORECASE, )
+			self.raw_input = text.lower( )
+			self.parsed_text = re.sub( self.NUMERALS, ' ', self.raw_input, flags=re.IGNORECASE, )
 			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
@@ -1077,7 +1083,7 @@ class TextParser( Processor ):
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
 			raise exception
 			
-	def split_sentences( self, text: str, size: int=10 ) -> List[ str ]:
+	def split_sentences( self, text: str  ) -> List[ str ]:
 		"""
 
 			Purpose:
@@ -1102,8 +1108,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
-			_tokens = sent_tokenize( _text )
-			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_sentences = sent_tokenize( _text )
 			return _sentences
 		except Exception as e:
 			exception = Error( e )

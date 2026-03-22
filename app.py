@@ -2596,15 +2596,11 @@ with tabs[ 3 ]:
 		
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			processor = TextParser( )
-			lines = processor.split_sentences( text=processed_text, size=15 )
+			lines = processor.split_sentences( text=processed_text  )
 			st.session_state.lines = lines
 			
-			st.data_editor(
-				pd.DataFrame( lines, columns=[ 'Processed Text' ] ),
-				num_rows='dynamic',
-				width='stretch',
-				height='stretch'
-			)
+			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ), num_rows='dynamic',
+				width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
 	
