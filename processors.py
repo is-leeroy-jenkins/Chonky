@@ -452,35 +452,6 @@ class TextParser( Processor ):
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			raise exception
 			
-	def compress_whitespace( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Removes extra spaces and blank words from the string 'text'.
-
-			Parameters:
-			-----------
-			- text : str
-
-			Returns:
-			--------
-			A string with:
-				- Consecutive whitespace reduced to a single space
-				- Leading/trailing spaces removed
-				- Blank words removed
-
-		"""
-		try:
-			throw_if( 'text', text )
-			return ' '.join( text.split( ) )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'TextParser'
-			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
-			raise exception
-			
 	def remove_punctuation( self, text: str ) -> str:
 		"""
 		
@@ -657,7 +628,7 @@ class TextParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
-			exception.method = 'remove_special( self, text: str ) -> str:'
+			exception.method = 'remove_symbols( self, text: str ) -> str:'
 			raise exception
 			
 	def remove_html( self, text: str ) -> str | None:
@@ -1059,38 +1030,7 @@ class TextParser( Processor ):
 			exception.method = ('remove_formatting( self, text: str ) -> str')
 			raise exception
 			
-	def lemmatize_text( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			--------
-			Tokenizes input text into a list of word tokens.
-
-
-			Parameters:
-			-----------
-			text (str): Input text to tokenize.
-
-
-			Returns:
-			--------
-			List[str]: List of t strings.
-
-		"""
-		try:
-			throw_if( 'text', text )
-			_tokens = word_tokenize( text )
-			_cleaned = [ self.lemmatizer.lemmatize( t ) for t in _tokens ]
-			_lemmmatized = ' '.join( _cleaned )
-			return _lemmmatized
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'TextParser'
-			exception.method = 'lemmatize( self, text: str ) -> List[ str ]'
-			raise exception
-			
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> DataFrame:
+	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -1118,8 +1058,9 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
+			_text = text.lower( )
 			self.encoding = tiktoken.get_encoding( encoding )
-			token_ids = self.encoding.encode( text )
+			token_ids = self.encoding.encode( _text )
 			_data = pd.DataFrame( token_ids )
 			return _data
 		except Exception as e:
@@ -1127,128 +1068,6 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
-			raise exception
-			
-	def speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
-		"""
-		
-			Purpose:
-			--------
-			Performs part-of-speech tagging.
-		
-		
-			Parameters:
-			-----------
-			text (str): Text to process.
-		
-		
-			Returns:
-			--------
-			List[Tuple[str, str]]: List of (token, POS tag) pairs.
-			
-		"""
-		try:
-			throw_if( 'text', text )
-			self.nlp = spacy.load( 'en_core_web_sm' )
-			self.parts_of_speech = [ ( token.text, token.pos_ ) for token in self.nlp( text ) ]
-			return self.parts_of_speech
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'TextParser'
-			exception.method = 'speech_tagging( self, text: str ) -> List[ Tuple[ str, str ] ]'
-			raise exception
-			
-	def chunk_text( self, text: str, size: int=10 ) -> str:
-		"""
-
-			Purpose:
-			-----------
-			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
-			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's word_tokenize
-			  - Breaks words into chunks of a specified size
-			  - Optionally joins words into strings (for transformer models)
-
-			Parameters:
-			-----------
-			- pages : str
-				The cleaned_lines path pages to be tokenized and chunked.
-
-			- size : int, optional (default=50)
-				Number of words per chunk_words.
-
-			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of
-				words.
-
-			Returns:
-			--------
-			- a list
-
-		"""
-		try:
-			throw_if( 'text', text )
-			_tokens = nltk.word_tokenize( text )
-			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-			_datamap = [ ]
-			for index, chunk in enumerate( _sentences ):
-				_value =  ' '.join( chunk )
-				_datamap.append( _value )
-				
-			_data = ' '.join( _datamap )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'TextParser'
-			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
-			raise exception
-			
-	def chunk_sentences( self, text: str, size: int=10 ) -> DataFrame:
-		"""
-
-			Purpose:
-			-----------
-			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
-			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's sent_tokenize
-			  - Breaks words into chunks of a specified size
-			  - Optionally joins words into strings (for transformer models)
-
-			Parameters:
-			-----------
-			- pages : str
-				The cleaned_lines path pages to be tokenized and chunked.
-
-			- size : int, optional (default=50)
-				Number of words per chunk_words.
-
-			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of
-				words.
-
-			Returns:
-			--------
-			- a list
-
-		"""
-		try:
-			throw_if( 'text', text )
-			_tokens = nltk.word_tokenize( text )
-			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-			_datamap = [ ]
-			for i, c in enumerate( _sentences ):
-				_item = ' '.join( c )
-				_datamap.append( _item )
-				
-			_data = pd.DataFrame( _datamap )
-			return _data
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'TextParser'
-			exception.method = 'chunk_text( self, text: str, max: int=512 ) -> DataFrame'
 			raise exception
 			
 	def split_sentences( self, text: str, size: int=10 ) -> List[ str ]:
@@ -1275,14 +1094,10 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			_tokens = nltk.sent_tokenize( text )
+			_text = text.lower( )
+			_tokens = nltk.sent_tokenize( _text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
-			_data = [ ]
-			for index, chunk in enumerate( _sentences ):
-				_item = ' '.join( chunk )
-				_data.append( _item )
-				
-			return _data
+			return _sentences
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -1690,7 +1505,8 @@ class TextParser( Processor ):
 				_wordlist = [ ]
 				_vocab = words.words( 'en' )
 				_text = open( _source, 'r', encoding='utf-8', errors='ignore' ).read( )
-				_tokens = _text.split( )
+				_lower = _text.lower( )
+				_tokens = _lower.split( )
 				for s in _tokens:
 					if s.isalpha( ) and s in _vocab:
 						_wordlist.append( s )
@@ -1899,12 +1715,12 @@ class NltkParser( Processor ):
 
 		Methods:
 		--------
-		word_tokenize_text( self, text: str ) -> str
-		sentence_tokenize_text( self, text: str ) -> str
-		stem_text( self, text: str ) -> str
-		lemmatize_text( self, text: str ) -> str
-		pos_tag_text( self, text: str ) -> str
-		named_entity_text( self, text: str ) -> str
+		word_tokenizer( self, text: str ) -> str
+		sentence_tokenizer( self, text: str ) -> str
+		word_stemmer( self, text: str ) -> str
+		word_lemmatizer( self, text: str ) -> str
+		pos_tagger( self, text: str ) -> str
+		named_entity_recognition( self, text: str ) -> str
 
 	'''
 	word_tokens: Optional[ List[ str ] ]
@@ -1932,13 +1748,13 @@ class NltkParser( Processor ):
 
 		'''
 		super( ).__init__( )
+		self.initialize_resources( )
 		self.word_tokens = [ ]
 		self.sentence_tokens = [ ]
 		self.stemmed_tokens = [ ]
 		self.lemmatized_tokens = [ ]
 		self.tagged_tokens = [ ]
 		self.named_entities = [ ]
-		self._ensure_nltk_resources( )
 	
 	def __dir__( self ) -> List[ str ] | None:
 		'''
@@ -1956,22 +1772,11 @@ class NltkParser( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [
-				'word_tokenize',
-				'sentence_tokenize',
-				'stem_text',
-				'lemmatize',
-				'pos_tag',
-				'named_entity_recognition',
-				'word_tokens',
-				'sentence_tokens',
-				'stemmed_tokens',
-				'lemmatized_tokens',
-				'tagged_tokens',
-				'named_entities'
-		]
+		return [ 'word_tokenizer', 'sentence_tokenizer', 'word_stemmer', 'word_lemmatizer',
+		         'pos_tagger', 'named_entity_recognition', 'word_tokens', 'sentence_tokens',
+		         'stemmed_tokens', 'lemmatized_tokens', 'tagged_tokens', 'named_entities' ]
 	
-	def _ensure_nltk_resources( self ) -> None:
+	def initialize_resources( self ) -> None:
 		'''
 
 			Purpose:
@@ -2013,7 +1818,7 @@ class NltkParser( Processor ):
 			exception.method = 'NltkParser._ensure_nltk_resources( self ) -> None'
 			raise exception
 	
-	def word_tokenizer( self, text: str ) -> str:
+	def word_tokenizer( self, text: str ) -> List[ str ] | None:
 		'''
 
 			Purpose:
@@ -2033,16 +1838,17 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.word_tokens = word_tokenize( text )
-			return '\n'.join( token for token in self.word_tokens if isinstance( token, str ) )
+			_text = text.lower( )
+			self.word_tokens = word_tokenize( _text )
+			return self.word_tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
-			exception.method = 'word_tokenizer( self, text: str ) -> str'
+			exception.method = 'word_tokenizer( self, text: str ) -> List[ str ]'
 			raise exception
 	
-	def sentence_tokenizer( self, text: str ) -> str:
+	def sentence_tokenizer( self, text: str ) -> List[ str ] | None:
 		'''
 
 			Purpose:
@@ -2062,20 +1868,17 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.sentence_tokens = sent_tokenize( text )
-			return '\n'.join(
-				f'{index + 1}. {sentence}'
-				for index, sentence in enumerate( self.sentence_tokens )
-				if isinstance( sentence, str ) and sentence.strip( )
-			)
+			_text = text.lower( )
+			self.sentence_tokens = sent_tokenize( _text )
+			return self.sentence_tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
-			exception.method = 'r( self, text: str ) -> str'
+			exception.method = 'tokenize_sentences( self, text: str ) -> str'
 			raise exception
 	
-	def stemmer( self, text: str ) -> str:
+	def word_stemmer( self, text: str ) -> List[ str ] | None:
 		'''
 
 			Purpose:
@@ -2095,11 +1898,12 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.word_tokens = word_tokenize( text )
-			self.stemmed_tokens = [ self.stemmer.stem( token ) for token in self.word_tokens
-			                        if isinstance( token, str ) and token.strip( ) ]
+			_text = text.lower( )
+			self.word_tokens = word_tokenize( _text )
+			self.stemmed_tokens = [ self.stemmer.stem( t ) for t in self.word_tokens
+			                        if isinstance( t, str ) and t.strip( ) ]
 			
-			return ' '.join( self.stemmed_tokens )
+			return self.stemmed_tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -2107,7 +1911,7 @@ class NltkParser( Processor ):
 			exception.method = 'stemmer( self, text: str ) -> str'
 			raise exception
 	
-	def lemmatizer( self, text: str ) -> str:
+	def word_lemmatizer( self, text: str ) -> List[ str ] | None:
 		'''
 
 			Purpose:
@@ -2127,11 +1931,12 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.word_tokens = word_tokenize( text )
-			self.lemmatized_tokens = [ self.lemmatizer.lemmatize( token ) for token in self.word_tokens
-			                           if isinstance( token, str ) and token.strip( ) ]
+			_text = text.lower( )
+			self.word_tokens = word_tokenize( _text )
+			self.lemmatized_tokens = [ self.lemmatizer.lemmatize( t ) for t in self.word_tokens
+			                           if isinstance( t, str ) and t.strip( ) ]
 			
-			return ' '.join( self.lemmatized_tokens )
+			return self.lemmatized_tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -2139,7 +1944,7 @@ class NltkParser( Processor ):
 			exception.method = 'lemmatizer( self, text: str ) -> str'
 			raise exception
 	
-	def pos_tag( self, text: str ) -> str:
+	def pos_tagger( self, text: str ) -> str:
 		'''
 
 			Purpose:
@@ -2159,7 +1964,8 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.word_tokens = word_tokenize( text )
+			_text = text.lower( )
+			self.word_tokens = word_tokenize( _text )
 			self.tagged_tokens = nltk.pos_tag( self.word_tokens )
 			return '\n'.join( f'{token}\t{tag}' for token, tag in self.tagged_tokens
 			                  if isinstance( token, str ) and token.strip( ) )
@@ -2167,7 +1973,7 @@ class NltkParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
-			exception.method = 'pos_tag( self, text: str ) -> str'
+			exception.method = 'pos_tagger( self, text: str ) -> str'
 			raise exception
 	
 	def named_entity_recognition( self, text: str ) -> str:
@@ -2190,7 +1996,8 @@ class NltkParser( Processor ):
 		'''
 		try:
 			throw_if( 'text', text )
-			self.word_tokens = word_tokenize( text )
+			_text = text.lower( )
+			self.word_tokens = word_tokenize( _text )
 			self.tagged_tokens = nltk.pos_tag( self.word_tokens )
 			tree = nltk.ne_chunk( self.tagged_tokens )
 			self.named_entities = [ ]
@@ -2208,9 +2015,103 @@ class NltkParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
-			exception.method = 'named_entity_text( self, text: str ) -> str'
+			exception.method = 'named_entity_recogniztion( self, text: str ) -> str'
 			raise exception
 	
+	def chunk_words( self, text: str, size: int=5 ) -> DataFrame | None:
+		"""
+
+			Purpose:
+			-----------
+			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
+			  - Converts pages to lowercase
+			  - Tokenizes pages using NLTK's word_tokenize
+			  - Breaks words into chunks of a specified size
+			  - Optionally joins words into strings (for transformer models)
+
+			Parameters:
+			-----------
+			- pages : str
+				The cleaned_lines path pages to be tokenized and chunked.
+
+			- size : int, optional (default=50)
+				Number of words per chunk_words.
+
+			- return_as_string : bool, optional (default=True)
+				If True, returns each chunk_words as a path; otherwise, returns a get_list of
+				words.
+
+			Returns:
+			--------
+			- a list
+
+		"""
+		try:
+			throw_if( 'text', text )
+			_text = text.lower( )
+			_tokens = nltk.word_tokenize( _text )
+			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_datamap = [ ]
+			for index, chunk in enumerate( _sentences ):
+				_item = ' '.join( chunk )
+				_datamap.append( _item )
+			
+			_data = pd.DataFrame( _datamap )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
+			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
+			raise exception
+	
+	def chunk_sentences( self, text: str, size: int=15 ) -> DataFrame | None:
+		"""
+
+			Purpose:
+			-----------
+			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
+			  - Converts pages to lowercase
+			  - Tokenizes pages using NLTK's sent_tokenize
+			  - Breaks words into chunks of a specified size
+			  - Optionally joins words into strings (for transformer models)
+
+			Parameters:
+			-----------
+			- pages : str
+				The cleaned_lines path pages to be tokenized and chunked.
+
+			- size : int, optional (default=50)
+				Number of words per chunk_words.
+
+			- return_as_string : bool, optional (default=True)
+				If True, returns each chunk_words as a path; otherwise, returns a get_list of
+				words.
+
+			Returns:
+			--------
+			- a list
+
+		"""
+		try:
+			throw_if( 'text', text )
+			_text = text.lower( )
+			_tokens = sent_tokenize( _text )
+			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
+			_datamap = [ ]
+			for i, c in enumerate( _sentences ):
+				_item = ' '.join( c )
+				_datamap.append( _item )
+			
+			_data = pd.DataFrame( _datamap )
+			return _data
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'NltkParser'
+			exception.method = 'chunk_sentences( self, text: str, max: int=512 ) -> DataFrame'
+			raise exception
+
 class WordParser( Processor ):
 	"""
 
@@ -2250,7 +2151,8 @@ class WordParser( Processor ):
 		"""
 		super( ).__init__( )
 		self.file_path = filepath
-		self.raw_text = ''
+		self.document = Document( open( self.file_path, 'rt+' ) )
+		self.page_text = ''
 		self.paragraphs = [ ]
 		self.sentences = [ ]
 		self.cleaned_sentences = [ ]
@@ -2287,7 +2189,7 @@ class WordParser( Processor ):
 		         'vocabulary',
 		         'freq_dist' ]
 	
-	def extract_text( self ) -> str | None:
+	def extract_text( self, num: int=1 ) -> str | None:
 		"""
 
 			Purpose:
@@ -2296,16 +2198,13 @@ class WordParser( Processor ):
 
 		"""
 		try:
-			self.document = Document( self.file_path )
-			self.paragraphs = [ para.text.strip( ) for para in self.document.paragraphs if
-				para.text.strip( ) ]
-			self.raw_text = '\n'.join( self.paragraphs )
-			return self.raw_text
+			self.page_text = self.document.get_page_text( pno=num )
+			return self.page_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'Word'
-			exception.method = 'extract_text( self ) -> str'
+			exception.method = 'extract_text( self, num: int ) -> str'
 			raise exception
 			
 	def split_sentences( self ) -> List[ str ] | None:
@@ -2317,7 +2216,8 @@ class WordParser( Processor ):
 
 		"""
 		try:
-			self.sentences = sent_tokenize( self.raw_text )
+			_text = self.page_text.lower( )
+			self.sentences = sent_tokenize(_text )
 			return self.sentences
 		except Exception as e:
 			exception = Error( e )

@@ -76,7 +76,7 @@ from langchain_community.embeddings.sentence_transformer import (
 	SentenceTransformerEmbeddings,
 )
 from langchain_community.vectorstores import SQLiteVec
-from processors import Processor, TextParser, WordParser, PdfParser
+from processors import Processor, TextParser, NltkParser, WordParser, PdfParser
 
 from loaders import (
 	TextLoader,
@@ -1884,7 +1884,7 @@ with tabs[ 1 ]:
 			# ==============================================================
 			# Common Text Processing (TextParser)
 			# ==============================================================
-			with st.expander( label='Text Processing', icon='🧠', expanded=True ):
+			with st.expander( label='Text Processing', icon='🧠', expanded=False ):
 				remove_html = st.checkbox( 'Remove HTML',
 					help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
 				remove_markdown = st.checkbox( 'Remove Markdown',
@@ -1908,22 +1908,53 @@ with tabs[ 1 ]:
 				remove_encodings = st.checkbox( 'Remove Encoding',
 					help=r'Removes encoding artifacts and over-encoded byte strings' )
 				normalize_text = st.checkbox( 'Normalize (lowercase)' )
-				lemmatize_text = st.checkbox( 'Lemmatize',
-					help='Reduces words to their base or dictionary form' )
 				remove_fragments = st.checkbox( 'Remove Fragments',
 					help='Removes words less than 3 characters in length' )
 				remove_errors = st.checkbox( 'Remove Errors',
 					help='Removes misspelled words' )
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
 					help='Removes extra lines' )
-				compress_whitespace = st.checkbox( 'Compress Whitespace',
-					help='Removes extra spaces' )
+			
+			# ==============================================================
+			# NLTK-Specific Processing (NltkParser)
+			# ==============================================================
+			with st.expander( 'NLTK Processing', icon='🧰', expanded=False ):
+				
+				nltk_word_tokenize: bool = st.checkbox( 'Word Tokenize',
+					value=st.session_state.get( 'nltk_word_tokenize', False ),
+					key='nltk_word_tokenize',
+					help='Tokenizes cleaned text into individual word tokens' )
+				
+				nltk_sentence_tokenize: bool = st.checkbox( 'Sentence Tokenize',
+					value=st.session_state.get( 'nltk_sentence_tokenize', False ),
+					key='nltk_sentence_tokenize',
+					help='Splits cleaned text into sentence units' )
+				
+				nltk_stem: bool = st.checkbox( 'Word Stemmer',
+					value=st.session_state.get( 'nltk_stem', False ),
+					key='nltk_stem',
+					help='Applies stemming to cleaned text' )
+				
+				nltk_lemmatize: bool = st.checkbox( 'Word Lemmatizer',
+					value=st.session_state.get( 'nltk_lemmatize', False ),
+					key='nltk_lemmatize',
+					help='Applies NLTK lemmatization to cleaned text' )
+				
+				nltk_pos_tag: bool = st.checkbox( 'Part-of-Speech Tagging',
+					value=st.session_state.get( 'nltk_pos_tag', False ),
+					key='nltk_pos_tag',
+					help='Annotates tokens with grammatical tags' )
+				
+				nltk_named_entities: bool = st.checkbox( 'Named Entity Recognition',
+					value=st.session_state.get( 'nltk_named_entities', False ),
+					key='nltk_named_entities',
+					help='Extracts named entities such as persons, organizations, and places' )
 			
 			# ==============================================================
 			# Word-Specific Processing (WordParser)
 			# ==============================================================
 			extract_tables = extract_paragraphs = False
-			with st.expander( label='Word Processing', icon='📄', expanded=False ):
+			with st.expander( label='Docx Processing', icon='📄', expanded=False ):
 				if active == 'WordLoader':
 					extract_tables = st.checkbox( 'Extract Tables' )
 					extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
@@ -2003,18 +2034,23 @@ with tabs[ 1 ]:
 				processed_text = raw_text if isinstance( raw_text, str ) else ''
 				
 				tp = TextParser( )
+				nlp = NltkParser( )
 				
 				# ----------------------------------------------------------
 				# 1 — Structural cleanup
 				# ----------------------------------------------------------
 				if remove_html:
 					processed_text = tp.remove_html( processed_text )
+					
 				if remove_markdown:
 					processed_text = tp.remove_markdown( processed_text )
+					
 				if remove_images:
 					processed_text = tp.remove_images( processed_text )
+					
 				if remove_encodings:
 					processed_text = tp.remove_encodings( processed_text )
+					
 				if remove_xml:
 					processed_text = tp.remove_xml( processed_text )
 				
@@ -2023,14 +2059,13 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				if remove_symbols:
 					processed_text = tp.remove_symbols( processed_text )
+					
 				if remove_numbers:
 					processed_text = tp.remove_numbers( processed_text )
+					
 				if remove_numerals:
 					processed_text = tp.remove_numerals( processed_text )
-				
-				# ----------------------------------------------------------
-				# 3 — Meaning-critical punctuation shaping
-				# ----------------------------------------------------------
+					
 				if remove_punctuation:
 					processed_text = tp.remove_punctuation( processed_text )
 				
@@ -2045,24 +2080,18 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				if remove_stopwords:
 					processed_text = tp.remove_stopwords( processed_text )
+					
 				if remove_fragments:
 					processed_text = tp.remove_fragments( processed_text )
+					
 				if remove_errors:
 					processed_text = tp.remove_errors( processed_text )
-				
-				# ----------------------------------------------------------
-				# 6 — Lemmatization
-				# ----------------------------------------------------------
-				if lemmatize_text:
-					processed_text = tp.lemmatize_text( processed_text )
 				
 				# ----------------------------------------------------------
 				# 7 — Whitespace cleanup
 				# ----------------------------------------------------------
 				if collapse_whitespace:
 					processed_text = tp.collapse_whitespace( processed_text )
-				if compress_whitespace:
-					processed_text = tp.compress_whitespace( processed_text )
 				
 				# ----------------------------------------------------------
 				# Format-specific FIRST
@@ -2073,6 +2102,7 @@ with tabs[ 1 ]:
 					if extract_tables and hasattr( parser, 'extract_tables' ):
 						parser = WordParser( )
 						processed_text = parser.extract_tables( processed_text )
+						
 					if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
 						parser = WordParser( )
 						processed_text = parser.extract_paragraphs( processed_text )
@@ -2152,7 +2182,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Processed Text (output)
 				# ----------------------------
-				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=700 )
+				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=400 )
 
 # ======================================================================================
 # Tab - Semantic Analysis
