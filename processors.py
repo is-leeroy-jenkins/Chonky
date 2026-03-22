@@ -84,7 +84,7 @@ from tiktoken.core import Encoding
 import unicodedata
 from lxml import etree
 
-DELIMITERS: Set[ str ] = { '.', ';', '?', '!' }
+DELIMITERS: Set[ str ] = { '. ', '; ', '? ', '! ' }
 
 SYMBOLS: Set[ str ] = {
 		"@",
@@ -112,7 +112,9 @@ SYMBOLS: Set[ str ] = {
 		"-",
 		"_",
 		'"',
-		"'"
+		"'",
+		",",
+		"."
 }
 
 ASCII_LETTERS: Set[ str ] = set( string.ascii_letters )

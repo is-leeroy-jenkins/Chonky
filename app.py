@@ -1869,6 +1869,7 @@ with tabs[ 1 ]:
 	if isinstance( raw_text, str ):
 		st.session_state.raw_text_view = raw_text
 		processed_text = st.session_state.get( 'processed_text' )
+		displayed_text = st.session_state.get( 'displayed_text' )
 		start_time = st.session_state.get( 'start_time', 0.0 )
 		end_time = st.session_state.get( 'end_time', 0.0 )
 		total_time = st.session_state.get( 'total_time', 0.0 )
@@ -1884,7 +1885,7 @@ with tabs[ 1 ]:
 			# ==============================================================
 			# Common Text Processing (TextParser)
 			# ==============================================================
-			with st.expander( label='Text Processing', icon='🧠', expanded=False ):
+			with st.expander( label='Text Processing', icon='🧠', expanded=True ):
 				remove_html = st.checkbox( 'Remove HTML',
 					help='Removes Hypertext Markup Tags, eg. <, \>, etc' )
 				remove_markdown = st.checkbox( 'Remove Markdown',
@@ -1918,7 +1919,7 @@ with tabs[ 1 ]:
 			# ==============================================================
 			# NLTK-Specific Processing (NltkParser)
 			# ==============================================================
-			with st.expander( 'NLTK Processing', icon='🧰', expanded=False ):
+			with st.expander( 'NLTK Processing', icon='🧰', expanded=True ):
 				
 				nltk_word_tokenize: bool = st.checkbox( 'Word Tokenize',
 					value=st.session_state.get( 'nltk_word_tokenize', False ),
@@ -2011,18 +2012,28 @@ with tabs[ 1 ]:
 			# ==============================================================
 			if reset_processing:
 				st.session_state.processed_text = ''
-				st.session_state.processed_text_view = ''
+				st.session_state.displayed_text = ''
+				st.session_state.processed_text_display = ''
 				st.session_state.start_time = 0.0
 				st.session_state.end_time = 0.0
 				st.session_state.total_time = 0.0
+				
 				st.success( 'Processed text reset.' )
 			
 			if clear_processing:
 				st.session_state.processed_text = ''
-				st.session_state.processed_text_view = ''
+				st.session_state.displayed_text = ''
+				st.session_state.processed_text_display = ''
 				st.session_state.start_time = 0.0
 				st.session_state.end_time = 0.0
 				st.session_state.total_time = 0.0
+				
+				st.session_state.nltk_word_tokens = [ ]
+				st.session_state.nltk_sentence_tokens = [ ]
+				st.session_state.nltk_stemmed_tokens = [ ]
+				st.session_state.nltk_lemmatized_tokens = [ ]
+				st.session_state.nltk_pos_tags = [ ]
+				
 				st.success( 'Processed text cleared.' )
 			
 			if apply_processing:
@@ -2121,7 +2132,6 @@ with tabs[ 1 ]:
 				st.session_state.nltk_stemmed_tokens = [ ]
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
-				st.session_state.nltk_named_entities = [ ]
 				
 				if nltk_word_tokenize:
 					st.session_state.nltk_word_tokens = nlp.word_tokenizer( processed_text ) or [ ]
@@ -2214,10 +2224,13 @@ with tabs[ 1 ]:
 				st.session_state.processed_text = (
 						processed_text if isinstance( processed_text, str ) else ''
 				)
+
+				st.session_state.displayed_text = (
+						display_text if isinstance( display_text, str )
+						else st.session_state.processed_text
+				)
 				
-				st.session_state.processed_text_view = (
-						display_text if isinstance( display_text, str ) else st.session_state.processed_text
-)
+				st.session_state.processed_text_display = st.session_state.displayed_text
 				
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
 			
@@ -2228,7 +2241,7 @@ with tabs[ 1 ]:
 			raw_text_view = st.session_state.get( 'raw_text_view' )
 			processed_text_view = st.session_state.get( 'processed_text_view' )
 			raw_text_current = st.session_state.get( 'raw_text' )
-			processed_text_current = st.session_state.get( 'processed_text' )
+			processed_text = st.session_state.get( 'processed_text' )
 			
 			st.text_area(
 				label='Raw Text',
@@ -2241,12 +2254,12 @@ with tabs[ 1 ]:
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
 				if (
 						isinstance( raw_text_current, str ) and raw_text_current.strip( )
-						and isinstance( processed_text_current, str ) and processed_text_current.strip( )
+						and isinstance( processed_text, str ) and processed_text.strip( )
 				):
 					raw_tokens = raw_text_current.split( )
-					proc_tokens = processed_text_current.split( )
+					proc_tokens = processed_text.split( )
 					raw_chars = len( raw_text_current )
-					proc_chars = len( processed_text_current )
+					proc_chars = len( processed_text )
 					raw_vocab = len( set( raw_tokens ) )
 					proc_vocab = len( set( proc_tokens ) )
 					
@@ -2273,11 +2286,13 @@ with tabs[ 1 ]:
 				else:
 					st.caption( 'Load and process text to view absolute and delta statistics.' )
 			
+			processed_text_view = st.session_state.get( 'displayed_text' )
+			
 			st.text_area(
 				'Processed Text',
-				value=processed_text_view if isinstance( processed_text_view, str ) else '',
+				value=st.session_state.get( 'displayed_text' ) or '',
 				height=800,
-				key='processed_text_view_display'
+				key='processed_text_display'
 			)
 
 # ======================================================================================
