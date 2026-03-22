@@ -444,7 +444,8 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			return ' '.join( text.split( ) )
+			_text = text.lower( )
+			return ' '.join( _text.split( ) )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -480,9 +481,10 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			tokens = word_tokenize( text )
-			cleaned_tokens = [ re.sub( r'[^\w\s]', '', token ) for token in tokens if
-			                   re.sub( r'[^\w\s]', '', token ) ]
+			_text = text.lower( )
+			_tokens = word_tokenize( _text )
+			cleaned_tokens = [ re.sub( r'[^\w\s]', '', t ) for t in _tokens if
+			                   re.sub( r'[^\w\s]', '', t ) ]
 			return ' '.join( cleaned_tokens )
 		except Exception as e:
 			exception = Error( e )
@@ -549,7 +551,8 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_vocab = words.words( 'en' )
-			_tokens = text.split(  )
+			_text = text.lower( )
+			_tokens = _text.split(  )
 			_words = [ w for w in _tokens if w in _vocab ]
 			_data = ' '.join( _words )
 			return _data
@@ -583,8 +586,9 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
+			_text = text.lower( )
 			_cleaned = [ ]
-			_fragments = text.split( )
+			_fragments = _text.split( )
 			for char in _fragments:
 				if len( char) > 2:
 					_cleaned.append( char )
@@ -623,7 +627,8 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			return "".join( c for c in text if c not in self.PUNCTUATION )
+			_text = text.lower( )
+			return "".join( c for c in _text if c not in self.PUNCTUATION )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -695,7 +700,8 @@ class TextParser( Processor ):
 		"""
 		throw_if( 'text', text )
 		try:
-			wrapped_text = f"<root>{text}</root>"
+			_text = text.lower( )
+			wrapped_text = f"<root>{_text}</root>"
 			parser = etree.XMLParser( recover=True, remove_comments=True,
 				remove_blank_text=False )
 			
@@ -736,8 +742,8 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			_text = re.sub( r'\[.*?]\(.*?\)', ' ', text )
+			self.raw_input = text.lower( )
+			_text = re.sub( r'\[.*?]\(.*?\)', ' ', self.raw_input )
 			_unmarked = re.sub( r'[`_*#~><-]', ' ', _text )
 			self.cleaned_text = re.sub( r'!\[.*?]\(.*?\)', ' ', _unmarked )
 			return self.cleaned_text
@@ -773,8 +779,9 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			tokens = word_tokenize( text )
-			return [ w for w in tokens if w.lower( ) not in stopwords.words( 'english' ) ]
+			_text = text.lower( )
+			_tokens = word_tokenize( _text )
+			return [ w for w in _tokens if w.lower( ) not in stopwords.words( 'english' ) ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -957,13 +964,13 @@ class TextParser( Processor ):
 
 		"""
 		try:
-			throw_if( "text", text )
+			throw_if( 'text', text )
 			self.raw_input = text
 			roman_pattern = (r"\bM{0,4}(CM|CD|D?C{0,3})"
 			                 r"(XC|XL|L?X{0,3})"
 			                 r"(IX|IV|V?I{0,3})\b" )
 		
-			self.parsed_text = re.sub( roman_pattern, " ", self.raw_input, flags=re.IGNORECASE, )
+			self.parsed_text = re.sub( roman_pattern, ' ', self.raw_input, flags=re.IGNORECASE, )
 			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
@@ -1095,7 +1102,7 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
-			_tokens = nltk.sent_tokenize( _text )
+			_tokens = sent_tokenize( _text )
 			_sentences = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 			return _sentences
 		except Exception as e:
@@ -1218,7 +1225,7 @@ class TextParser( Processor ):
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
 			raise exception
 			
-	def create_vocabulary( self, tokens: List[ str ], size: int=1 ) -> Series:
+	def create_vocabulary( self, tokens: List[ str ] ) -> Series:
 		"""
 
 			Purpose:

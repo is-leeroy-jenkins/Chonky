@@ -2093,6 +2093,7 @@ with tabs[ 1 ]:
 				if collapse_whitespace:
 					processed_text = tp.collapse_whitespace( processed_text )
 				
+				
 				# ----------------------------------------------------------
 				# Format-specific FIRST
 				# ----------------------------------------------------------
@@ -2182,7 +2183,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Processed Text (output)
 				# ----------------------------
-				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=400 )
+				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=800 )
 
 # ======================================================================================
 # Tab - Semantic Analysis
