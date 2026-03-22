@@ -765,9 +765,11 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
+			_stop_words = set( stopwords.words( 'english' ) )
 			_text = text.lower( )
 			_tokens = word_tokenize( _text )
-			return [ w for w in _tokens if w.lower( ) not in stopwords.words( 'english' ) ]
+			_filtered = [ token for token in _tokens if token.isalnum( ) and token not in _stop_words ]
+			return ' '.join( _filtered )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -1832,7 +1834,8 @@ class NltkParser( Processor ):
 			throw_if( 'text', text )
 			_text = text.lower( )
 			self.word_tokens = word_tokenize( _text )
-			return self.word_tokens
+			words = [ token for token in self.word_tokens if token.isalnum( )  ]
+			return words
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'

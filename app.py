@@ -2212,63 +2212,73 @@ with tabs[ 1 ]:
 				# Commit processed text
 				# ----------------------------------------------------------
 				st.session_state.processed_text = (
-						processed_text if isinstance( processed_text, str ) else '' )
+						processed_text if isinstance( processed_text, str ) else ''
+				)
 				
 				st.session_state.processed_text_view = (
-						display_text if isinstance( display_text, str ) else st.session_state.processed_text )
+						display_text if isinstance( display_text, str ) else st.session_state.processed_text
+)
 				
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
 			
-			# ------------------------------------------------------------------
-			# RIGHT COLUMN — Text Views
-			# ------------------------------------------------------------------
-			with right:
-				st.text_area( label='Raw Text', height=200, disabled=True, key='raw_text_view' )
-				raw_text = st.session_state.get( 'raw_text' )
-				with st.expander( '📊 Processing Statistics:', expanded=False ):
-					processed_text = st.session_state.get( 'processed_text' )
-					if (isinstance( raw_text, str ) and raw_text.strip( ) and
-							isinstance( processed_text, str ) and processed_text.strip( )):
-						raw_tokens = raw_text.split( )
-						proc_tokens = processed_text.split( )
-						raw_chars = len( raw_text )
-						proc_chars = len( processed_text )
-						raw_vocab = len( set( raw_tokens ) )
-						proc_vocab = len( set( proc_tokens ) )
-						
-						# ----------------------------
-						# Absolute Metrics
-						# ----------------------------
-						st.text( 'Measures:' )
-						ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
-						a1, a2, a3, a4 = st.columns( 4, border=True )
-						a1.metric( 'Characters', f'{proc_chars:,}' )
-						a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
-						a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
-						a4.metric( 'TTR', f'{ttr:.3f}' )
-						
-						st.divider( )
-						
-						# ----------------------------
-						# Delta Metrics
-						# ----------------------------
-						st.text( 'Deltas:' )
-						d1, d2, d3, d4 = st.columns( 4, border=True )
-						char_delta = proc_chars - raw_chars
-						token_delta = len( proc_tokens ) - len( raw_tokens )
-						vocab_delta = proc_vocab - raw_vocab
-						compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
-						d1.metric( 'Δ Characters', f'{char_delta:+,}' )
-						d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
-						d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
-						d4.metric( 'Compression Ratio', f'{compression:.2%}' )
-					else:
-						st.caption( 'Load and process text to view absolute and delta statistics.' )
-				
-				# ----------------------------
-				# Processed Text (output)
-				# ----------------------------
-				st.text_area( 'Processed Text', st.session_state.processed_text_view or '', height=800 )
+		# ------------------------------------------------------------------
+		# RIGHT COLUMN — Text Views
+		# ------------------------------------------------------------------
+		with right:
+			raw_text_view = st.session_state.get( 'raw_text_view' )
+			processed_text_view = st.session_state.get( 'processed_text_view' )
+			raw_text_current = st.session_state.get( 'raw_text' )
+			processed_text_current = st.session_state.get( 'processed_text' )
+			
+			st.text_area(
+				label='Raw Text',
+				value=raw_text_view if isinstance( raw_text_view, str ) else '',
+				height=200,
+				disabled=True,
+				key='raw_text_view_display'
+			)
+			
+			with st.expander( '📊 Processing Statistics:', expanded=False ):
+				if (
+						isinstance( raw_text_current, str ) and raw_text_current.strip( )
+						and isinstance( processed_text_current, str ) and processed_text_current.strip( )
+				):
+					raw_tokens = raw_text_current.split( )
+					proc_tokens = processed_text_current.split( )
+					raw_chars = len( raw_text_current )
+					proc_chars = len( processed_text_current )
+					raw_vocab = len( set( raw_tokens ) )
+					proc_vocab = len( set( proc_tokens ) )
+					
+					st.text( 'Measures:' )
+					ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
+					a1, a2, a3, a4 = st.columns( 4, border=True )
+					a1.metric( 'Characters', f'{proc_chars:,}' )
+					a2.metric( 'Tokens', f'{len( proc_tokens ):,}' )
+					a3.metric( 'Unique Tokens', f'{proc_vocab:,}' )
+					a4.metric( 'TTR', f'{ttr:.3f}' )
+					
+					st.divider( )
+					
+					st.text( 'Deltas:' )
+					d1, d2, d3, d4 = st.columns( 4, border=True )
+					char_delta = proc_chars - raw_chars
+					token_delta = len( proc_tokens ) - len( raw_tokens )
+					vocab_delta = proc_vocab - raw_vocab
+					compression = (proc_chars / raw_chars if raw_chars > 0 else 0.0)
+					d1.metric( 'Δ Characters', f'{char_delta:+,}' )
+					d2.metric( 'Δ Tokens', f'{token_delta:+,}' )
+					d3.metric( 'Δ Vocabulary', f'{vocab_delta:+,}' )
+					d4.metric( 'Compression Ratio', f'{compression:.2%}' )
+				else:
+					st.caption( 'Load and process text to view absolute and delta statistics.' )
+			
+			st.text_area(
+				'Processed Text',
+				value=processed_text_view if isinstance( processed_text_view, str ) else '',
+				height=800,
+				key='processed_text_view_display'
+			)
 
 # ======================================================================================
 # Tab - Semantic Analysis
