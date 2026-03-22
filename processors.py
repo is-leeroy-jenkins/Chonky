@@ -245,38 +245,12 @@ class TextParser( Processor ):
 		create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
 
 	'''
-	lemmatizer: Optional[ WordNetLemmatizer ]
-	stemmer: Optional[ PorterStemmer ]
-	file_path: Optional[ str ]
 	lowercase: Optional[ str ]
-	normalized: Optional[ str ]
-	lemmatized: Optional[ str ]
-	tokenized: Optional[ str ]
-	encoding: Optional[ Encoding ]
-	nlp: Optional[ Language ]
-	parts_of_speech: Optional[ List[ Tuple[ str, str ] ] ]
-	embedddings: Optional[ List[ np.ndarray ] ]
-	chunk_size: Optional[ int ]
-	corrected: Optional[ str ]
-	raw_input: Optional[ str ]
-	raw_html: Optional[ str ]
-	raw_pages: Optional[ List[ str ] ]
-	lines: Optional[ List[ str ] ]
-	tokens: Optional[ List[ str ] ]
-	lines: Optional[ List[ str ] ]
-	files: Optional[ List[ str ] ]
-	pages: Optional[ List[ str ] ]
-	paragraphs: Optional[ List[ str ] ]
-	ids: Optional[ List[ int ] ]
 	cleaned_text: Optional[ str ]
 	cleaned_lines: Optional[ List[ str ] ]
 	cleaned_tokens: Optional[ List[ str ] ]
 	cleaned_pages: Optional[ List[ str ] ]
 	cleaned_html: Optional[ str ]
-	stop_words: Optional[ set ]
-	vocabulary: Optional[ Series ]
-	corpus: Optional[ DataFrame ]
-	frequency_distribution: Optional[ DataFrame ]
 	conditional_distribution: Optional[ DataFrame ]
 	PUNCTUATION: Optional[ Set[ str ] ]
 	CONTROL_CHARACTERS: Optional[ Set[ str ] ]
@@ -607,7 +581,7 @@ class TextParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
-			exception.method = 'remove_special( self, text: str ) -> str:'
+			exception.method = 'remove_fragments( self, text: str ) -> str:'
 			raise exception
 			
 	def remove_symbols( self, text: str ) -> str | None:
@@ -821,7 +795,8 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			try:
-				text = bytes( text, 'utf-8' ).decode( 'unicode_escape' )
+				_text = text.lower( )
+				text = bytes( _text, 'utf-8' ).decode( 'unicode_escape' )
 			except UnicodeDecodeError:
 				pass
 
@@ -838,7 +813,7 @@ class TextParser( Processor ):
 			exception.method = 'remove_encodings( self, text: str ) -> str'
 			raise exception
 			
-	def remove_headers( self, filepath: str, lines: int=50, headers: int=3, footers: int=3, ) -> str:
+	def remove_headers( self, filepath: str, lines: int=50, headers: int=3, footers: int=3 ) -> str | None:
 		"""
 		
 			Purpose:
@@ -865,21 +840,25 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'filepath', filepath )
+			if not os.path.exists( filepath ):
+				raise FileNotFoundError( f'File not found: {filepath}' )
+			else:
+				self.file_path = filepath
 			if lines < 6:
 				raise ValueError( 'Argument \"lines_per_page\" should be at least 6.' )
 			if headers < 0 or footers < 0:
 				msg = 'Arguments \"header_lines\" and \"footer_lines\" must be non-negative.'
 				raise ValueError( msg )
 			
-			with open( filepath, 'r', encoding='utf-8', errors='ignore' ) as fh:
-				all_lines: List[ str ] = fh.readlines( )
+			with open( self.file_path, 'r', encoding='utf-8', errors='ignore' ) as fh:
+				self.lines = fh.readlines( )
 			
-			pages = [ all_lines[ i: i + lines ] for i in
-			          range( 0, len( all_lines ), lines ) ]
+			self.pages = [ self.lines[ i: i + lines ] for i in
+			          range( 0, len( self.lines ), lines ) ]
 			
 			header_counts = { }
 			footer_counts = { }
-			for page in pages:
+			for page in self.pages:
 				n = len( page )
 				if n == 0:
 					continue
@@ -907,7 +886,7 @@ class TextParser( Processor ):
 				common_footer = max( footer_counts.items( ), key=lambda kv: kv[ 1 ] )[ 0 ]
 			
 			cleaned_pages = [ ]
-			for page in pages:
+			for page in self.pages:
 				lines = list( page )
 				
 				if common_header and len( lines ) >= len( common_header ):
@@ -947,7 +926,8 @@ class TextParser( Processor ):
 		"""
 		try:
 			throw_if( 'text', text )
-			return re.sub( r'\d+', '', text )
+			_text = text.lower( )
+			return re.sub( r'\d+', '', _text )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -976,8 +956,8 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text.lower( )
-			self.parsed_text = re.sub( self.NUMERALS, ' ', self.raw_input, flags=re.IGNORECASE, )
-			return self.parsed_text
+			self.cleaned_text = re.sub( self.NUMERALS, ' ', self.raw_input, flags=re.IGNORECASE, )
+			return self.cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -1083,7 +1063,7 @@ class TextParser( Processor ):
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
 			raise exception
 			
-	def split_sentences( self, text: str  ) -> List[ str ]:
+	def split_sentences( self, text: str  ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1163,13 +1143,13 @@ class TextParser( Processor ):
 			exception.method = 'split_pages( file_path )'
 			raise exception
 			
-	def split_paragraphs( self, filepath: str ) -> DataFrame:
+	def split_paragraphs( self, filepath: str ) -> DataFrame | None:
 		"""
 
 			Purpose:
 			---------
 			Reads  a file and splits it into paragraphs. A paragraph is defined as a block
-			of path separated by one or more empty lines (eg, '\n\n').
+			of text separated by one or more empty lines (eg, '\n\n').
 
 			Parameters:
 			-----------
@@ -1198,18 +1178,16 @@ class TextParser( Processor ):
 				_data = pd.DataFrame( _paragraphs )
 				return _data
 	
-	def create_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame:
+	def create_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame | None:
 		"""
 
 			Purpose:
 			--------
-			Creates a word frequency freq_dist from a list of documents.
+			Creates a word frequency freq_dist from a list of tokens.
 
 			Parameters:
 			-----------
-			- lines (list): List of raw or preprocessed path documents.
-			- process (bool): Applies normalization, tokenization, stopword removal,
-			and lemmatization.
+			- tokens: List[ str ]
 
 			Returns:
 			- dict: Dictionary of words and their corresponding frequencies.
@@ -1230,7 +1208,7 @@ class TextParser( Processor ):
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
 			raise exception
 			
-	def create_vocabulary( self, tokens: List[ str ] ) -> Series:
+	def create_vocabulary( self, tokens: List[ str ] ) -> Series | None:
 		"""
 
 			Purpose:
@@ -1266,7 +1244,7 @@ class TextParser( Processor ):
 			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
 			raise exception
 			
-	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame:
+	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -1296,7 +1274,7 @@ class TextParser( Processor ):
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
 			raise exception
 			
-	def create_vectors( self, tokens: List[ str ] ) -> DataFrame:
+	def create_vectors( self, tokens: List[ str ] ) -> DataFrame | None:
 		"""
 		
 			Purpose:
@@ -1344,7 +1322,7 @@ class TextParser( Processor ):
 			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
 			raise exception
 			
-	def clean_file( self, filepath: str ) -> str:
+	def clean_file( self, filepath: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -1491,7 +1469,7 @@ class TextParser( Processor ):
 			exception.method = 'chunk_files( self, src: str, dest: str )'
 			raise exception
 			
-	def chunk_data( self, filepath: str, size: int=10  ) -> DataFrame:
+	def chunk_data( self, filepath: str, size: int=10  ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -1784,9 +1762,10 @@ class NltkParser( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ 'word_tokenizer', 'sentence_tokenizer', 'word_stemmer', 'word_lemmatizer',
-		         'pos_tagger', 'named_entity_recognition', 'word_tokens', 'sentence_tokens',
-		         'stemmed_tokens', 'lemmatized_tokens', 'tagged_tokens', 'named_entities' ]
+		return [ 'initialize_resources', 'word_tokenizer', 'sentence_tokenizer', 'word_stemmer',
+		         'word_lemmatizer', 'pos_tagger', 'named_entity_recognition', 'word_tokens',
+		         'sentence_tokens', 'stemmed_tokens', 'lemmatized_tokens', 'tagged_tokens',
+		         'named_entities' ]
 	
 	def initialize_resources( self ) -> None:
 		'''
@@ -1815,8 +1794,7 @@ class NltkParser( Processor ):
 					('taggers/averaged_perceptron_tagger_eng', 'averaged_perceptron_tagger_eng'),
 					('chunkers/maxent_ne_chunker', 'maxent_ne_chunker'),
 					('chunkers/maxent_ne_chunker_tab', 'maxent_ne_chunker_tab'),
-					('corpora/words', 'words'),
-			]
+					('corpora/words', 'words'), ]
 			
 			for resource_path, resource_name in required_resources:
 				try:

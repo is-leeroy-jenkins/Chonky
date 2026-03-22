@@ -222,8 +222,8 @@ def rebuild_raw_text_from_documents( ) -> str | None:
 		docs = st.session_state.get( "documents" ) or [ ]
 		if not docs:
 			return None
-		text = "\n\n".join( d.page_content for d in docs
-		                    if hasattr( d, "page_content" )
+		text = '\n\n'.join( d.page_content for d in docs
+		                    if hasattr( d, 'page_content' )
 		                    and isinstance( d.page_content, str )
 		                    and d.page_content.strip( ) )
 		return text if text.strip( ) else None
@@ -2545,10 +2545,8 @@ with tabs[ 3 ]:
 	# ------------------------------------------------------------------
 	# Fixed vector-space schema
 	# ------------------------------------------------------------------
-	dimensions = [
-			'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
-			'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14'
-	]
+	dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
+	               'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
 	
 	# ------------------------------------------------------------------
 	# Canonical diagnostics state
