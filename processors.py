@@ -110,7 +110,9 @@ SYMBOLS: Set[ str ] = {
 		"`",
 		"~",
 		"-",
-		"_"
+		"_",
+		'"',
+		"'"
 }
 
 ASCII_LETTERS: Set[ str ] = set( string.ascii_letters )

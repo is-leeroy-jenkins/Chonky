@@ -2093,7 +2093,27 @@ with tabs[ 1 ]:
 				if collapse_whitespace:
 					processed_text = tp.collapse_whitespace( processed_text )
 				
+				# ----------------------------------------------------------
+				# 8 — Token Processing
+				# ----------------------------------------------------------
+				if nltk_word_tokenize:
+					processed_text = nlp.word_tokenizer( processed_text )
+					
+				if nltk_sentence_tokenize:
+					processed_text = nlp.sentence_tokenizer( processed_text )
+					
+				if nltk_stem:
+					processed_text = nlp.word_stemmer( processed_text )
+					
+				if nltk_lemmatize:
+					processed_text = nlp.word_lemmatize( processed_text )
+					
+				if nltk_pos_tag:
+					processed_text = nlp.pos_tagger( processed_text )
 				
+				if nltk_named_entities:
+					processed_text = nlp.named_entity_recognition( processed_text )
+					
 				# ----------------------------------------------------------
 				# Format-specific FIRST
 				# ----------------------------------------------------------
