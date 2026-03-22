@@ -2096,23 +2096,85 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				# 8 — Token Processing
 				# ----------------------------------------------------------
+				display_text = processed_text
+				
+				if 'nltk_word_tokens' not in st.session_state:
+					st.session_state.nltk_word_tokens = [ ]
+				
+				if 'nltk_sentence_tokens' not in st.session_state:
+					st.session_state.nltk_sentence_tokens = [ ]
+				
+				if 'nltk_stemmed_tokens' not in st.session_state:
+					st.session_state.nltk_stemmed_tokens = [ ]
+				
+				if 'nltk_lemmatized_tokens' not in st.session_state:
+					st.session_state.nltk_lemmatized_tokens = [ ]
+				
+				if 'nltk_pos_tags' not in st.session_state:
+					st.session_state.nltk_pos_tags = [ ]
+				
+				if 'nltk_named_entities' not in st.session_state:
+					st.session_state.nltk_named_entities = [ ]
+				
+				st.session_state.nltk_word_tokens = [ ]
+				st.session_state.nltk_sentence_tokens = [ ]
+				st.session_state.nltk_stemmed_tokens = [ ]
+				st.session_state.nltk_lemmatized_tokens = [ ]
+				st.session_state.nltk_pos_tags = [ ]
+				st.session_state.nltk_named_entities = [ ]
+				
 				if nltk_word_tokenize:
-					processed_text = nlp.word_tokenizer( processed_text )
+					st.session_state.nltk_word_tokens = nlp.word_tokenizer( processed_text ) or [ ]
+					display_text = ' '.join(
+						t for t in st.session_state.nltk_word_tokens
+						if isinstance( t, str ) and t.strip( ) )
 					
+				
 				if nltk_sentence_tokenize:
-					processed_text = nlp.sentence_tokenizer( processed_text )
+					st.session_state.nltk_sentence_tokens = (
+							nlp.sentence_tokenizer( processed_text ) or [ ] )
 					
+					display_text = '\n\n'.join(
+						s for s in st.session_state.nltk_sentence_tokens
+						if isinstance( s, str ) and s.strip( ) )
+				
 				if nltk_stem:
-					processed_text = nlp.word_stemmer( processed_text )
+					st.session_state.nltk_stemmed_tokens = (
+							nlp.word_stemmer( processed_text ) or [ ] )
 					
+					processed_text = ' '.join(
+						t for t in st.session_state.nltk_stemmed_tokens
+						if isinstance( t, str ) and t.strip( ) )
+					
+					display_text = processed_text
+				
 				if nltk_lemmatize:
-					processed_text = nlp.word_lemmatize( processed_text )
+					st.session_state.nltk_lemmatized_tokens = (
+							nlp.word_lemmatizer( processed_text ) or [ ]
+					)
+					processed_text = ' '.join(
+						t for t in st.session_state.nltk_lemmatized_tokens
+						if isinstance( t, str ) and t.strip( ) )
 					
+					display_text = processed_text
+				
 				if nltk_pos_tag:
-					processed_text = nlp.pos_tagger( processed_text )
+					st.session_state.nltk_pos_tags = (
+							nlp.pos_tagger( processed_text ) or [ ] )
+					
+					display_text = '\n'.join(
+						f'{token}\t{tag}'
+						for token, tag in st.session_state.nltk_pos_tags
+						if isinstance( token, str ) and token.strip( ) )
 				
 				if nltk_named_entities:
-					processed_text = nlp.named_entity_recognition( processed_text )
+					st.session_state.nltk_named_entities = (
+							nlp.named_entity_recognition( processed_text ) or [ ] )
+					
+					display_text = '\n'.join(
+						f'{entity}\t{label}'
+						for entity, label in st.session_state.nltk_named_entities
+						if isinstance( entity, str ) and entity.strip( ) )
 					
 				# ----------------------------------------------------------
 				# Format-specific FIRST
@@ -2149,9 +2211,12 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				# Commit processed text
 				# ----------------------------------------------------------
-				st.session_state.processed_text = ( processed_text if isinstance( processed_text, str ) else str(
-							processed_text ))
-				st.session_state.processed_text_view = st.session_state.processed_text
+				st.session_state.processed_text = (
+						processed_text if isinstance( processed_text, str ) else '' )
+				
+				st.session_state.processed_text_view = (
+						display_text if isinstance( display_text, str ) else st.session_state.processed_text )
+				
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
 			
 			# ------------------------------------------------------------------
@@ -2203,7 +2268,7 @@ with tabs[ 1 ]:
 				# ----------------------------
 				# Processed Text (output)
 				# ----------------------------
-				st.text_area( 'Processed Text', st.session_state.processed_text or '', height=800 )
+				st.text_area( 'Processed Text', st.session_state.processed_text_view or '', height=800 )
 
 # ======================================================================================
 # Tab - Semantic Analysis

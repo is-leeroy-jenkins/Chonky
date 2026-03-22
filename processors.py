@@ -1707,12 +1707,12 @@ class NltkParser( Processor ):
 
 		Methods:
 		--------
-		word_tokenizer( self, text: str ) -> str
-		sentence_tokenizer( self, text: str ) -> str
-		word_stemmer( self, text: str ) -> str
-		word_lemmatizer( self, text: str ) -> str
-		pos_tagger( self, text: str ) -> str
-		named_entity_recognition( self, text: str ) -> str
+		word_tokenizer( self, text: str ) -> List [ str ]
+		sentence_tokenizer( self, text: str ) -> List [ str ]
+		word_stemmer( self, text: str ) -> List [ str ]
+		word_lemmatizer( self, text: str ) -> List [ str ]
+		pos_tagger( self, text: str ) -> List[ Tuple[ str, str ] ]
+		named_entity_recognition( self, text: str ) -> List[ Tuple[ str, str ] ]
 
 	'''
 	word_tokens: Optional[ List[ str ] ]
@@ -1936,7 +1936,7 @@ class NltkParser( Processor ):
 			exception.method = 'lemmatizer( self, text: str ) -> str'
 			raise exception
 	
-	def pos_tagger( self, text: str ) -> str:
+	def pos_tagger( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
 		'''
 
 			Purpose:
@@ -1959,8 +1959,7 @@ class NltkParser( Processor ):
 			_text = text.lower( )
 			self.word_tokens = word_tokenize( _text )
 			self.tagged_tokens = nltk.pos_tag( self.word_tokens )
-			return '\n'.join( f'{token}\t{tag}' for token, tag in self.tagged_tokens
-			                  if isinstance( token, str ) and token.strip( ) )
+			return self.tagged_tokens
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
@@ -1968,7 +1967,7 @@ class NltkParser( Processor ):
 			exception.method = 'pos_tagger( self, text: str ) -> str'
 			raise exception
 	
-	def named_entity_recognition( self, text: str ) -> str:
+	def named_entity_recognition( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
 		'''
 
 			Purpose:
@@ -2002,7 +2001,7 @@ class NltkParser( Processor ):
 					if entity_text:
 						self.named_entities.append( (entity_text, label) )
 			
-			return '\n'.join( f'{entity}\t{label}' for entity, label in self.named_entities )
+			return self.named_entities
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processing'
