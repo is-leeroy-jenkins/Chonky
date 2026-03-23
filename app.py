@@ -2375,7 +2375,7 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = 'OneDriveDocLoader'
 					st.session_state[ '_loader_status' ] = \
 						f'Loaded {len( documents )} OneDrive document(s).'
-			
+				
 			# --------------------------- Google Cloud File Loader
 			with st.expander( label='Google Cloud File Loader', icon='☁️', expanded=False ):
 				gcs_project_name = st.text_input(
@@ -2884,6 +2884,109 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = 'AwsBucketLoader'
 					st.session_state[ '_loader_status' ] = \
 						f'Loaded {len( documents )} AWS bucket document(s).'
+			
+			# --------------------------- SharePoint Loader
+			with st.expander( label='SharePoint Loader', icon='🟩', expanded=False ):
+				spfx_library_id = st.text_input( 'Library ID', value='', key='spfx_library_id',
+					placeholder='SharePoint document library identifier', )
+				
+				spfx_folder_id = st.text_input( 'Folder ID', value='', key='spfx_folder_id',
+					placeholder='Optional folder identifier within the library',
+					help='Leave blank to load the library directly.', )
+				
+				# --------------------------------------------------
+				# Buttons: Load / Clear / Save
+				# --------------------------------------------------
+				col_load, col_clear, col_save = st.columns( 3 )
+				load_spfx = col_load.button( 'Load', key='spfx_load' )
+				clear_spfx = col_clear.button( 'Clear', key='spfx_clear' )
+				
+				can_save = (
+						st.session_state.get( 'active_loader' ) == 'SpfxLoader'
+						and isinstance( st.session_state.get( 'raw_text' ), str )
+						and st.session_state.get( 'raw_text' ).strip( )
+				)
+				
+				if can_save:
+					col_save.download_button(
+						'Save',
+						data=st.session_state.get( 'raw_text' ),
+						file_name='sharepoint_loader_output.txt',
+						mime='text/plain',
+						key='spfx_save',
+					)
+				else:
+					col_save.button(
+						'Save',
+						key='spfx_save_disabled',
+						disabled=True,
+					)
+				
+				# --------------------------------------------------
+				# Clear
+				# --------------------------------------------------
+				if clear_spfx:
+					clear_if_active( 'SpfxLoader' )
+					st.session_state.raw_text = rebuild_raw_text_from_documents( )
+					st.session_state[ '_loader_status' ] = 'SharePoint Loader state cleared.'
+				
+				# --------------------------------------------------
+				# Load
+				# --------------------------------------------------
+				if (
+						load_spfx
+						and isinstance( spfx_library_id, str )
+						and spfx_library_id.strip( )
+				):
+					loader = SpfxLoader( )
+					
+					if isinstance( spfx_folder_id, str ) and spfx_folder_id.strip( ):
+						documents = loader.load_folder(
+							library_id=spfx_library_id.strip( ),
+							folder_id=spfx_folder_id.strip( ),
+						) or [ ]
+					else:
+						documents = loader.load(
+							library_id=spfx_library_id.strip( ),
+						) or [ ]
+					
+					for document in documents:
+						if not isinstance( getattr( document, 'metadata', None ), dict ):
+							document.metadata = { }
+						
+						document.metadata[ 'loader' ] = 'SpfxLoader'
+						document.metadata.setdefault( 'library_id', spfx_library_id.strip( ) )
+						document.metadata.setdefault(
+							'folder_id',
+							spfx_folder_id.strip( ) or None,
+						)
+						
+						if spfx_folder_id.strip( ):
+							document.metadata.setdefault(
+								'source',
+								f"{spfx_library_id.strip( )}:{spfx_folder_id.strip( )}"
+							)
+						else:
+							document.metadata.setdefault(
+								'source',
+								spfx_library_id.strip( ),
+							)
+					
+					st.session_state.documents = documents
+					st.session_state.raw_documents = list( documents )
+					st.session_state.raw_text = '\n\n'.join(
+						d.page_content for d in documents
+						if hasattr( d, 'page_content' )
+						and isinstance( d.page_content, str )
+						and d.page_content.strip( )
+					)
+					st.session_state.processed_text = None
+					st.session_state.lines = None
+					st.session_state.chunked_documents = None
+					st.session_state.df_chunks = None
+					st.session_state.active_loader = 'SpfxLoader'
+					st.session_state[ '_loader_status' ] = \
+						f'Loaded {len( documents )} SharePoint document(s).'
 				
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — DOCUMENT RENDERING
