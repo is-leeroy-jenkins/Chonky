@@ -3091,7 +3091,7 @@ with tabs[ 4 ]:
 	# RIGHT COLUMN — Embedding input (read-only) + results below
 	# ==================================================
 	with right:
-		st.markdown( "##### Embedding Documents" )
+		st.markdown( "##### Embedding Data" )
 		
 		# texts already resolved above; do not recompute
 		df_embedding_input = (
@@ -3104,19 +3104,18 @@ with tabs[ 4 ]:
 		st.data_editor( df_embedding_input, use_container_width=True, hide_index=True,
 			disabled=True, key=k( 'embedding_input_view' ), )
 	
+	
 	# --------------------------------------------------
 	# BELOW BOTH COLUMNS — Embedding Results (read-only)
 	# --------------------------------------------------
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	
-	st.markdown( '##### Embedding Results' )
+	st.subheader( 'Vectorized Data' )
 	if st.session_state.df_embedding_output.empty:
 		st.info( 'No embeddings generated yet.' )
 	else:
 		st.data_editor( st.session_state.df_embedding_output, use_container_width=True,
 			hide_index=True, disabled=True, key=k( 'embedding_output_view' ), )
 	
-	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ======================================================================================
 	# Tensor Embedding — Dimensionality Reduction Diagnostics (t-SNE / UMAP)
@@ -3161,28 +3160,19 @@ with tabs[ 4 ]:
 			# ------------------------------------------------------------------
 			reduced = None
 			error_message = None
-			
 			try:
 				if reduction_method == 't-SNE':
 					from sklearn.manifold import TSNE
-					
 					reducer = TSNE( n_components=2, perplexity=perplexity,
 						random_state=random_state, init='pca', learning_rate='auto' )
 					
 					reduced = reducer.fit_transform( emb_array )
-				
 				else:
 					import umap
-					
-					reducer = umap.UMAP(
-						n_components=2,
-						n_neighbors=n_neighbors,
-						random_state=random_state,
-						min_dist=0.1
-					)
+					reducer = umap.UMAP( n_components=2, n_neighbors=n_neighbors,
+						random_state=random_state, min_dist=0.1 )
 					
 					reduced = reducer.fit_transform( emb_array )
-			
 			except Exception as ex:
 				error_message = str( ex )
 			
@@ -3193,14 +3183,8 @@ with tabs[ 4 ]:
 				st.error( f'Dimensionality reduction failed: {error_message}' )
 			
 			elif isinstance( reduced, np.ndarray ) and reduced.shape[ 1 ] == 2:
-				df_reduced = pd.DataFrame(
-					reduced,
-					columns=[ 'X',
-					          'Y' ]
-				)
-				
+				df_reduced = pd.DataFrame( reduced, columns=[ 'X',  'Y' ] )
 				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
-				
 				if isinstance( embedding_texts, list ):
 					df_reduced[ 'Preview' ] = [ (d[ :120 ] + '…')
 							if isinstance( d, str ) and len( d ) > 120 else str( d )
@@ -3211,45 +3195,21 @@ with tabs[ 4 ]:
 				# ----------------------------
 				# Scatter plot container
 				# ----------------------------
-				chart_container = st.container( )
+				chart_container = st.container( border=True )
 				with chart_container:
-					st.caption(
-						'Each point represents one embedded chunk. '
-						'Proximity reflects semantic similarity.'
-					)
-					st.scatter_chart(
-						df_reduced,
-						x='X',
-						y='Y',
-						size=60,
-						use_container_width=True
-					)
-				
+					st.caption( 'Each point is an embedded-chunk and proximity reflects similarity.' )
+					st.scatter_chart( df_reduced, x='X', y='Y', size=60, use_container_width=True )
+	
+				st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+	
 				# ----------------------------
 				# Tabular inspection (optional)
 				# ----------------------------
-				with st.expander( 'View Reduced Coordinates (Table)', expanded=False ):
-					st.data_editor(
-						df_reduced,
-						use_container_width=True,
-						num_rows='dynamic'
-					)
+				st.subheader( 'Dimension-Reduced Data' )
+				with st.expander( 'View Reduced Coordinates (Table)', expanded=True ):
+					st.data_editor( df_reduced, use_container_width=True, num_rows='dynamic' )
 				
-				# ----------------------------
-				# Interpretation notes
-				# ----------------------------
-				with st.expander( 'ℹ️ Interpretation Notes', expanded=False ):
-					st.markdown(
-						"""
-	- **t-SNE** emphasizes local neighborhoods; global distances are not meaningful.
-	- **UMAP** preserves more global structure and is typically more stable.
-	- Heavy overlap may indicate:
-	  - chunk sizes are too small
-	  - boilerplate text dominance
-	  - insufficient preprocessing
-	- These diagnostics are **read-only** and are not persisted.
-						"""
-					)
+
 
 # ======================================================================================
 # Tab — Vector Database (sqlite-vec)
