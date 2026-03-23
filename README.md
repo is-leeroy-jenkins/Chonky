@@ -15,6 +15,11 @@ feature extraction, and document analysis.
 #### Web-based
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://chonky-py.streamlit.app/)
 
+
+___
+###### Demo
+![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
+
 ## 🧠 Features
 
 - **Document Ingestion**  
@@ -48,10 +53,6 @@ feature extraction, and document analysis.
 - **Retrieval-Oriented Design**  
   Chonky is structured for semantic search, retrieval experimentation, and future
   Retrieval-Augmented Generation (RAG) workflows.
-
-___
-###### Demo
-![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
 
 ## 🧰 Setup Instructions
 
