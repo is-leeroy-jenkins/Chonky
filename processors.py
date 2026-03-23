@@ -84,7 +84,7 @@ from tiktoken.core import Encoding
 import unicodedata
 from lxml import etree
 
-DELIMITERS: Set[ str ] = { '. ', '; ', '? ', '! ' }
+DELIMITERS: Set[ str ] = { '. ', '; ', '? ', '! ', ', ' }
 
 SYMBOLS: Set[ str ] = {
 		"@",
@@ -113,8 +113,7 @@ SYMBOLS: Set[ str ] = {
 		"_",
 		'"',
 		"'",
-		",",
-		"."
+		".",
 }
 
 ASCII_LETTERS: Set[ str ] = set( string.ascii_letters )
@@ -1836,7 +1835,7 @@ class NltkParser( Processor ):
 			throw_if( 'text', text )
 			_text = text.lower( )
 			self.word_tokens = word_tokenize( _text )
-			words = [ token for token in self.word_tokens if token.isalnum( )  ]
+			words = [ token for token in self.word_tokens ]
 			return words
 		except Exception as e:
 			exception = Error( e )

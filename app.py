@@ -228,6 +228,89 @@ def rebuild_raw_text_from_documents( ) -> str | None:
 		                    and d.page_content.strip( ) )
 		return text if text.strip( ) else None
 
+def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
+	"""
+		Purpose:
+		--------
+		Chunk text by characters with overlap.
+
+		Parameters:
+		-----------
+		text : str
+			Input text.
+		size : int
+			Chunk size in characters.
+		overlap : int
+			Overlap in characters.
+
+		Returns:
+		--------
+		list[str]
+			List of chunk strings.
+	"""
+	if not isinstance( text, str ) or not text.strip( ):
+		return [ ]
+	
+	size = int( size )
+	overlap = int( overlap )
+	size = max( 1, size )
+	overlap = max( 0, min( overlap, size - 1 ) )
+	
+	step = size - overlap
+	chunks: list[ str ] = [ ]
+	
+	i = 0
+	n = len( text )
+	while i < n:
+		part = text[ i: i + size ].strip( )
+		if part:
+			chunks.append( part )
+		i += step
+	
+	return chunks
+
+def chunk_tokens( tokens: list[ str ], size: int, overlap: int ) -> List[ str ]:
+	"""
+		Purpose:
+		--------
+		Chunk token list into overlapped token windows and return joined strings.
+
+		Parameters:
+		-----------
+		tokens : list[str]
+			Token list.
+		size : int
+			Tokens per chunk.
+		overlap : int
+			Overlap in tokens.
+
+		Returns:
+		--------
+		list[str]
+			Chunk strings.
+	"""
+	if not isinstance( tokens, list ) or not tokens:
+		return [ ]
+	
+	size = int( size )
+	overlap = int( overlap )
+	size = max( 1, size )
+	overlap = max( 0, min( overlap, size - 1 ) )
+	
+	step = size - overlap
+	out: list[ str ] = [ ]
+	
+	i = 0
+	n = len( tokens )
+	while i < n:
+		window = tokens[ i: i + size ]
+		s = " ".join( t for t in window if isinstance( t, str ) and t.strip( ) ).strip( )
+		if s:
+			out.append( s )
+		i += step
+	
+	return out
+
 # ======================================================================================
 # Page Configuration
 # ======================================================================================
@@ -320,7 +403,7 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	# LEFT COLUMN - LOADERS
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1, 1.5 ] )
+	left, right = st.columns( [ 0.35, 0.65] )
 	with left:
 		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
@@ -390,14 +473,7 @@ with tabs[ 0 ]:
 		# --------------------------- NLTK Loader Expander
 		with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 			import nltk
-			from nltk.corpus import (
-				brown,
-				gutenberg,
-				reuters,
-				webtext,
-				inaugural,
-				state_union,
-			)
+			from nltk.corpus import ( brown, gutenberg, reuters, webtext, inaugural, state_union )
 			
 			st.markdown( '###### NLTK Corpora' )
 			
@@ -861,20 +937,11 @@ with tabs[ 0 ]:
 		
 		# --------------------------- Markdown Loader
 		with st.expander( label='Markdown Loader', icon='🧾', expanded=False ):
-			md = st.file_uploader(
-				'Upload Markdown',
-				type=[ 'md',
-				       'markdown' ],
-				key='md_upload',
-			)
+			md = st.file_uploader( 'Upload Markdown', type=[ 'md',  'markdown' ],
+				key='md_upload', )
 			
-			mode = st.selectbox(
-				'Mode',
-				[ 'single', 'elements' ],
-				index=0,
-				key='md_mode',
-				help='Use "single" for one combined document or "elements" for element-wise parsing.'
-			)
+			mode = st.selectbox( 'Mode', [ 'single', 'elements' ], index=0, key='md_mode',
+				help='Use "single" for one combined document or "elements" for element parsing.' )
 			
 			# --------------------------------------------------
 			# Buttons: Load / Clear / Save (same row, same style)
@@ -1726,8 +1793,8 @@ with tabs[ 0 ]:
 			for i, d in enumerate( documents[ :5 ] ):
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
-					st.text_area( 'Content', d.page_content[ :5000 ],
-						height=800, key=f'preview_doc_{i}' )
+					st.text_area( 'Content', d.page_content[ : ],
+						height=450, key=f'preview_doc_{i}' )
 			
 	st.divider( )
 	
@@ -1782,6 +1849,7 @@ with tabs[ 0 ]:
 				st.bar_chart( df_top, color='#01438A' )
 			
 			st.divider( )
+			
 			st.subheader( 'Corpus Metrics')
 			
 			# ------------ Corpus Metrics
@@ -1824,6 +1892,7 @@ with tabs[ 0 ]:
 						'Proportion of content-bearing words.' )
 			
 			st.divider( )
+			
 			st.subheader( 'Comprehension Metrics' )
 			
 			# ------------ Readability
@@ -1857,6 +1926,7 @@ with tabs[ 1 ]:
 	raw_text = st.session_state.get( 'raw_text' )
 	processed_text = st.session_state.get( 'processed_text' )
 	active_loader = st.session_state.get( 'active_loader' )
+	displayed_text = st.session_state.get( 'displayed_text' )
 	
 	if not isinstance( raw_text, str ) or not raw_text.strip( ):
 		st.info( 'Load a document before running text processing.' )
@@ -1921,32 +1991,32 @@ with tabs[ 1 ]:
 			# ==============================================================
 			with st.expander( 'NLTK Processing', icon='🧰', expanded=True ):
 				
-				nltk_word_tokenize: bool = st.checkbox( 'Word Tokenize',
+				nltk_word_tokenize = st.checkbox( 'Word Tokenize',
 					value=st.session_state.get( 'nltk_word_tokenize', False ),
 					key='nltk_word_tokenize',
 					help='Tokenizes cleaned text into individual word tokens' )
 				
-				nltk_sentence_tokenize: bool = st.checkbox( 'Sentence Tokenize',
+				nltk_sentence_tokenize = st.checkbox( 'Sentence Tokenize',
 					value=st.session_state.get( 'nltk_sentence_tokenize', False ),
 					key='nltk_sentence_tokenize',
 					help='Splits cleaned text into sentence units' )
 				
-				nltk_stem: bool = st.checkbox( 'Word Stemmer',
+				nltk_stem = st.checkbox( 'Word Stemmer',
 					value=st.session_state.get( 'nltk_stem', False ),
 					key='nltk_stem',
 					help='Applies stemming to cleaned text' )
 				
-				nltk_lemmatize: bool = st.checkbox( 'Word Lemmatizer',
+				nltk_lemmatize = st.checkbox( 'Word Lemmatizer',
 					value=st.session_state.get( 'nltk_lemmatize', False ),
 					key='nltk_lemmatize',
 					help='Applies NLTK lemmatization to cleaned text' )
 				
-				nltk_pos_tag: bool = st.checkbox( 'Part-of-Speech Tagging',
+				nltk_pos_tag = st.checkbox( 'Part-of-Speech Tagging',
 					value=st.session_state.get( 'nltk_pos_tag', False ),
 					key='nltk_pos_tag',
 					help='Annotates tokens with grammatical tags' )
 				
-				nltk_named_entities: bool = st.checkbox( 'Named Entity Recognition',
+				nltk_named_entities = st.checkbox( 'Named Entity Recognition',
 					value=st.session_state.get( 'nltk_named_entities', False ),
 					key='nltk_named_entities',
 					help='Extracts named entities such as persons, organizations, and places' )
@@ -2017,7 +2087,6 @@ with tabs[ 1 ]:
 				st.session_state.start_time = 0.0
 				st.session_state.end_time = 0.0
 				st.session_state.total_time = 0.0
-				
 				st.success( 'Processed text reset.' )
 			
 			if clear_processing:
@@ -2033,7 +2102,6 @@ with tabs[ 1 ]:
 				st.session_state.nltk_stemmed_tokens = [ ]
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
-				
 				st.success( 'Processed text cleared.' )
 			
 			if apply_processing:
@@ -2311,99 +2379,13 @@ with tabs[ 2 ]:
 		st.info( 'Run text processing before semantic analysis.' )
 		st.stop( )
 	
-	# ------------------------------------------------------------------
-	# Local helpers (avoid relying on unknown TextParser signatures)
-	# ------------------------------------------------------------------
-	def _chunk_chars_with_overlap( text: str, size: int, overlap: int ) -> list[ str ]:
-		"""
-			Purpose:
-			--------
-			Chunk text by characters with overlap.
 
-			Parameters:
-			-----------
-			text : str
-				Input text.
-			size : int
-				Chunk size in characters.
-			overlap : int
-				Overlap in characters.
-
-			Returns:
-			--------
-			list[str]
-				List of chunk strings.
-		"""
-		if not isinstance( text, str ) or not text.strip( ):
-			return [ ]
-		
-		size = int( size )
-		overlap = int( overlap )
-		size = max( 1, size )
-		overlap = max( 0, min( overlap, size - 1 ) )
-		
-		step = size - overlap
-		chunks: list[ str ] = [ ]
-		
-		i = 0
-		n = len( text )
-		while i < n:
-			part = text[ i: i + size ].strip( )
-			if part:
-				chunks.append( part )
-			i += step
-		
-		return chunks
-	
-	def _chunk_tokens_with_overlap( tokens: list[ str ], size: int, overlap: int ) -> list[ str ]:
-		"""
-			Purpose:
-			--------
-			Chunk token list into overlapped token windows and return joined strings.
-
-			Parameters:
-			-----------
-			tokens : list[str]
-				Token list.
-			size : int
-				Tokens per chunk.
-			overlap : int
-				Overlap in tokens.
-
-			Returns:
-			--------
-			list[str]
-				Chunk strings.
-		"""
-		if not isinstance( tokens, list ) or not tokens:
-			return [ ]
-		
-		size = int( size )
-		overlap = int( overlap )
-		size = max( 1, size )
-		overlap = max( 0, min( overlap, size - 1 ) )
-		
-		step = size - overlap
-		out: list[ str ] = [ ]
-		
-		i = 0
-		n = len( tokens )
-		while i < n:
-			window = tokens[ i: i + size ]
-			s = " ".join( t for t in window if isinstance( t, str ) and t.strip( ) ).strip( )
-			if s:
-				out.append( s )
-			i += step
-		
-		return out
-	
 	# ------------------------------------------------------------------
 	# Resolve / defaults
 	# ------------------------------------------------------------------
 	chunk_modes = st.session_state.get( 'chunk_modes' )
 	if not isinstance( chunk_modes, (list, tuple) ) or not chunk_modes:
-		chunk_modes = [ 'chars',
-		                'tokens' ]
+		chunk_modes = [ 'chars', 'tokens' ]
 		st.session_state.chunk_modes = list( chunk_modes )
 	
 	# ------------------------------------------------------------------
@@ -2411,34 +2393,18 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	st.subheader( "Semantic Analysis" )
 	
-	mode = st.selectbox(
-		'Chunking Mode',
-		options=list( chunk_modes ),
-		key='chunk_mode',
-		help='Select how documents are chunked',
-	)
+	mode = st.selectbox( 'Chunking Mode', options=list( chunk_modes ), key='chunk_mode',
+		help='Select how documents are chunked', )
 	
 	col_a, col_b = st.columns( 2 )
 	
 	with col_a:
-		chunk_size = st.number_input(
-			'Chunk Size',
-			min_value=100,
-			max_value=5000,
-			value=1000,
-			step=100,
-			key='chunk_count',
-		)
+		chunk_size = st.number_input( 'Chunk Size', min_value=10, max_value=5000, value=1000,
+			step=10, key='chunk_count', )
 	
 	with col_b:
-		overlap = st.number_input(
-			'Overlap',
-			min_value=0,
-			max_value=2000,
-			value=200,
-			step=50,
-			key='overlap_input',
-		)
+		overlap = st.number_input( 'Overlap', min_value=0, max_value=2000, value=200,
+			step=50, key='overlap_input', )
 	
 	col_run, col_reset = st.columns( 2 )
 	run_chunking = col_run.button( 'Chunk', key='run_button' )
@@ -2453,19 +2419,13 @@ with tabs[ 2 ]:
 	
 	if run_chunking:
 		if mode == 'chars':
-			chunked_documents = _chunk_chars_with_overlap(
-				text=processed_text,
-				size=int( chunk_size ),
-				overlap=int( overlap ),
-			)
+			chunked_documents = chunk_characters( text=processed_text, size=int( chunk_size ),
+				overlap=int( overlap ) )
 		elif mode == 'tokens':
 			toks = word_tokenize( processed_text )
-			chunked_documents = _chunk_tokens_with_overlap(
-				tokens=toks,
-				size=int( max( 1, chunk_size // 10 ) ),
+			chunked_documents = chunk_tokens( tokens=toks, size=int( max( 1, chunk_size // 10 ) ),
 				# practical default if user picked 1000 chars
-				overlap=int( max( 0, overlap // 10 ) ),
-			)
+				overlap=int( max( 0, overlap // 10 ) ) )
 		else:
 			chunked_documents = [ ]
 			st.error( f'Unsupported chunking mode: {mode}' )
@@ -2507,38 +2467,27 @@ with tabs[ 2 ]:
 	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='top' )
 	
 	with col_tokens:
-		st.write( f"Tokens: {len( tokens )}" )
-		st.data_editor(
-			pd.DataFrame( tokens, columns=[ "Token" ] ),
-			num_rows='dynamic',
-			use_container_width=True,
-			height='stretch',
-			disabled=True, )
+		st.write( f'Tokens: {len( tokens )}' )
+		st.data_editor( pd.DataFrame( tokens, columns=[ 'Token' ] ), num_rows='dynamic',
+			use_container_width=True, height='stretch', disabled=True, )
 	
 	with col_vocab:
-		st.write( f"Vocabulary: {len( vocabulary )}" )
-		st.data_editor(
-			pd.DataFrame( vocabulary, columns=[ "Word" ] ),
-			num_rows='dynamic',
-			use_container_width=True,
-			height='stretch',
-			disabled=True, )
+		st.write( f'Vocabulary: {len( vocabulary )}' )
+		st.data_editor( pd.DataFrame( vocabulary, columns=[ 'Word' ] ), num_rows='dynamic',
+			use_container_width=True, height='stretch', disabled=True, )
 	
 	with col_freq:
-		st.markdown( "#### Frequency Distribution" )
+		st.markdown( '#### Frequency Distribution' )
 		st.caption( 'Top 100 most frequent tokens' )
 		
 		if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
-			numeric_cols = df_frequency.select_dtypes( include="number" )
+			numeric_cols = df_frequency.select_dtypes( include='number' )
 			if not numeric_cols.empty:
 				freq_col = numeric_cols.columns[ 0 ]
 				label_col = df_frequency.columns[ 0 ]
 				df_top = df_frequency.sort_values( freq_col, ascending=False ).head( 100 )
 				
-				st.bar_chart(
-					df_top.set_index( label_col )[ freq_col ],
-					use_container_width=True,
-				)
+				st.bar_chart( df_top.set_index( label_col )[ freq_col ], use_container_width=True, )
 			else:
 				st.info( 'No numeric frequency column available for charting.' )
 		else:
@@ -2549,7 +2498,7 @@ with tabs[ 2 ]:
 # ======================================================================================
 # Tab - Data Tokenization
 # ======================================================================================
-with tabs[ 3 ]:
+with (tabs[ 3 ]):
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='top' )
 	
 	# ------------------------------------------------------------------
@@ -2681,16 +2630,11 @@ with tabs[ 3 ]:
 	
 	sentences = _safe_sent_tokenize( diagnostic_text ) if diagnostic_text else [ ]
 	st.session_state.sentences = sentences if sentences else None
-	
 	if sentences:
 		sentence_rows = [ _safe_word_tokenize( s ) for s in sentences ]
 		sentence_rows = [ pad_or_trim_row( row, size=len( dimensions ) ) for row in sentence_rows ]
-		
 		if sentence_rows:
-			st.session_state.df_sentence_tokens = pd.DataFrame(
-				sentence_rows,
-				columns=dimensions
-			)
+			st.session_state.df_sentence_tokens = pd.DataFrame( sentence_rows, columns=dimensions )
 		else:
 			st.session_state.df_sentence_tokens = None
 	else:
@@ -2706,7 +2650,6 @@ with tabs[ 3 ]:
 			processor = TextParser( )
 			lines = processor.split_sentences( text=processed_text  )
 			st.session_state.lines = lines
-			
 			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ), num_rows='dynamic',
 				width='stretch', height='stretch' )
 		else:
@@ -2717,9 +2660,9 @@ with tabs[ 3 ]:
 	# ------------------------------------------------------------------
 	with chunk_col:
 		if isinstance( lines, (list, tuple) ) and isinstance( dimensions, (list, tuple) ):
-			st.text( f"Vector Space: {len( lines ) * len( dimensions ):,}" )
+			st.text( f'Vector Space: {len( lines ) * len( dimensions ):,}' )
 		else:
-			st.caption( "Vector space not available yet." )
+			st.caption( 'Vector space not available yet.' )
 		
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			if not isinstance( lines, list ) or not lines:
@@ -2729,16 +2672,10 @@ with tabs[ 3 ]:
 			
 			_chunks = [ (l.split( ) if isinstance( l, str ) else [ ]) for l in lines ]
 			_chunks = [ pad_or_trim_row( r, size=len( dimensions ) ) for r in _chunks ]
-			st.session_state.chunked_documents = _chunks
+			
 			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
 			st.session_state.df_chunks = df_chunks
-			
-			st.data_editor(
-				df_chunks,
-				num_rows='dynamic',
-				width='stretch',
-				height='stretch'
-			)
+			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
 		else:
 			st.info( 'Run preprocessing first' )
 	
@@ -2764,39 +2701,20 @@ with tabs[ 3 ]:
 	# ======================================================================================
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Tokenization Diagnostics' )
-	
-	row1_col1, row1_col2 = st.columns(
-		[ 0.5, 0.5 ],
-		border=True
-	)
+	row1_col1, row1_col2 = st.columns( [ 0.5, 0.5 ], border=True )
 	
 	# ------------------------------------------------------------------
 	# Top-N Token Frequency Histogram
 	# ------------------------------------------------------------------
 	with row1_col1:
 		st.caption( 'Top-N Token Frequency Distribution' )
-		
 		df_token_frequency = st.session_state.get( 'df_token_frequency' )
-		
 		if isinstance( df_token_frequency, pd.DataFrame ) and not df_token_frequency.empty:
-			top_n = st.slider(
-				'Top-N Tokens',
-				min_value=10,
-				max_value=100,
-				value=30,
-				step=10,
-				key='token_freq_top_n'
-			)
+			top_n = st.slider( 'Top-N Tokens', min_value=10, max_value=100, value=30,
+				step=10, key='token_freq_top_n' )
 			
-			df_top = df_token_frequency.sort_values(
-				by='Frequency',
-				ascending=False
-			).head( top_n )
-			
-			st.bar_chart(
-				df_top.set_index( 'Token' )[ 'Frequency' ],
-				use_container_width=True
-			)
+			df_top = df_token_frequency.sort_values( by='Frequency', ascending=False ).head( top_n )
+			st.bar_chart( df_top.set_index( 'Token' )[ 'Frequency' ], use_container_width=True )
 		else:
 			st.info( 'Token frequency data not available.' )
 	
@@ -2807,7 +2725,6 @@ with tabs[ 3 ]:
 		st.caption( 'Sentence Length Distribution (Tokens per Sentence)' )
 		
 		sentences = st.session_state.get( 'sentences' )
-		
 		if isinstance( sentences, list ) and sentences:
 			sentence_lengths = [ len( _safe_word_tokenize( s ) ) for s in sentences ]
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
@@ -2815,13 +2732,9 @@ with tabs[ 3 ]:
 			if sentence_lengths:
 				df_sentence_lengths = pd.Series( sentence_lengths ).value_counts( ).sort_index( )
 				df_sentence_lengths = df_sentence_lengths.rename_axis(
-					'Tokens per Sentence'
-				).to_frame( 'Sentence Count' )
+					'Tokens per Sentence' ).to_frame( 'Sentence Count' )
 				
-				st.bar_chart(
-					df_sentence_lengths,
-					use_container_width=True
-				)
+				st.bar_chart( df_sentence_lengths, use_container_width=True )
 			else:
 				st.info( 'No valid sentence lengths computed.' )
 		else:
@@ -2830,10 +2743,7 @@ with tabs[ 3 ]:
 	# ======================================================================================
 	# Diagnostics — Sparsity & Embedding Readiness
 	# ======================================================================================
-	row2_col1, row2_col2 = st.columns(
-		[ 0.5, 0.5 ],
-		border=True
-	)
+	row2_col1, row2_col2 = st.columns( [ 0.5, 0.5 ], border=True )
 	
 	# ------------------------------------------------------------------
 	# Padding / Sparsity Analysis (D0–D14)
@@ -2847,7 +2757,6 @@ with tabs[ 3 ]:
 			total_cells = df_sentence_tokens.shape[ 0 ] * df_sentence_tokens.shape[ 1 ]
 			empty_cells = (df_sentence_tokens == '').sum( ).sum( )
 			filled_cells = total_cells - empty_cells
-			
 			padding_ratio = empty_cells / total_cells if total_cells > 0 else 0.0
 			fill_ratio = filled_cells / total_cells if total_cells > 0 else 0.0
 			
@@ -2868,11 +2777,7 @@ with tabs[ 3 ]:
 		
 		tokens = st.session_state.get( 'tokens' )
 		sentences = st.session_state.get( 'sentences' )
-		token_counts = (
-				Counter( tokens )
-				if isinstance( tokens, list ) and tokens
-				else None
-		)
+		token_counts = ( Counter( tokens ) if isinstance( tokens, list ) and tokens else None )
 		
 		if token_counts:
 			total_tokens = len( tokens )
@@ -2880,17 +2785,11 @@ with tabs[ 3 ]:
 			hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
 			hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
 			
-			sentence_lengths = (
-					[ len( _safe_word_tokenize( s ) ) for s in sentences ]
-					if isinstance( sentences, list ) and sentences
-					else [ ]
-			)
+			sentence_lengths = ( [ len( _safe_word_tokenize( s ) ) for s in sentences ]
+					if isinstance( sentences, list ) and sentences else [ ] )
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
-			avg_sentence_len = (
-					sum( sentence_lengths ) / len( sentence_lengths )
-					if sentence_lengths
-					else 0.0
-			)
+			avg_sentence_len = ( sum( sentence_lengths ) / len( sentence_lengths )
+					if sentence_lengths else 0.0 )
 			
 			r1, r2 = st.columns( 2 )
 			r1.metric( 'Total Tokens', f'{total_tokens:,}' )
@@ -2900,9 +2799,7 @@ with tabs[ 3 ]:
 			r3.metric( 'Avg Tokens / Sentence', f'{avg_sentence_len:.1f}' )
 			r4.metric( 'Hapax Ratio', f'{hapax_ratio:.1%}' )
 			
-			st.caption(
-				'Lower padding and moderate hapax ratios generally yield more stable embeddings.'
-			)
+			st.caption( 'Lower padding and moderate hapax ratios yield more stable embeddings.' )
 		else:
 			st.info( 'Token readiness metrics unavailable.' )
 
@@ -2949,29 +2846,29 @@ with tabs[ 4 ]:
 					texts.append( c.strip( ) )
 		return texts
 	
-	processed_text = st.session_state.get( "processed_text" )
-	embeddings = st.session_state.get( "embeddings" )
-	chunks = st.session_state.get( "chunks" )
-	chunked_documents = st.session_state.get( "chunked_documents" )
+	processed_text = st.session_state.get( 'processed_text' )
+	embeddings = st.session_state.get( 'embeddings' )
+	chunks = st.session_state.get( 'chunks' )
+	chunked_documents = st.session_state.get( 'chunked_documents' )
 	
 	# ------------------------------------------------------------------
 	# Normalize embedding output state
 	# ------------------------------------------------------------------
-	if not isinstance( st.session_state.get( "df_embedding_output" ), pd.DataFrame ):
+	if not isinstance( st.session_state.get( 'df_embedding_output' ), pd.DataFrame ):
 		st.session_state.df_embedding_output = pd.DataFrame( )
 	
-	if "embedding_documents" not in st.session_state:
+	if 'embedding_documents' not in st.session_state:
 		st.session_state.embedding_documents = None
 	
 	def k( name: str ) -> str:
-		return f"emb__{name}"
+		return f'emb__{name}'
 	
 	def resolve_texts( source: str ) -> list[ str ]:
-		if source == "Processed Text":
+		if source == 'Processed Text':
 			if isinstance( processed_text, str ) and processed_text.strip( ):
 				return [ processed_text.strip( ) ]
 			return [ ]
-		elif source == "Chunked Documents":
+		elif source == 'Chunked Documents':
 			if isinstance( chunked_documents, list ) and chunked_documents:
 				return project_chunks_for_embedding( chunked_documents )
 			return [ ]
@@ -2981,62 +2878,58 @@ with tabs[ 4 ]:
 	# ------------------------------------------------------------------
 	# Layout
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 1,
-	                            1.5 ], border=True )
+	left, right = st.columns( [ 1, 1.5 ], border=True )
 	
 	# ==================================================
 	# LEFT COLUMN — Providers + source selection
 	# ==================================================
 	with left:
-		st.markdown( "##### Embedding Providers" )
-		embedding_source = st.radio( 'Text Source', options=[ 'Processed Text',
-		                                                      'Chunked Documents' ],
+		st.markdown( '##### Embedding Providers' )
+		embedding_source = st.radio( 'Text Source', options=[ 'Processed Text', 'Chunked Documents' ],
 			horizontal=True, key=k( 'text_source' ), )
 		
 		st.session_state.embedding_source = embedding_source
 		texts = resolve_texts( embedding_source )
 		has_texts = bool( texts )
-		
-		st.caption( f"Texts to embed: {len( texts ) if texts else 0:,}" )
+		st.session_state.embedding_texts = list( texts ) if has_texts else [ ]
+		st.caption( f'Texts to embed: {len( texts ) if texts else 0:,}' )
 		
 		# --------------------------------------------------
 		# Derived embedding input dataframe (for right column display)
 		# --------------------------------------------------
-		df_embedding_input = (pd.DataFrame( {
-				"text": texts } )
-		                      if has_texts
-		                      else pd.DataFrame( columns=[ "text" ] ))
+		df_embedding_input = (pd.DataFrame( { 'text': texts } )
+		                      if has_texts else pd.DataFrame( columns=[ 'text' ] ) )
 		
 		if not has_texts:
-			st.info( "No text available. Run processing or chunking first." )
+			st.info( 'No text available. Run processing or chunking first.' )
 		
 		# --------------------------------------------------
 		# Shared save helpers
 		# --------------------------------------------------
 		def can_save_output( ) -> bool:
-			return (isinstance( st.session_state.get( "df_embedding_output" ), pd.DataFrame )
+			return (isinstance( st.session_state.get( 'df_embedding_output' ), pd.DataFrame )
 			        and not st.session_state.df_embedding_output.empty)
 		
 		# ==================================================
 		# 🧠 OpenAI
 		# ==================================================
-		with st.expander( "🧠 OpenAI Embeddings", expanded=False ):
-			model = st.selectbox( "Model", options=cfg.GPT_MODELS, key=k( "openai_model" ), )
+		with st.expander( '🧠 OpenAI Embeddings', expanded=False ):
+			model = st.selectbox( 'Model', options=cfg.GPT_MODELS, key=k( 'openai_model' ), )
 			col_run, col_clear, col_save = st.columns( 3 )
-			run = col_run.button( "Embed", key=k( "openai_embed" ),
+			run = col_run.button( 'Embed', key=k( 'openai_embed' ),
 				use_container_width=True, disabled=not has_texts, )
 			
-			clear = col_clear.button( "Clear", key=k( "openai_clear" ),
+			clear = col_clear.button( 'Clear', key=k( 'openai_clear' ),
 				use_container_width=True, disabled=st.session_state.df_embedding_output.empty, )
 			
 			if can_save_output( ):
-				col_save.download_button( "Save CSV",
+				col_save.download_button( 'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name="openai_embeddings.csv", mime="text/csv",
-					use_container_width=True, key=k( "openai_save" ), )
+					file_name='openai_embeddings.csv', mime='text/csv',
+					use_container_width=True, key=k( 'openai_save' ), )
 			else:
-				col_save.button( "Save CSV", disabled=True,
-					use_container_width=True, key=k( "openai_save_disabled" ), )
+				col_save.button( 'Save CSV', disabled=True,
+					use_container_width=True, key=k( 'openai_save_disabled' ), )
 			
 			if clear:
 				st.session_state.embeddings = None
@@ -3044,95 +2937,63 @@ with tabs[ 4 ]:
 				st.session_state.df_embedding_output = pd.DataFrame( )
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
-				st.success( "Embeddings cleared." )
+				st.success( 'Embeddings cleared.' )
 			
 			if run and has_texts:
-				with st.spinner( "Embedding with OpenAI..." ):
+				with st.spinner( 'Embedding with OpenAI...' ):
 					embedder = GPT( )
 					vectors = embedder.embed( texts, model=model )
 					
 					# Store output separately (do NOT overwrite chunked_documents)
 					df_out = pd.DataFrame(
 						{
-								"provider": "OpenAI",
-								"model": model,
-								"row_index": range( len( texts ) ),
-								"text": texts,
-								"embedding": vectors,
+								'provider': 'OpenAI',
+								'model': model,
+								'row_index': range( len( texts ) ),
+								'text': texts,
+								'embedding': vectors,
 						}
 					)
 					
 					st.session_state.df_embedding_output = df_out
-					st.session_state.embedding_documents = df_out.to_dict( "records" )
+					st.session_state.embedding_documents = df_out.to_dict( 'records' )
 					st.session_state.embeddings = vectors
-					st.session_state.embedding_provider = "OpenAI"
+					st.session_state.embedding_provider = 'OpenAI'
 					st.session_state.embedding_model = model
 					
-					st.success( f"Generated {len( vectors )} embedding(s)." )
+					st.success( f'Generated {len( vectors )} embedding(s).' )
 		
 		# ==================================================
 		# ✨ Gemini
 		# ==================================================
-		with st.expander( "✨ Gemini Embeddings", expanded=False ):
-			model = st.selectbox(
-				"Model",
-				options=cfg.GEMINI_MODELS,
-				key=k( "gemini_model" ),
-				disabled=not has_texts,
-			)
+		with st.expander( '✨ Gemini Embeddings', expanded=False ):
+			model = st.selectbox( 'Model', options=cfg.GEMINI_MODELS, key=k( 'gemini_model' ),
+				disabled=not has_texts, )
 			
-			task = st.selectbox(
-				"Task Type",
-				options=Gemini( ).task_options,
-				key=k( "gemini_task" ),
-				disabled=not has_texts,
-				help="Required to determine embedding intent.",
-			)
+			task = st.selectbox( 'Task Type', options=Gemini( ).task_options, key=k( 'gemini_task' ),
+				disabled=not has_texts, help='Required to determine embedding intent.', )
 			
-			dimensions = st.number_input(
-				"Dimensions",
-				min_value=128,
-				max_value=2048,
-				step=128,
-				value=768,
-				key=k( "gemini_dimensions" ),
-				disabled=not has_texts,
-				help="Optional. Must be supported by the selected model.",
-			)
+			dimensions = st.number_input( 'Dimensions', min_value=128, max_value=2048, step=128,
+				value=768, key=k( 'gemini_dimensions' ), disabled=not has_texts,
+				help='Optional. Must be supported by the selected model.', )
 			
 			col_run, col_clear, col_save = st.columns( 3 )
 			can_embed = bool( has_texts and model and task )
 			
-			run = col_run.button(
-				"Embed",
-				key=k( "gemini_embed" ),
-				use_container_width=True,
-				disabled=not can_embed,
-			)
+			run = col_run.button( 'Embed', key=k( 'gemini_embed' ), use_container_width=True,
+				disabled=not can_embed, )
 			
-			clear = col_clear.button(
-				"Clear",
-				key=k( "gemini_clear" ),
-				use_container_width=True,
-				disabled=st.session_state.df_embedding_output.empty,
-			)
+			clear = col_clear.button( 'Clear', key=k( 'gemini_clear' ), use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty, )
 			
 			if can_save_output( ):
-				col_save.download_button(
-					"Save CSV",
+				col_save.download_button( 'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name="gemini_embeddings.csv",
-					mime="text/csv",
-					use_container_width=True,
-					key=k( "gemini_save" ),
-				)
+					file_name='gemini_embeddings.csv', mime='text/csv',
+					use_container_width=True, key=k( 'gemini_save' ), )
 			else:
-				col_save.button(
-					"Save CSV",
-					disabled=True,
-					use_container_width=True,
-					key=k( "gemini_save_disabled" ),
-				)
+				col_save.button( 'Save CSV', disabled=True, use_container_width=True,
+					key=k( 'gemini_save_disabled' ), )
 			
 			if clear:
 				st.session_state.embeddings = None
@@ -3140,87 +3001,60 @@ with tabs[ 4 ]:
 				st.session_state.df_embedding_output = pd.DataFrame( )
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
-				st.success( "Embeddings cleared." )
+				st.success( 'Embeddings cleared.' )
 			
 			if run and can_embed:
-				with st.spinner( "Embedding with Gemini..." ):
+				with st.spinner( 'Embedding with Gemini...' ):
 					embedder = Gemini( )
-					vectors = embedder.embed(
-						texts,
-						task=task,
-						model=model,
-						dimensions=dimensions,
-					)
+					vectors = embedder.embed( texts, task=task, model=model, dimensions=dimensions )
 					
 					df_out = pd.DataFrame(
 						{
-								"provider": "Gemini",
-								"model": model,
-								"task": task,
-								"dimensions": dimensions,
-								"row_index": range( len( texts ) ),
-								"text": texts,
-								"embedding": vectors,
+								'provider': 'Gemini',
+								'model': model,
+								'task': task,
+								'dimensions': dimensions,
+								'row_index': range( len( texts ) ),
+								'text': texts,
+								'embedding': vectors,
 						}
 					)
 					
 					st.session_state.df_embedding_output = df_out
-					st.session_state.embedding_documents = df_out.to_dict( "records" )
+					st.session_state.embedding_documents = df_out.to_dict( 'records' )
 					st.session_state.embeddings = vectors
-					st.session_state.embedding_provider = "Gemini"
+					st.session_state.embedding_provider = 'Gemini'
 					st.session_state.embedding_model = model
 					
-					st.success( f"Generated {len( vectors )} embedding(s)." )
+					st.success( f'Generated {len( vectors )} embedding(s).' )
 		
 		# ==================================================
 		# ⚡ Groq
 		# ==================================================
-		with st.expander( "⚡ Groq Embeddings", expanded=False ):
-			model = st.selectbox(
-				"Model",
-				options=cfg.GROK_MODELS,
-				key=k( "groq_model" ),
-				disabled=not has_texts,
-			)
+		with st.expander( '⚡ Groq Embeddings', expanded=False ):
+			model = st.selectbox( 'Model', options=cfg.GROK_MODELS, key=k( 'groq_model' ),
+				disabled=not has_texts, )
 			
-			st.caption(
-				"Groq embeddings use provider-defined geometry. "
-				"No task type or dimensionality parameters are exposed."
-			)
+			st.caption( 'Groq embeddings use provider-defined geometry. '
+				'No task type or dimensionality parameters are exposed.' )
 			
 			col_run, col_clear, col_save = st.columns( 3 )
 			can_embed = bool( has_texts and model )
 			
-			run = col_run.button(
-				"Embed",
-				key=k( "groq_embed" ),
-				use_container_width=True,
-				disabled=not can_embed,
-			)
+			run = col_run.button( 'Embed', key=k( 'groq_embed' ), use_container_width=True,
+				disabled=not can_embed, )
 			
-			clear = col_clear.button(
-				"Clear",
-				key=k( "groq_clear" ),
-				use_container_width=True,
-				disabled=st.session_state.df_embedding_output.empty,
-			)
+			clear = col_clear.button( 'Clear', key=k( 'groq_clear' ), use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty, )
 			
 			if can_save_output( ):
-				col_save.download_button(
-					"Save CSV",
+				col_save.download_button( 'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name="groq_embeddings.csv",
-					mime="text/csv",
-					use_container_width=True,
-					key=k( "groq_save" ),
-				)
+					file_name='groq_embeddings.csv', mime='text/csv', use_container_width=True,
+					key=k( 'groq_save' ), )
 			else:
-				col_save.button(
-					"Save CSV",
-					disabled=True,
-					use_container_width=True,
-					key=k( "groq_save_disabled" ),
-				)
+				col_save.button( 'Save CSV', disabled=True, use_container_width=True,
+					key=k( 'groq_save_disabled' ), )
 			
 			if clear:
 				st.session_state.embeddings = None
@@ -3228,30 +3062,30 @@ with tabs[ 4 ]:
 				st.session_state.df_embedding_output = pd.DataFrame( )
 				st.session_state.embedding_provider = None
 				st.session_state.embedding_model = None
-				st.success( "Embeddings cleared." )
+				st.success( 'Embeddings cleared.' )
 			
 			if run and can_embed:
-				with st.spinner( "Embedding with Groq..." ):
+				with st.spinner( 'Embedding with Groq...' ):
 					embedder = Grok( )
 					vectors = embedder.embed( texts, model=model )
 					
 					df_out = pd.DataFrame(
 						{
-								"provider": "Groq",
-								"model": model,
-								"row_index": range( len( texts ) ),
-								"text": texts,
-								"embedding": vectors,
+								'provider': 'Groq',
+								'model': model,
+								'row_index': range( len( texts ) ),
+								'text': texts,
+								'embedding': vectors,
 						}
 					)
 					
 					st.session_state.df_embedding_output = df_out
-					st.session_state.embedding_documents = df_out.to_dict( "records" )
+					st.session_state.embedding_documents = df_out.to_dict( 'records' )
 					st.session_state.embeddings = vectors
-					st.session_state.embedding_provider = "Groq"
+					st.session_state.embedding_provider = 'Groq'
 					st.session_state.embedding_model = model
 					
-					st.success( f"Generated {len( vectors )} embedding(s)." )
+					st.success( f'Generated {len( vectors )} embedding(s).' )
 	
 	# ==================================================
 	# RIGHT COLUMN — Embedding input (read-only) + results below
@@ -3264,33 +3098,23 @@ with tabs[ 4 ]:
 				pd.DataFrame( {
 						"text": texts } )
 				if texts
-				else pd.DataFrame( columns=[ "text" ] )
+				else pd.DataFrame( columns=[ 'text' ] )
 		)
 		
-		st.data_editor(
-			df_embedding_input,
-			use_container_width=True,
-			hide_index=True,
-			disabled=True,
-			key=k( "embedding_input_view" ),
-		)
+		st.data_editor( df_embedding_input, use_container_width=True, hide_index=True,
+			disabled=True, key=k( 'embedding_input_view' ), )
 	
 	# --------------------------------------------------
 	# BELOW BOTH COLUMNS — Embedding Results (read-only)
 	# --------------------------------------------------
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
-	st.markdown( "##### Embedding Results" )
+	st.markdown( '##### Embedding Results' )
 	if st.session_state.df_embedding_output.empty:
-		st.info( "No embeddings generated yet." )
+		st.info( 'No embeddings generated yet.' )
 	else:
-		st.data_editor(
-			st.session_state.df_embedding_output,
-			use_container_width=True,
-			hide_index=True,
-			disabled=True,
-			key=k( "embedding_output_view" ),
-		)
+		st.data_editor( st.session_state.df_embedding_output, use_container_width=True,
+			hide_index=True, disabled=True, key=k( 'embedding_output_view' ), )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
@@ -3301,7 +3125,7 @@ with tabs[ 4 ]:
 	st.subheader( 'Embedding Diagnostics (t-SNE / UMAP)' )
 	
 	embeddings = st.session_state.get( 'embeddings' )
-	chunked_documents = st.session_state.get( 'chunked_documents' )
+	embedding_texts = st.session_state.get( 'embedding_texts' )
 	
 	# ------------------------------------------------------------------
 	# Guard: embeddings availability
@@ -3315,38 +3139,22 @@ with tabs[ 4 ]:
 		else:
 			ctrl_col1, ctrl_col2, ctrl_col3 = st.columns( 3, border=True )
 			with ctrl_col1:
-				reduction_method = st.selectbox( 'Reduction Method', options=[ 't-SNE',
-				                                                               'UMAP' ],
+				reduction_method = st.selectbox( 'Reduction Method', options=[ 't-SNE', 'UMAP' ],
 					key='embedding_reduction_method' )
 			
 			with ctrl_col2:
 				if reduction_method == 't-SNE':
-					perplexity = st.slider(
-						't-SNE Perplexity',
-						min_value=5,
-						max_value=min( 50, emb_array.shape[ 0 ] - 1 ),
-						value=30,
-						step=5,
-						key='tsne_perplexity'
-					)
+					perplexity = st.slider( 't-SNE Perplexity', min_value=5,
+						max_value=min( 50, emb_array.shape[ 0 ] - 1 ), value=30, step=5,
+						key='tsne_perplexity' )
 				else:
-					n_neighbors = st.slider(
-						'UMAP Neighbors',
-						min_value=5,
-						max_value=min( 50, emb_array.shape[ 0 ] - 1 ),
-						value=15,
-						step=5,
-						key='umap_neighbors'
-					)
+					n_neighbors = st.slider( 'UMAP Neighbors', min_value=5,
+						max_value=min( 50, emb_array.shape[ 0 ] - 1 ), value=15, step=5,
+						key='umap_neighbors' )
 			
 			with ctrl_col3:
-				random_state = st.number_input(
-					'Random Seed',
-					min_value=0,
-					value=42,
-					step=1,
-					key='embedding_reduction_seed'
-				)
+				random_state = st.number_input( 'Random Seed', min_value=0, value=42, step=1,
+					key='embedding_reduction_seed' )
 			
 			# ------------------------------------------------------------------
 			# Dimensionality reduction (diagnostic only)
@@ -3358,13 +3166,8 @@ with tabs[ 4 ]:
 				if reduction_method == 't-SNE':
 					from sklearn.manifold import TSNE
 					
-					reducer = TSNE(
-						n_components=2,
-						perplexity=perplexity,
-						random_state=random_state,
-						init='pca',
-						learning_rate='auto'
-					)
+					reducer = TSNE( n_components=2, perplexity=perplexity,
+						random_state=random_state, init='pca', learning_rate='auto' )
 					
 					reduced = reducer.fit_transform( emb_array )
 				
@@ -3398,13 +3201,10 @@ with tabs[ 4 ]:
 				
 				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
 				
-				if isinstance( chunked_documents, list ):
-					df_reduced[ 'Preview' ] = [
-							(d[ :120 ] + '…')
-							if isinstance( d, str ) and len( d ) > 120
-							else str( d )
-							for d in chunked_documents
-					]
+				if isinstance( embedding_texts, list ):
+					df_reduced[ 'Preview' ] = [ (d[ :120 ] + '…')
+							if isinstance( d, str ) and len( d ) > 120 else str( d )
+							for d in embedding_texts ]
 				else:
 					df_reduced[ 'Preview' ] = ''
 				
@@ -3461,15 +3261,15 @@ with tabs[ 5 ]:
 	# Required upstream state
 	# ------------------------------------------------------------------
 	embeddings = st.session_state.get( 'embeddings' )
-	chunked_documents = st.session_state.get( 'chunked_documents' )
+	embedding_texts = st.session_state.get( 'embedding_texts' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embedding_provider = st.session_state.get( 'embedding_provider' )
 	
 	# ------------------------------------------------------------------
 	# Guard: embeddings must exist before continuing
 	# ------------------------------------------------------------------
-	if not (isinstance( embeddings, list ) and isinstance( chunked_documents, list ) and
-	        embedding_model and embedding_provider):
+	if not (isinstance( embeddings, list ) and isinstance( embedding_texts, list ) and
+	        embedding_texts and embedding_model and embedding_provider):
 		st.info( 'Generate embeddings before persisting to the vector database.' )
 		st.stop( )
 	
@@ -3487,27 +3287,19 @@ with tabs[ 5 ]:
 	
 	dim = emb_array.shape[ 1 ]
 	
-	document_name = st.text_input(
-		'Document / Collection Name',
-		value='default_document'
-	)
+	document_name = st.text_input( 'Document / Collection Name', value='default_document' )
 	
-	table_name = (
-			f"{document_name}__"
-			f"{embedding_provider}__"
-			f"{embedding_model}__"
-			f"{dim}"
-	)
+	table_name = ( f'{document_name}__'
+			f'{embedding_provider}__'
+			f'{embedding_model}__'
+			f'{dim}' )
 	
 	st.caption( f'Vector Table: `{table_name}`' )
 	
 	# ------------------------------------------------------------------
 	# Database connection
 	# ------------------------------------------------------------------
-	db_path = st.text_input(
-		'SQLite Database Path',
-		value='vectors.db'
-	)
+	db_path = st.text_input( 'SQLite Database Path', value='vectors.db' )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
@@ -3522,11 +3314,7 @@ with tabs[ 5 ]:
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
 			
-			SQLiteVec.create_table(
-				conn,
-				table_name=table_name,
-				dimension=dim
-			)
+			SQLiteVec.create_table( conn, table_name=table_name, dimension=dim )
 			
 			conn.close( )
 			st.success( f'Created vector table `{table_name}`.' )
@@ -3546,7 +3334,7 @@ with tabs[ 5 ]:
 			)
 			
 			vector_store.add_texts(
-				texts=chunked_documents,
+				texts=embedding_texts,
 				embeddings=embeddings
 			)
 			

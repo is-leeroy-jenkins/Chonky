@@ -167,22 +167,21 @@ class GPT( ):
 			exception.cause = 'GPT'
 			exception.method = 'create( self, text: str, model: str ) -> List[ float ]'
 			raise exception
-			
 	
-	def embed( self, texts: list[ str ], model: str="text-embedding-3-small" ) -> List[ List[ float ] ]:
+	def embed( self, texts: List[ str ], model: str='text-embedding-3-small' ) -> List[ List[ float ] ]:
 		"""
 		
 			Purpose:
 			--------
 			Generate embeddings for a batch of text inputs.
-	
+			
 			Parameters:
 			-----------
 			texts : list[str]
 				Text inputs to embed.
 			model : str
 				OpenAI embedding model.
-	
+			
 			Returns:
 			--------
 			list[list[float]]
@@ -191,10 +190,34 @@ class GPT( ):
 		"""
 		try:
 			throw_if( 'texts', texts )
-			self.input = texts
+			
+			if not isinstance( texts, list ):
+				raise TypeError( 'Argument "texts" must be a list of strings.' )
+			
 			self.model = model
-			self.response = self.client.embeddings.create( model=self.model, input=self.input)
-			return [ item.embedding for item in self.response.data ]
+			
+			cleaned: List[ str ] = [ ]
+			for text in texts:
+				if isinstance( text, str ):
+					value = text.strip( )
+					if value:
+						cleaned.append( value )
+			
+			if not cleaned:
+				return [ ]
+			
+			max_batch_size: int = 2048
+			all_vectors: List[ List[ float ] ] = [ ]
+			
+			for i in range( 0, len( cleaned ), max_batch_size ):
+				batch: List[ str ] = cleaned[ i:i + max_batch_size ]
+				self.response = self.client.embeddings.create(
+					model=self.model,
+					input=batch
+				)
+				all_vectors.extend( [ item.embedding for item in self.response.data ] )
+			
+			return all_vectors
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'embedders'
