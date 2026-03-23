@@ -401,7 +401,7 @@ with tabs[ 0 ]:
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
 			
-		with st.expander( label='Local Documents', expanded=True ):
+		with st.expander( label='Local Documents', expanded=False ):
 			
 			# --------------------------- NLTK Loader Expander
 			with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
@@ -1519,7 +1519,7 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = "JsonLoader"
 					st.success( f"Loaded {len( documents )} JSON document(s)." )
 					
-		with st.expander( label='Web Documents', expanded=False ):
+		with st.expander( label='Web Documents', expanded=True ):
 		
 			# --------------------------- ArXiv Loader
 			with st.expander( label='ArXiv Loader', icon='🧠', expanded=False ):
@@ -2008,7 +2008,7 @@ with tabs[ 0 ]:
 						f'Crawled {len( documents )} document(s).'
 			
 			# --------------------------- Email Loader
-			with st.expander( label='Email Loader', icon='📧', expanded=False ):
+			with st.expander( label='E-mail Loader', icon='📧', expanded=False ):
 				email_file = st.file_uploader( 'Upload Email File', type=[ 'eml' ],
 					key='email_upload', )
 				
@@ -2086,7 +2086,7 @@ with tabs[ 0 ]:
 						f'Loaded {len( documents )} email document(s).'
 			
 			# --------------------------- PubMed Loader
-			with st.expander( label='PubMed Search Loader', icon='🧬', expanded=False ):
+			with st.expander( label='Pub Med Loader', icon='🧬', expanded=False ):
 				pubmed_query = st.text_input(
 					'PubMed Query',
 					value='',
