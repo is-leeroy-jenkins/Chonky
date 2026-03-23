@@ -95,7 +95,7 @@ from loaders import (
 	XmlLoader
 )
 
-from embedders import GPT, Grok, Gemini
+from embedders import GPT, Grok, Gemini, Booger, Nomnom, Bobo
 
 try:
 	import textstat
@@ -2911,9 +2911,9 @@ with tabs[ 4 ]:
 			        and not st.session_state.df_embedding_output.empty)
 		
 		# ==================================================
-		# 🧠 OpenAI
+		# OpenAI
 		# ==================================================
-		with st.expander( '🧠 OpenAI Embeddings', expanded=False ):
+		with st.expander( label='OpenAI Embeddings', icon='🧠', expanded=False ):
 			model = st.selectbox( 'Model', options=cfg.GPT_MODELS, key=k( 'openai_model' ), )
 			col_run, col_clear, col_save = st.columns( 3 )
 			run = col_run.button( 'Embed', key=k( 'openai_embed' ),
@@ -2964,9 +2964,9 @@ with tabs[ 4 ]:
 					st.success( f'Generated {len( vectors )} embedding(s).' )
 		
 		# ==================================================
-		# ✨ Gemini
+		# Gemini
 		# ==================================================
-		with st.expander( '✨ Gemini Embeddings', expanded=False ):
+		with st.expander( label='Gemini Embeddings', icon='✨', expanded=False ):
 			model = st.selectbox( 'Model', options=cfg.GEMINI_MODELS, key=k( 'gemini_model' ),
 				disabled=not has_texts, )
 			
@@ -3029,32 +3029,47 @@ with tabs[ 4 ]:
 					st.success( f'Generated {len( vectors )} embedding(s).' )
 		
 		# ==================================================
-		# ⚡ Groq
+		# Booger
 		# ==================================================
-		with st.expander( '⚡ Groq Embeddings', expanded=False ):
-			model = st.selectbox( 'Model', options=cfg.GROK_MODELS, key=k( 'groq_model' ),
-				disabled=not has_texts, )
-			
-			st.caption( 'Groq embeddings use provider-defined geometry. '
-				'No task type or dimensionality parameters are exposed.' )
+		with st.expander( label='Booger Embeddings', icon='👾', expanded=False ):
+			st.caption(
+				'Local BGE GGUF embeddings use provider-defined geometry. '
+				'No task type or dimensionality parameters are exposed.'
+			)
 			
 			col_run, col_clear, col_save = st.columns( 3 )
-			can_embed = bool( has_texts and model )
+			can_embed = bool( has_texts )
 			
-			run = col_run.button( 'Embed', key=k( 'groq_embed' ), use_container_width=True,
-				disabled=not can_embed, )
+			run = col_run.button(
+				'Embed',
+				key=k( 'booger_embed' ),
+				use_container_width=True,
+				disabled=not can_embed,
+			)
 			
-			clear = col_clear.button( 'Clear', key=k( 'groq_clear' ), use_container_width=True,
-				disabled=st.session_state.df_embedding_output.empty, )
+			clear = col_clear.button(
+				'Clear',
+				key=k( 'booger_clear' ),
+				use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty,
+			)
 			
 			if can_save_output( ):
-				col_save.download_button( 'Save CSV',
+				col_save.download_button(
+					'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name='groq_embeddings.csv', mime='text/csv', use_container_width=True,
-					key=k( 'groq_save' ), )
+					file_name='booger_embeddings.csv',
+					mime='text/csv',
+					use_container_width=True,
+					key=k( 'booger_save' ),
+				)
 			else:
-				col_save.button( 'Save CSV', disabled=True, use_container_width=True,
-					key=k( 'groq_save_disabled' ), )
+				col_save.button(
+					'Save CSV',
+					disabled=True,
+					use_container_width=True,
+					key=k( 'booger_save_disabled' ),
+				)
 			
 			if clear:
 				st.session_state.embeddings = None
@@ -3065,14 +3080,14 @@ with tabs[ 4 ]:
 				st.success( 'Embeddings cleared.' )
 			
 			if run and can_embed:
-				with st.spinner( 'Embedding with Groq...' ):
-					embedder = Grok( )
-					vectors = embedder.embed( texts, model=model )
+				with st.spinner( 'Embedding with Booger...' ):
+					embedder = Booger( )
+					vectors = embedder.embed( texts )
 					
 					df_out = pd.DataFrame(
 						{
-								'provider': 'Groq',
-								'model': model,
+								'provider': 'Booger',
+								'model': embedder.model,
 								'row_index': range( len( texts ) ),
 								'text': texts,
 								'embedding': vectors,
@@ -3082,11 +3097,159 @@ with tabs[ 4 ]:
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( 'records' )
 					st.session_state.embeddings = vectors
-					st.session_state.embedding_provider = 'Groq'
-					st.session_state.embedding_model = model
+					st.session_state.embedding_provider = 'Booger'
+					st.session_state.embedding_model = embedder.model
 					
 					st.success( f'Generated {len( vectors )} embedding(s).' )
-	
+		
+		# ==================================================
+		# Nomnom
+		# ==================================================
+		with st.expander( label='Nomnom Embeddings', icon='🍰', expanded=False ):
+			st.caption(
+				'Local Nomic GGUF embeddings use provider-defined geometry. '
+				'No task type or dimensionality parameters are exposed.'
+			)
+			
+			col_run, col_clear, col_save = st.columns( 3 )
+			can_embed = bool( has_texts )
+			
+			run = col_run.button(
+				'Embed',
+				key=k( 'nomnom_embed' ),
+				use_container_width=True,
+				disabled=not can_embed,
+			)
+			
+			clear = col_clear.button(
+				'Clear',
+				key=k( 'nomnom_clear' ),
+				use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty,
+			)
+			
+			if can_save_output( ):
+				col_save.download_button(
+					'Save CSV',
+					data=st.session_state.df_embedding_output.to_csv( index=False ),
+					file_name='nomnom_embeddings.csv',
+					mime='text/csv',
+					use_container_width=True,
+					key=k( 'nomnom_save' ),
+				)
+			else:
+				col_save.button(
+					'Save CSV',
+					disabled=True,
+					use_container_width=True,
+					key=k( 'nomnom_save_disabled' ),
+				)
+			
+			if clear:
+				st.session_state.embeddings = None
+				st.session_state.embedding_documents = None
+				st.session_state.df_embedding_output = pd.DataFrame( )
+				st.session_state.embedding_provider = None
+				st.session_state.embedding_model = None
+				st.success( 'Embeddings cleared.' )
+			
+			if run and can_embed:
+				with st.spinner( 'Embedding with Nomnom...' ):
+					embedder = Nomnom( )
+					vectors = embedder.embed( texts )
+					
+					df_out = pd.DataFrame(
+						{
+								'provider': 'Nomnom',
+								'model': embedder.model,
+								'row_index': range( len( texts ) ),
+								'text': texts,
+								'embedding': vectors,
+						}
+					)
+					
+					st.session_state.df_embedding_output = df_out
+					st.session_state.embedding_documents = df_out.to_dict( 'records' )
+					st.session_state.embeddings = vectors
+					st.session_state.embedding_provider = 'Nomnom'
+					st.session_state.embedding_model = embedder.model
+					
+					st.success( f'Generated {len( vectors )} embedding(s).' )
+		
+		# ==================================================
+		# Bobo
+		# ==================================================
+		with st.expander( label='Bobo Embeddings', icon='🤷', expanded=False ):
+			st.caption(
+				'Local Mixedbread GGUF embeddings use provider-defined geometry. '
+				'No task type or dimensionality parameters are exposed.'
+			)
+			
+			col_run, col_clear, col_save = st.columns( 3 )
+			can_embed = bool( has_texts )
+			
+			run = col_run.button(
+				'Embed',
+				key=k( 'bobo_embed' ),
+				use_container_width=True,
+				disabled=not can_embed,
+			)
+			
+			clear = col_clear.button(
+				'Clear',
+				key=k( 'bobo_clear' ),
+				use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty,
+			)
+			
+			if can_save_output( ):
+				col_save.download_button(
+					'Save CSV',
+					data=st.session_state.df_embedding_output.to_csv( index=False ),
+					file_name='bobo_embeddings.csv',
+					mime='text/csv',
+					use_container_width=True,
+					key=k( 'bobo_save' ),
+				)
+			else:
+				col_save.button(
+					'Save CSV',
+					disabled=True,
+					use_container_width=True,
+					key=k( 'bobo_save_disabled' ),
+				)
+			
+			if clear:
+				st.session_state.embeddings = None
+				st.session_state.embedding_documents = None
+				st.session_state.df_embedding_output = pd.DataFrame( )
+				st.session_state.embedding_provider = None
+				st.session_state.embedding_model = None
+				st.success( 'Embeddings cleared.' )
+			
+			if run and can_embed:
+				with st.spinner( 'Embedding with Bobo...' ):
+					embedder = Bobo( )
+					vectors = embedder.embed( texts )
+					
+					df_out = pd.DataFrame(
+						{
+								'provider': 'Bobo',
+								'model': embedder.model,
+								'row_index': range( len( texts ) ),
+								'text': texts,
+								'embedding': vectors,
+						}
+					)
+					
+					st.session_state.df_embedding_output = df_out
+					st.session_state.embedding_documents = df_out.to_dict( 'records' )
+					st.session_state.embeddings = vectors
+					st.session_state.embedding_provider = 'Bobo'
+					st.session_state.embedding_model = embedder.model
+					
+					st.success( f'Generated {len( vectors )} embedding(s).' )
+					
 	# ==================================================
 	# RIGHT COLUMN — Embedding input (read-only) + results below
 	# ==================================================
@@ -3106,10 +3269,10 @@ with tabs[ 4 ]:
 	
 	
 	# --------------------------------------------------
-	# BELOW BOTH COLUMNS — Embedding Results (read-only)
+	# EMBEDDING RESULTS (read-only)
 	# --------------------------------------------------
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	st.subheader( 'Vectorized Data' )
+	st.subheader( 'Tensor Data' )
 	if st.session_state.df_embedding_output.empty:
 		st.info( 'No embeddings generated yet.' )
 	else:
@@ -3209,8 +3372,6 @@ with tabs[ 4 ]:
 				with st.expander( 'View Reduced Coordinates (Table)', expanded=True ):
 					st.data_editor( df_reduced, use_container_width=True, num_rows='dynamic' )
 				
-
-
 # ======================================================================================
 # Tab — Vector Database (sqlite-vec)
 # ======================================================================================

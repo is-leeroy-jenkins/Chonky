@@ -17,6 +17,7 @@ ipywidgets
 ipython
 jupytext
 jq
+lamma-cpp-python
 langchain
 langchain-community
 langchain-openai

@@ -54,12 +54,223 @@ import tiktoken
 import os
 from boogr import Error
 import requests
-
+from llama_cpp import Llama
 
 def throw_if( name: str, value: object ):
 	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
+class Loca( ):
+	'''
+	
+		Purpose:
+		--------
+		Base class for local GGUF embedding models loaded through llama-cpp-python.
+	
+		Attributes:
+		-----------
+		model             : str - Logical model name
+		model_path        : str - GGUF file path
+		client            : Llama - llama.cpp wrapper
+		response          : Any - Raw embedding response
+		embedding         : List[ float ] - Single embedding vector
+		embeddings        : List[ List[ float ] ] - Batch embedding vectors
+	
+	'''
+	model: Optional[ str ]
+	model_path: Optional[ str ]
+	client: Optional[ Llama ]
+	response: Optional[ Any ]
+	embedding: Optional[ List[ float ] ]
+	embeddings: Optional[ List[ List[ float ] ] ]
+	
+	def __init__( self, model: Optional[ str ] = None, model_path: Optional[ str ] = None ):
+		super( ).__init__( )
+		self.model = model
+		self.model_path = model_path
+		self.client = None
+		self.response = None
+		self.embedding = None
+		self.embeddings = None
+	
+	def load( self ) -> None:
+		"""
+		
+			Purpose:
+			--------
+			Load the configured local GGUF embedding model.
+		
+			Parameters:
+			-----------
+			None
+		
+			Returns:
+			--------
+			None
+			
+		"""
+		try:
+			throw_if( 'model', self.model )
+			throw_if( 'model_path', self.model_path )
+			
+			if self.client is not None:
+				return
+			
+			if not os.path.exists( self.model_path ):
+				raise FileNotFoundError( f'Local GGUF model not found: {self.model_path}' )
+			
+			self.client = Llama(
+				model_path=self.model_path,
+				embedding=True,
+				verbose=False
+			)
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'embedders'
+			exception.cause = 'Loca'
+			exception.method = 'load( self ) -> None'
+			raise exception
+	
+	def create( self, text: str ) -> List[ float ]:
+		"""
+		
+			Purpose:
+			--------
+			Create a single embedding using the configured local GGUF model.
+		
+			Parameters:
+			-----------
+			text: str - Input text.
+		
+			Returns:
+			--------
+			List[ float ] - Embedding vector.
+			
+		"""
+		try:
+			throw_if( 'text', text )
+			
+			if not isinstance( text, str ):
+				raise TypeError( 'Argument "text" must be a string.' )
+			
+			value: str = text.strip( )
+			if not value:
+				return [ ]
+			
+			self.load( )
+			self.response = self.client.create_embedding( value )
+			
+			if isinstance( self.response, dict ) and 'data' in self.response:
+				self.embedding = self.response[ 'data' ][ 0 ][ 'embedding' ]
+			else:
+				self.embedding = self.response
+			
+			return self.embedding
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'embedders'
+			exception.cause = 'Loca'
+			exception.method = 'create( self, text ) -> List[ float ]'
+			raise exception
+	
+	def embed( self, texts: List[ str ] ) -> List[ List[ float ] ]:
+		"""
+		
+			Purpose:
+			--------
+			Create embeddings for a batch of strings using the configured local GGUF model.
+		
+			Parameters:
+			-----------
+			texts: List[str] - Input texts.
+		
+			Returns:
+			--------
+			List[List[float]] - Embedding vectors.
+			
+		"""
+		try:
+			throw_if( 'texts', texts )
+			
+			if not isinstance( texts, list ):
+				raise TypeError( 'Argument "texts" must be a list of strings.' )
+			
+			cleaned: List[ str ] = [ ]
+			for text in texts:
+				if isinstance( text, str ):
+					value = text.strip( )
+					if value:
+						cleaned.append( value )
+			
+			if not cleaned:
+				return [ ]
+			
+			self.load( )
+			self.response = self.client.create_embedding( cleaned )
+			
+			if isinstance( self.response, dict ) and 'data' in self.response:
+				self.embeddings = [ item[ 'embedding' ] for item in self.response[ 'data' ] ]
+			else:
+				self.embeddings = self.response
+			
+			return self.embeddings
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'embedders'
+			exception.cause = 'Loca'
+			exception.method = 'embed( self, texts ) -> List[ List[ float ] ]'
+			raise exception
+
+class Booger( Loca ):
+	'''
+	
+		Purpose:
+		--------
+		Local BGE small English GGUF embedder.
+	
+	'''
+	
+	def __init__( self ):
+		super( ).__init__(
+			model='boogr-small-en-v1.5',
+			model_path=os.path.abspath(
+				os.path.join( 'models', 'boogr', 'boogr-small-en-v1.5-q8_0.gguf' )
+			)
+		)
+
+class Nomnom( Loca ):
+	'''
+	
+		Purpose:
+		--------
+		Local Nomic GGUF embedder.
+	
+	'''
+	
+	def __init__( self ):
+		super( ).__init__(
+			model='nomnom-embed-text-v1.5',
+			model_path=os.path.abspath(
+				os.path.join( 'models', 'nomi', 'nomnom-embed-text-v1.5.Q4_K_M.gguf' )
+			)
+		)
+
+class Bobo( Loca ):
+	'''
+	
+		Purpose:
+		--------
+		Local Mixedbread GGUF embedder.
+	
+	'''
+	
+	def __init__( self ):
+		super( ).__init__(
+			model='bobo-embed-large-v1',
+			model_path=os.path.abspath(
+				os.path.join( 'models', 'bobo', 'bobo-embed-large-v1-f16.gguf' )
+			)
+		)
 
 class GPT( ):
 	"""
@@ -401,10 +612,9 @@ class Gemini( ):
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
 			raise exception
-			
-
-	def embed( self, text: List[ str ],  model: str='gemini-embedding-001',
-			dimensions: int=768  ) -> List[ List[ float ] ]:
+	
+	def embed( self, texts: List[ str ], task: str = 'RETRIEVAL_DOCUMENT',
+			model: str = 'gemini-embedding-001', dimensions: int = 768 ) -> List[ List[ float ] ]:
 		"""
 			
 			Purpose:
@@ -413,8 +623,10 @@ class Gemini( ):
 		
 			Parameters:
 			-----------
-			text: List[str] - List of input text strings.
+			texts: List[str] - List of input text strings.
+			task: str - Gemini embedding task type.
 			model: str - Embedding model identifier.
+			dimensions: int - Requested output dimensionality.
 		
 			Returns:
 			--------
@@ -422,21 +634,52 @@ class Gemini( ):
 		
 		"""
 		try:
+			throw_if( 'texts', texts )
+			
+			if not isinstance( texts, list ):
+				raise TypeError( 'Argument "texts" must be a list of strings.' )
+			
 			self.model = model
-			self.input_text = text
 			self.dimensions = dimensions
-			self.task_type = 'RETRIEVAL_DOCUMENT'
-			self.embedding_config = EmbedContentConfig( task_type=self.task_type,
-				output_dimensionality=self.dimensions )
-			self.response = self.client.models.embed_content( model=self.model,
-				contents=self.input_text, config=self.embedding_config )
-			self.embeddings = [ embedding.values for embedding in self.response.embeddings ]
-			return self.embeddings
+			self.task_type = task
+			
+			cleaned: List[ str ] = [ ]
+			for text in texts:
+				if isinstance( text, str ):
+					value = text.strip( )
+					if value:
+						cleaned.append( value )
+			
+			if not cleaned:
+				return [ ]
+			
+			all_vectors: List[ List[ float ] ] = [ ]
+			max_batch_size: int = 250
+			
+			for i in range( 0, len( cleaned ), max_batch_size ):
+				batch: List[ str ] = cleaned[ i:i + max_batch_size ]
+				
+				self.embedding_config = EmbedContentConfig(
+					task_type=self.task_type,
+					output_dimensionality=self.dimensions
+				)
+				
+				self.response = self.client.models.embed_content(
+					model=self.model,
+					contents=batch,
+					config=self.embedding_config
+				)
+				
+				all_vectors.extend(
+					[ embedding.values for embedding in self.response.embeddings ]
+				)
+			
+			return all_vectors
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'embedders'
 			exception.cause = 'Gemini'
-			exception.method = 'generate( self, text, model ) -> List[ float ]'
+			exception.method = 'embed( self, texts, task, model, dimensions ) -> List[ List[ float ] ]'
 			raise exception
 			
 class Grok:
@@ -518,42 +761,73 @@ class Grok:
 			exception.cause = 'Grok'
 			exception.method = 'create( self, text, model, format )'
 			raise exception
-			
 	
-	def embed( self, texts: List[ str ], model: str='text-embedding-3-small' ) -> List[ List[ float ] ]:
+	def embed( self, texts: List[ str ], model: str = 'text-embedding-3-small' ) -> List[ List[ float ] ]:
 		"""
 		
 			Purpose:
 			--------
 			Generate embeddings using xAI Grok.
-	
+		
 			Parameters:
 			-----------
-			texts : list[str]
+			texts : List[str]
 				Text inputs to embed.
 			model : str
 				Grok embedding model.
-	
+		
 			Returns:
 			--------
-			list[list[float]]
+			List[List[float]]
 				Embedding vectors.
 				
 		"""
 		try:
 			throw_if( 'texts', texts )
+			
+			if not isinstance( texts, list ):
+				raise TypeError( 'Argument "texts" must be a list of strings.' )
+			
 			self.model = model
-			self.headers = { 'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json', }
-			self.payload = { 'model': model, 'input': texts, }
-			response = requests.post( url=self.endpoint, headers=self.headers, json=self.payload, timeout=30, )
-			response.raise_for_status( )
-			data = response.json( )
-			return [ item[ 'embedding' ] for item in data[ 'data' ] ]
+			self.headers = \
+				{
+						'Authorization': f'Bearer {self.api_key}',
+						'Content-Type': 'application/json',
+				}
+			
+			cleaned: List[ str ] = [ ]
+			for text in texts:
+				if isinstance( text, str ):
+					value = text.strip( )
+					if value:
+						cleaned.append( value )
+			
+			if not cleaned:
+				return [ ]
+			
+			max_batch_size: int = 2048
+			all_vectors: List[ List[ float ] ] = [ ]
+			
+			for i in range( 0, len( cleaned ), max_batch_size ):
+				batch: List[ str ] = cleaned[ i:i + max_batch_size ]
+				self.payload = { 'model': model, 'input': batch }
+				
+				response = requests.post(
+					url=self.endpoint,
+					headers=self.headers,
+					json=self.payload,
+					timeout=30,
+				)
+				response.raise_for_status( )
+				data = response.json( )
+				all_vectors.extend( [ item[ 'embedding' ] for item in data[ 'data' ] ] )
+			
+			return all_vectors
 		except Exception as e:
-			exception = Error( e );
+			exception = Error( e )
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
-			exception.method = 'embed( self, text, model, format )'
+			exception.method = 'embed( self, texts, model )'
 			raise exception
 			
 	
