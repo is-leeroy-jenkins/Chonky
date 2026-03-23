@@ -45,3 +45,4 @@ textstat
 tqdm
 wikipedia
 langchain-yt-dlp
+yt-dlp
