@@ -83,6 +83,7 @@ from langchain_google_community import GCSDirectoryLoader
 from langchain_community.document_loaders.parsers import PyPDFParser
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_community.document_loaders.parsers import RapidOCRBlobParser
+from langchain_yt_dlp.youtube_loader import YoutubeLoaderDL
 import os
 from pathlib import Path
 import re
@@ -191,7 +192,6 @@ class Loader( ):
 			exception.method = '_ensure_existing_file( self, path: str ) -> str'
 			raise exception
 			
-	
 	def resolve_paths( self, pattern: str ) -> List[ str ] | None:
 		'''
 
@@ -229,7 +229,6 @@ class Loader( ):
 			exception.method = 'resolve_paths( self, pattern: str ) -> List[ str ]'
 			raise exception
 			
-	
 	def load_documents( self, path: str, encoding: Optional[ str ], csv_args: Optional[Dict[ str, Any ] ],
 			source_column: Optional[ str ] ) -> List[ Document ] | None:
 		'''
@@ -265,7 +264,6 @@ class Loader( ):
 			exception.method = 'loader( )'
 			raise exception
 			
-	
 	def split_documents( self, docs: List[ Document ], chunk: int=1000, overlap: int=200 ) -> \
 	List[ Document ] | None:
 		'''
@@ -2297,7 +2295,7 @@ class YouTubeLoader( Loader ):
 		split( ) -> List[ Document ];
 
 	'''
-	loader: Optional[ YoutubeLoader ]
+	loader: Optional[ YoutubeLoaderDL ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
 	include_info: Optional[ bool ]
@@ -2311,8 +2309,6 @@ class YouTubeLoader( Loader ):
 		super( ).__init__( )
 		self.include_info = None
 		self.temperature = 0
-		self.api_key = cfg.OPENAI_API_KEY
-		self.llm = ChatOpenAI( temperature=self.temperature, api_key=self.api_key )
 		self.file_path = None
 		self.documents = None
 		self.pattern = None
@@ -2401,9 +2397,7 @@ class YouTubeLoader( Loader ):
 			self.include_info = add_info
 			self.language = lang
 			self.translation = trans
-			self.loader = YoutubeLoader.from_youtube_url( self.file_path,
-				add_video_info=self.include_info, language=[ self.language ],
-				translation=self.translation   )
+			self.loader = YoutubeLoaderDL.from_youtube_url( youtube_url=self.file_path )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -3720,7 +3714,7 @@ class SpfxLoader( Loader ):
 			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
 			raise exception
 			
-class OneDriveLoader( Loader ):
+class OneDriveDocLoader( Loader ):
 	'''
 
 		Purpose:

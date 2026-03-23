@@ -5,9 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="15d946bb-2f09-40fd-9463-0df00066a283" name="Changes" comment="update">
+      <change afterPath="$PROJECT_DIR$/models/bobo/bobo-embed-large-v1-f16.gguf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/boogr/boogr-small-en-v1.5-q8_0.gguf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/nomi/nomnom-embed-text-v1.5.Q4_K_M.gguf" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/embedders.py" beforeDir="false" afterPath="$PROJECT_DIR$/embedders.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/loaders.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -84,7 +88,8 @@
       <updated>1774213225945</updated>
       <workItem from="1774213225948" duration="866000" />
       <workItem from="1774215935624" duration="1459000" />
-      <workItem from="1774217711571" duration="15431000" />
+      <workItem from="1774217711571" duration="16547000" />
+      <workItem from="1774273729484" duration="6579000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
@@ -102,7 +107,23 @@
       <option name="project" value="LOCAL" />
       <updated>1774263748799</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="update">
+      <option name="closed" value="true" />
+      <created>1774271216148</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1774271216148</updated>
+    </task>
+    <task id="LOCAL-00004" summary="update">
+      <option name="closed" value="true" />
+      <created>1774271402229</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1774271402229</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

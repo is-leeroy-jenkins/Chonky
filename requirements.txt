@@ -17,7 +17,7 @@ ipywidgets
 ipython
 jupytext
 jq
-lamma-cpp-python
+llama-cpp-python
 langchain
 langchain-community
 langchain-openai
@@ -44,4 +44,4 @@ textblob
 textstat
 tqdm
 wikipedia
-youtube-transcript-api
+langchain-yt-dlp
