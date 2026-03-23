@@ -223,7 +223,6 @@ Set whichever hosted providers you plan to use.
 ## 🧪 Example Usage
 
 ```
-
     python
     from processing import Text
     processor = Text()
