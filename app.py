@@ -72,9 +72,7 @@ import time
 import tempfile
 from typing import List
 from langchain_core.documents import Document
-from langchain_community.embeddings.sentence_transformer import (
-	SentenceTransformerEmbeddings,
-)
+from langchain_community.embeddings.sentence_transformer import ( SentenceTransformerEmbeddings, )
 from langchain_community.vectorstores import SQLiteVec
 from processors import Processor, TextParser, NltkParser, WordParser, PdfParser
 
@@ -82,7 +80,8 @@ from loaders import ( TextLoader, CsvLoader, PdfLoader, ExcelLoader, WordLoader,
                       MarkdownLoader, HtmlLoader, JsonLoader, PowerPointLoader, WikiLoader,
                       GithubLoader, WebLoader, ArXivLoader, XmlLoader, OutlookLoader, WebCrawler,
                       EmailLoader,  JupyterNotebookLoader,  PubMedSearchLoader,  OpenCityLoader,
-	                  GoogleCloudFileLoader, AwsFileLoader, GoogleBucketLoader, AwsBucketLoader )
+	                  GoogleCloudFileLoader, AwsFileLoader, GoogleBucketLoader, AwsBucketLoader,
+                      OneDriveDocLoader, SpfxLoader,)
 
 from embedders import GPT, Grok, Gemini, Booger, Nomnom, Bobo
 
