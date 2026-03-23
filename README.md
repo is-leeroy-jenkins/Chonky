@@ -17,37 +17,131 @@ feature extraction, and document analysis.
 
 ## 🧠 Features
 
-- **Text Preprocessing**: Clean and normalize text by removing HTML, punctuation, special
-  characters, and stopwords.
-- **Tokenization**: Sentence and word-level tokenization with support for HuggingFace and OpenAI
-  tokenizers.
-- **Chunking**: Token or word chunking for long document management and model input preparation.
-- **Text Analysis**: Frequency distributions, conditional frequency analysis, TF-IDF, Word2Vec
-  embeddings.
-- **Multi-format Support**: Extracts from `.txt`, `.docx`, and `.pdf` files with high fidelity.
-- **Custom Pipelines**: Utilities for JSONL export, batch cleaning, and document segmentation.
-- **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
+- **Document Ingestion**  
+  Load and normalize text from local files, structured documents, web sources, notebook
+  files, email-connected sources, bucket storage, and connected document providers.
+
+- **Text Preprocessing**  
+  Clean and normalize text by removing HTML, punctuation, special characters, markdown,
+  stopwords, and other low-value artifacts.
+
+- **Tokenization**  
+  Sentence and word-level tokenization with support for NLTK, tiktoken, and downstream
+  token diagnostics.
+
+- **Chunking**  
+  Character, sentence, and token-aware chunk preparation for long-document management and
+  embedding workflows.
+
+- **Text Analysis**  
+  Frequency distributions, TF-IDF, Word2Vec, vocabulary analysis, readability metrics,
+  and semantic inspection.
+
+- **Embedding Generation**  
+  Generate embeddings through hosted providers such as OpenAI, Gemini, and Grok, along
+  with local GGUF-based embedders exposed directly in the application.
+
+- **Vector Persistence**  
+  Store and query embeddings locally with **sqlite-vec** and LangChain-compatible
+  vector-store workflows.
+
+- **Retrieval-Oriented Design**  
+  Chonky is structured for semantic search, retrieval experimentation, and future
+  Retrieval-Augmented Generation (RAG) workflows.
 
 ___
 ###### Demo
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
 
-
 ## 🧰 Setup Instructions
 
-To ensure a clean and isolated environment for running **Chonky**, follow these steps:
+To ensure a clean and isolated environment for running **Chonky**, follow these steps.
 
 ## ⚡ Clone the Repository
 
+```bash
+
+    git clone https://github.com/yourusername/Chonky.git
+    cd Chonky
+    python -m venv .venv
+
 ```
 
-git clone https://github.com/yourusername/Chonky.git
-cd Chonky
-cd venv/Scripts
-./activate.bat
-cd ../../
-pip install -r requirements.txt
+## ▶️ Activate the Environment
 
+### Windows PowerShell
+
+```bash
+
+    .\.venv\Scripts\Activate.ps1
+    
+```
+### Windows Command Prompt
+
+```bash
+
+    .\.venv\Scripts\activate.bat
+    
+```
+### macOS / Linux
+
+```bash
+    
+    source .venv/bin/activate
+
+```
+
+## 📦 Install Requirements
+
+```bash    
+
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+    
+```
+
+The current dependency stack includes Streamlit, OpenAI, Google GenAI, Groq,
+llama-cpp-python, sqlite-vec, LangChain, sentence-transformers, NLTK, PyMuPDF, lxml,
+scikit-learn, and related NLP / vector tooling.
+
+## 🔑 Configure API Keys
+
+Set whichever hosted providers you plan to use.
+
+```bash
+    
+    OPENAI_API_KEY=your_openai_key
+    GOOGLE_API_KEY=your_google_key
+    GROQ_API_KEY=your_groq_key
+    
+```
+
+### Windows PowerShell example
+
+```bash    
+
+    $env:OPENAI_API_KEY="your_openai_key"
+    $env:GOOGLE_API_KEY="your_google_key"
+    $env:GROQ_API_KEY="your_groq_key"
+    
+```
+
+### macOS / Linux example
+
+```bash    
+
+    export OPENAI_API_KEY="your_openai_key"
+    export GOOGLE_API_KEY="your_google_key"
+    export GROQ_API_KEY="your_groq_key"
+
+```
+
+## 🚀 Run Chonky
+
+```bash    
+
+    streamlit run app.py
+    
 ```
 
 
