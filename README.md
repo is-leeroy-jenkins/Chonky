@@ -336,7 +336,7 @@ Each tab is responsible for a **single stage** in the pipeline and only consumes
 ### End-to-End Processing Flow
 
 ```
-    ┌────────────┐
+┌────────────┐
 │  Loading   │
 │  (Sources) │
 └─────┬──────┘
@@ -349,26 +349,26 @@ Each tab is responsible for a **single stage** in the pipeline and only consumes
       │ processed_text
       ▼
 ┌────────────────┐
-│ Data Tokenization │
-│ (Sentences / Tokens)
+│ Tokenization   │
+│ (Sent / Tokens)|
 └─────┬──────────┘
       │ token diagnostics
       ▼
 ┌────────────────┐
-│ Tensor Embedding │
-│ (Vectorization)  │
+│ Embedding      │
+│ (Vectorization)│
 └─────┬──────────┘
       │ embeddings
       ▼
 ┌────────────────┐
-│ Vector Database │
-│ (sqlite-vec)    │
+│ Vector Database│
+│ (sqlite-vec)   │
 └─────┬──────────┘
       │ similarity search
       ▼
 ┌────────────────┐
-│ RAG / Retrieval │
-│ (Downstream)    │
+│ RAG / Retrieval│
+│ (Downstream)   │
 └────────────────┘
 
 ```
