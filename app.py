@@ -706,7 +706,7 @@ with tabs[ 0 ]:
 				xml_file = st.file_uploader( label='Select XML file', type=[ 'xml' ],
 					accept_multiple_files=False, key='xml_file_uploader' )
 				
-				st.markdown( '##### Semantic XML Loading (Unstructured)' )
+				st.text( 'Semantic XML Loading (Unstructured)' )
 				
 				col1, col2 = st.columns( 2 )
 				
@@ -769,7 +769,7 @@ with tabs[ 0 ]:
 				# Structured XML Tree Loading
 				# ------------------------------------------------------------------
 				st.divider( )
-				st.markdown( '##### Structured XML Tree Loading (XPath)' )
+				st.text( 'Structured XML Tree Loading (XPath)' )
 				
 				if st.button( 'Load XML Tree', use_container_width=True ):
 					if xml_file is None:
