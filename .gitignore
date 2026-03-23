@@ -56,4 +56,5 @@ Mkfile.old
 dkms.conf
 
 # Local LLMs
+models/
 *.gguf
