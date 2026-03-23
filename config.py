@@ -202,3 +202,42 @@ CHUNKABLE_LOADERS = {
 		'JsonLoader': [ 'chars' ],
 		'PowerPointLoader': [ 'chars' ],
 }
+
+# ------------- API DEFINITIONS ------------------
+
+ARXIV = r'''arXiv is a free distribution service and an open-access archive for nearly 2.4 million
+		scholarly articles in the fields of physics, mathematics, computer science, quantitative
+		biology, quantitative finance, statistics, electrical engineering and systems science, and
+		economics. Materials on this site are not peer-reviewed by arXiv.
+		
+		https://docs.langchain.com/oss/python/integrations/retrievers/arxiv
+'''
+
+GOOGLE_DRIVE = r'''Google Drive is a file storage and synchronization service developed by Google
+		
+		https://docs.langchain.com/oss/python/integrations/retrievers/google_drive
+'''
+
+WIKIPEDIA = r'''A multilingual free online encyclopedia written and maintained by a community of
+		volunteers, known as Wikipedians, through open collaboration and using a wiki-based editing
+		system called MediaWiki. Wikipedia is the largest and most-read reference work in history.
+		
+		https://docs.langchain.com/oss/python/integrations/retrievers/wikipedia
+'''
+
+PUBMED = r'''The National Center for Biotechnology Information, National Library of Medicine
+		comprises more than 35 million citations for biomedical literature from MEDLINE,
+		life science journals, and online books. Citations may include links to full text content
+		from PubMed Central and publisher web sites.
+		
+		Key Features and Components:
+		MEDLINE: The largest component, containing curated journal citations indexed with
+		MeSH (Medical Subject Headings). PubMed Central (PMC): A  full-text archive of biomedical
+		and life sciences journal literature, including peer-reviewed articles and preprints.
+		Bookshelf: An archive of books, reports, and documents related to health and life sciences.
+		Accessibility: PubMed does not host full text directly for all items but provides
+		links to full-text articles through PMC or publisher websites
+		
+		https://docs.langchain.com/oss/python/integrations/retrievers/pubmed
+'''
+
