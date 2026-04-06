@@ -16,6 +16,7 @@ groq>=0.9
 google-genai>=1.0
 tiktoken>=0.7
 llama-cpp-python>=0.2
+torchvision==0.26.0
 
 langchain>=0.3
 langchain-core>=0.3
