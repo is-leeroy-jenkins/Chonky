@@ -130,6 +130,10 @@ for corpus in cfg.REQUIRED_CORPORA:
 	except LookupError:
 		nltk.download( corpus )
 
+# ======================================================================================
+# UTILITIES
+# ======================================================================================
+
 def style_subheaders( ) -> None:
 	"""
 	
@@ -298,6 +302,55 @@ def chunk_tokens( tokens: list[ str ], size: int, overlap: int ) -> List[ str ]:
 		i += step
 	
 	return out
+
+def rebuild_token_text( tokens: List[ str ] ) -> str:
+	"""
+
+		Purpose:
+		--------
+		Rebuilds display text from token lists without adding spaces before sentence
+		delimiters.
+
+		Parameters:
+		-----------
+		tokens : List[ str ]
+			Token values produced by NLTK tokenization, stemming, or lemmatization.
+
+		Returns:
+		--------
+		str
+			Reconstructed text with punctuation spacing normalized.
+
+	"""
+	if not isinstance( tokens, list ) or not tokens:
+		return ''
+	
+	delimiters = { '.', '?', '!', ';', ':', ',', ')' }
+	openers = { '(', '[', '{' }
+	parts: List[ str ] = [ ]
+	
+	for token in tokens:
+		if not isinstance( token, str ):
+			continue
+		
+		value = token.strip( )
+		if not value:
+			continue
+		
+		if not parts:
+			parts.append( value )
+		elif value in delimiters:
+			parts[ -1 ] = f'{parts[ -1 ]}{value}'
+		elif parts[ -1 ] in openers:
+			parts.append( value )
+		else:
+			parts.append( f' {value}' )
+	
+	text = ''.join( parts )
+	text = re.sub( r'\s+', ' ', text ).strip( )
+	text = re.sub( r'\s+([.!?;:,)])', r'\1', text )
+	text = re.sub( r'([.!?;:])(?=\w)', r'\1 ', text )
+	return text
 
 # ======================================================================================
 # Page Configuration
@@ -3165,34 +3218,34 @@ with tabs[ 1 ]:
 			# ==============================================================
 			with st.expander( label='Text Processing', icon='🧠', expanded=True ):
 				remove_html = st.checkbox( 'Remove HTML',
-					help='Removes Hypertext Markup Tags, eg. <, \\>, etc' )
+					help='Removes Hypertext Markup Tags, eg. <, \\>, etc', value=False )
 				remove_markdown = st.checkbox( 'Remove Markdown',
-					help=r'Removes symobls used in .md files #, ##, ###, -, etc' )
+					help=r'Removes symobls used in .md files #, ##, ###, -, etc', value=False )
 				remove_symbols = st.checkbox( 'Remove Symbols',
-					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~' )
+					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=True )
 				remove_numbers = st.checkbox( 'Remove Numbers',
-					help='Removes numeric digits 0 thour 9' )
+					help='Removes numeric digits 0 thour 9', value=True )
 				remove_xml = st.checkbox( 'Remove XML',
-					help=r'Removes xml tags ( ex. <xml> & <\xml> )' )
+					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
 					help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence '
-					     r'delimiters' )
+					     r'delimiters', value=True )
 				remove_images = st.checkbox( 'Remove Images',
 					help=r'Remove image from text, including Markdown, HTML <img> tags, '
-					     r'and  image URLs' )
+					     r'and  image URLs', value=True )
 				remove_stopwords = st.checkbox( 'Remove Stopwords',
-					help=r'Removes common words (e.g., "the", "is", "and", etc.)' )
+					help=r'Removes common words (e.g., "the", "is", "and", etc.)', value=True )
 				remove_numerals = st.checkbox( 'Remove Numerals',
-					help='Removes roman numbers I, II, IV, XI, etc' )
+					help='Removes roman numbers I, II, IV, XI, etc', value=True )
 				remove_encodings = st.checkbox( 'Remove Encoding',
-					help=r'Removes encoding artifacts and over-encoded byte strings' )
-				normalize_text = st.checkbox( 'Normalize (lowercase)' )
+					help=r'Removes encoding artifacts and over-encoded byte strings', value=True )
+				normalize_text = st.checkbox( 'Normalize (lowercase)', value=True )
 				remove_fragments = st.checkbox( 'Remove Fragments',
-					help='Removes words less than 3 characters in length' )
+					help='Removes words less than 3 characters in length', value=True )
 				remove_errors = st.checkbox( 'Remove Errors',
-					help='Removes misspelled words' )
+					help='Removes misspelled words', value=True )
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
-					help='Removes extra lines' )
+					help='Removes extra lines', value=True )
 			
 			# ==============================================================
 			# NLTK-Specific Processing (NltkParser)
@@ -3205,7 +3258,7 @@ with tabs[ 1 ]:
 					help='Tokenizes cleaned text into individual word tokens' )
 				
 				nltk_sentence_tokenize = st.checkbox( 'Sentence Tokenize',
-					value=st.session_state.get( 'nltk_sentence_tokenize', False ),
+					value=st.session_state.get( 'nltk_sentence_tokenize', True ),
 					key='nltk_sentence_tokenize',
 					help='Splits cleaned text into sentence units' )
 				
@@ -3226,7 +3279,7 @@ with tabs[ 1 ]:
 				
 				nltk_named_entities = st.checkbox( 'Named Entity Recognition',
 					value=st.session_state.get( 'nltk_named_entities', False ),
-					key='nltk_named_entities',
+					key='cb_nltk_named_entities',
 					help='Extracts named entities such as persons, organizations, and places' )
 			
 			# ==============================================================
@@ -3276,14 +3329,7 @@ with tabs[ 1 ]:
 				key='processing_reset_button' )
 			clear_processing = col_clear.button( 'Clear', disabled=not has_text,
 				key='processing_clear_button' )
-			can_save_processed = (isinstance( st.session_state.get( 'processed_text' ), str )
-			                      and st.session_state.get( 'processed_text' ).strip( ))
-			
-			if can_save_processed:
-				col_save.download_button( 'Save', data=st.session_state.processed_text,
-					file_name='processed_text.txt', mime='text/plain', key='processed_text_save' )
-			else:
-				col_save.button( 'Save', key='processed_text_save_disabled', disabled=True )
+			save_processed_slot = col_save.empty( )
 			
 			# ==============================================================
 			# Buttons Events
@@ -3381,7 +3427,34 @@ with tabs[ 1 ]:
 					processed_text = tp.collapse_whitespace( processed_text )
 				
 				# ----------------------------------------------------------
-				# 8 — Token Processing
+				# 8 — Format-specific processing
+				# ----------------------------------------------------------
+				parser = st.session_state.get( 'parser' )
+				
+				if active == 'WordLoader':
+					if extract_tables and hasattr( parser, 'extract_tables' ):
+						parser = WordParser( )
+						processed_text = parser.extract_tables( processed_text )
+					
+					if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
+						parser = WordParser( )
+						processed_text = parser.extract_paragraphs( processed_text )
+				
+				if active == 'PdfLoader':
+					if remove_headers and hasattr( parser, 'remove_headers' ):
+						parser = PdfParser( )
+						processed_text = parser.remove_headers( processed_text )
+					
+					if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
+						parser = PdfParser( )
+						processed_text = parser.join_hyphenated( processed_text )
+				
+				if active == 'HtmlLoader':
+					if strip_scripts:
+						processed_text = tp.remove_html( processed_text )
+				
+				# ----------------------------------------------------------
+				# 9 — Token Processing
 				# ----------------------------------------------------------
 				display_text = processed_text
 				
@@ -3408,45 +3481,37 @@ with tabs[ 1 ]:
 				st.session_state.nltk_stemmed_tokens = [ ]
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
+				st.session_state.nltk_named_entities = [ ]
 				
 				if nltk_word_tokenize:
 					st.session_state.nltk_word_tokens = nlp.word_tokenizer( processed_text ) or [ ]
-					display_text = ' '.join(
-						t for t in st.session_state.nltk_word_tokens
-						if isinstance( t, str ) and t.strip( ) )
-					
+					display_text = rebuild_token_text( st.session_state.nltk_word_tokens )
 				
 				if nltk_sentence_tokenize:
 					st.session_state.nltk_sentence_tokens = (
-							nlp.sentence_tokenizer( processed_text ) or [ ] )
+							nlp.sentence_tokenizer( processed_text ) or [ ])
 					
-					display_text = '\n\n'.join(
+					display_text = '\n'.join(
 						s for s in st.session_state.nltk_sentence_tokens
 						if isinstance( s, str ) and s.strip( ) )
 				
 				if nltk_stem:
 					st.session_state.nltk_stemmed_tokens = (
-							nlp.word_stemmer( processed_text ) or [ ] )
+							nlp.word_stemmer( processed_text ) or [ ])
 					
-					processed_text = ' '.join(
-						t for t in st.session_state.nltk_stemmed_tokens
-						if isinstance( t, str ) and t.strip( ) )
-					
+					processed_text = rebuild_token_text( st.session_state.nltk_stemmed_tokens )
 					display_text = processed_text
 				
 				if nltk_lemmatize:
 					st.session_state.nltk_lemmatized_tokens = (
-							nlp.word_lemmatizer( processed_text ) or [ ]
-					)
-					processed_text = ' '.join(
-						t for t in st.session_state.nltk_lemmatized_tokens
-						if isinstance( t, str ) and t.strip( ) )
+							nlp.word_lemmatizer( processed_text ) or [ ])
 					
+					processed_text = rebuild_token_text( st.session_state.nltk_lemmatized_tokens )
 					display_text = processed_text
 				
 				if nltk_pos_tag:
 					st.session_state.nltk_pos_tags = (
-							nlp.pos_tagger( processed_text ) or [ ] )
+							nlp.pos_tagger( processed_text ) or [ ])
 					
 					display_text = '\n'.join(
 						f'{token}\t{tag}'
@@ -3455,38 +3520,12 @@ with tabs[ 1 ]:
 				
 				if nltk_named_entities:
 					st.session_state.nltk_named_entities = (
-							nlp.named_entity_recognition( processed_text ) or [ ] )
+							nlp.named_entity_recognition( processed_text ) or [ ])
 					
 					display_text = '\n'.join(
 						f'{entity}\t{label}'
 						for entity, label in st.session_state.nltk_named_entities
 						if isinstance( entity, str ) and entity.strip( ) )
-					
-				# ----------------------------------------------------------
-				# Format-specific FIRST
-				# ----------------------------------------------------------
-				parser = st.session_state.get( 'parser' )
-				
-				if active == 'WordLoader':
-					if extract_tables and hasattr( parser, 'extract_tables' ):
-						parser = WordParser( )
-						processed_text = parser.extract_tables( processed_text )
-						
-					if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
-						parser = WordParser( )
-						processed_text = parser.extract_paragraphs( processed_text )
-				
-				if active == 'PdfLoader':
-					if remove_headers and hasattr( parser, 'remove_headers' ):
-						parser = PdfParser( )
-						processed_text = parser.remove_headers( processed_text )
-					if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
-						parser = PdfParser( )
-						processed_text = parser.join_hyphenated( processed_text )
-				
-				if active == 'HtmlLoader':
-					if strip_scripts:
-						processed_text = tp.remove_html( processed_text )
 				
 				# ----------------------------------------------------------
 				# Finalize timing
@@ -3500,7 +3539,7 @@ with tabs[ 1 ]:
 				st.session_state.processed_text = (
 						processed_text if isinstance( processed_text, str ) else ''
 				)
-
+				
 				st.session_state.displayed_text = (
 						display_text if isinstance( display_text, str )
 						else st.session_state.processed_text
@@ -3509,6 +3548,21 @@ with tabs[ 1 ]:
 				st.session_state.processed_text_display = st.session_state.displayed_text
 				
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
+				
+				# ==============================================================
+				# Save Processed Text
+				# ==============================================================
+				can_save_processed = ( isinstance( st.session_state.get( 'processed_text' ), str )
+						and bool( st.session_state.get( 'processed_text' ).strip( ) ) )
+				
+				if can_save_processed:
+					save_processed_slot.download_button( 'Save',
+						data=st.session_state.get( 'processed_text' ),
+						file_name='processed_text.txt', mime='text/plain',
+						key='processed_text_save' )
+				else:
+					save_processed_slot.button( 'Save', key='processed_text_save_disabled',
+						disabled=True )
 			
 		# ------------------------------------------------------------------
 		# RIGHT COLUMN — Text Views
@@ -3519,13 +3573,9 @@ with tabs[ 1 ]:
 			raw_text_current = st.session_state.get( 'raw_text' )
 			processed_text = st.session_state.get( 'processed_text' )
 			
-			st.text_area(
-				label='Raw Text',
+			st.text_area( label='Raw Text',
 				value=raw_text_view if isinstance( raw_text_view, str ) else '',
-				height=200,
-				disabled=True,
-				key='raw_text_view_display'
-			)
+				height=200, disabled=True, key='raw_text_view_display' )
 			
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
 				if (

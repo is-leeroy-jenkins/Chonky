@@ -439,40 +439,46 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			raise exception
-			
+		
 	def remove_punctuation( self, text: str ) -> str:
 		"""
-		
+
 			Purpose:
 			--------
-			Removes all punctuation characters from the input text using NLTK's tokenizer.
-		
-			This function tokenizes the input into words and filters out any tokens that
-			are composed entirely of punctuation characters.
-		
-			Parameters
+			Removes punctuation characters from text while preserving sentence
+			delimiters used by sentence tokenization.
+
+			Parameters:
 			----------
 			text : str
-				The raw input text from which to remove punctuation.
-		
-			Returns
+				The raw input text from which punctuation should be removed.
+
+			Returns:
 			-------
 			str
-				A cleaned string with all punctuation removed and original word spacing preserved.
-		
-			Example
-			-------
-			remove_punctuation("Hello, world! How's it going?")
-			'Hello world Hows it going'
-			
+				Cleaned text with non-delimiter punctuation removed and sentence
+				delimiters preserved.
+
 		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
-			_tokens = word_tokenize( _text )
-			cleaned_tokens = [ re.sub( r'[^\w\s]', '', t ) for t in _tokens if
-			                   re.sub( r'[^\w\s]', '', t ) ]
-			return ' '.join( cleaned_tokens )
+			_sentence_delimiters = { '.', '?', '!' }
+			_chars = [ ]
+			
+			for char in _text:
+				if char in _sentence_delimiters:
+					_chars.append( char )
+				elif char in self.PUNCTUATION:
+					_chars.append( ' ' )
+				else:
+					_chars.append( char )
+			
+			_cleaned = ''.join( _chars )
+			_cleaned = re.sub( r'\s+', ' ', _cleaned ).strip( )
+			_cleaned = re.sub( r'\s+([.!?])', r'\1', _cleaned )
+			_cleaned = re.sub( r'([.!?])(?=\w)', r'\1 ', _cleaned )
+			return _cleaned
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -511,37 +517,45 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
 			raise exception
-			
-	def remove_errors( self, text: str  ) -> str:
-		"""
 		
+	def remove_errors( self, text: str ) -> str:
+		"""
+
 			Purpose:
 			----------
-			Removes tokens that are not recognized as valid English words
-			using the NLTK `words` corpus as a reference dictionary.
-	
-			This function is useful for cleaning text from OCR output, web-scraped data,
-			or noisy documents by removing pseudo-words, typos, and out-of-vocabulary items.
-	
-			Parameters
+			Removes tokens that are not recognized as valid English words while
+			preserving sentence delimiters used by sentence tokenization.
+
+			Parameters:
 			----------
 			text : str
-			The raw input text
-	
-			Returns
+				The raw input text.
+
+			Returns:
 			-------
 			str
-			The raw input text without errors
-	
-			
+				Text with out-of-vocabulary word tokens removed and sentence
+				delimiters preserved.
+
 		"""
 		try:
 			throw_if( 'text', text )
-			_vocab = words.words( 'en' )
+			_vocab = set( words.words( 'en' ) )
+			_sentence_delimiters = { '.', '?', '!', ';', ':' }
 			_text = text.lower( )
-			_tokens = _text.split(  )
-			_words = [ w for w in _tokens if w in _vocab ]
-			_data = ' '.join( _words )
+			_tokens = word_tokenize( _text )
+			_cleaned = [ ]
+			
+			for token in _tokens:
+				if token in _sentence_delimiters:
+					_cleaned.append( token )
+				elif token.isalpha( ) and token in _vocab:
+					_cleaned.append( token )
+			
+			_data = ' '.join( _cleaned )
+			_data = re.sub( r'\s+([.!?;:])', r'\1', _data )
+			_data = re.sub( r'([.!?;:])(?=\w)', r'\1 ', _data )
+			_data = re.sub( r'\s+', ' ', _data ).strip( )
 			return _data
 		except Exception as e:
 			exception = Error( e )
@@ -586,36 +600,32 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_fragments( self, text: str ) -> str:'
 			raise exception
-			
+		
 	def remove_symbols( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
 			-----------
-			Removes special characters from the path path path.
-
-			This function:
-			  - Retains only alphanumeric characters and whitespace
-			  - Removes symbols like @, #, $, %, &, etc.
-			  - Preserves letters, numbers, and spaces
+			Removes configured symbol characters from text while preserving sentence
+			delimiters used by sentence tokenization.
 
 			Parameters:
 			-----------
-			- pages : str
-				The raw path path path potentially
-				containing special characters.
+			text : str
+				The raw text potentially containing special symbol characters.
 
 			Returns:
 			--------
-			- str
-				A cleaned_lines path containing
-				only letters, numbers, and spaces.
+			str | None
+				Cleaned text with symbols removed and sentence delimiters preserved.
 
 		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
-			return ''.join( c for c in _text if c not in self.SYMBOLS )
+			_sentence_delimiters = { '.', '?', '!', ';', ':' }
+			_symbols = self.SYMBOLS.difference( _sentence_delimiters )
+			return ''.join( c for c in _text if c not in _symbols )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -740,37 +750,45 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
 			raise exception
-			
-	def remove_stopwords( self, text: str ) -> str | None:
+		
+	def remove_stopwords( self, text: str ) -> str:
 		"""
 
 			Purpose:
-			-----------
-			This function:
-			  - Removes English stopwords from the path pages path.
-			  - Tokenizes the path pages
-			  - Removes common stopwords (e.g., "the", "is", "and", etc.)
-			  - Returns the pages with only meaningful words
-
+			--------
+			Removes English stop words while preserving sentence delimiters used by
+			sentence tokenization.
 
 			Parameters:
 			-----------
-			- pages : str
-				The text string.
+			text : str
+				The raw input text from which stop words should be removed.
 
 			Returns:
 			--------
-			- str
-				A text string without stopwords.
+			str
+				Text with stop words removed and sentence delimiters preserved.
 
 		"""
 		try:
 			throw_if( 'text', text )
 			_stop_words = set( stopwords.words( 'english' ) )
+			_sentence_delimiters = { '.', '?', '!', ';', ':' }
 			_text = text.lower( )
 			_tokens = word_tokenize( _text )
-			_filtered = [ token for token in _tokens if token.isalnum( ) and token not in _stop_words ]
-			return ' '.join( _filtered )
+			_filtered = [ ]
+			
+			for token in _tokens:
+				if token in _sentence_delimiters:
+					_filtered.append( token )
+				elif token.isalnum( ) and token not in _stop_words:
+					_filtered.append( token )
+			
+			_cleaned = ' '.join( _filtered )
+			_cleaned = re.sub( r'\s+([.!?;:])', r'\1', _cleaned )
+			_cleaned = re.sub( r'([.!?;:])(?=\w)', r'\1 ', _cleaned )
+			_cleaned = re.sub( r'\s+', ' ', _cleaned ).strip( )
+			return _cleaned
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
