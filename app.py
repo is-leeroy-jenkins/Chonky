@@ -3263,19 +3263,16 @@ with tabs[ 1 ]:
 					help='Splits cleaned text into sentence units' )
 				
 				nltk_stem = st.checkbox( 'Word Stemmer',
-					value=st.session_state.get( 'nltk_stem', False ),
-					key='nltk_stem',
+					value=st.session_state.get( 'nltk_stem', False ), key='nltk_stem',
 					help='Applies stemming to cleaned text' )
 				
 				nltk_lemmatize = st.checkbox( 'Word Lemmatizer',
 					value=st.session_state.get( 'nltk_lemmatize', False ),
-					key='nltk_lemmatize',
-					help='Applies NLTK lemmatization to cleaned text' )
+					key='nltk_lemmatize', help='Applies NLTK lemmatization to cleaned text' )
 				
 				nltk_pos_tag = st.checkbox( 'Part-of-Speech Tagging',
 					value=st.session_state.get( 'nltk_pos_tag', False ),
-					key='nltk_pos_tag',
-					help='Annotates tokens with grammatical tags' )
+					key='nltk_pos_tag', help='Annotates tokens with grammatical tags' )
 				
 				nltk_named_entities = st.checkbox( 'Named Entity Recognition',
 					value=st.session_state.get( 'nltk_named_entities', False ),
