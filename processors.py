@@ -819,15 +819,15 @@ class TextParser( Processor ):
 		try:
 			throw_if( 'text', text )
 			self.raw_input = text
-			_cleaned = html.unescape( self.raw_input )
+			cleaned = html.unescape( self.raw_input )
 			
-			if re.search( r'\\u[0-9a-fA-F]{4}|\\x[0-9a-fA-F]{2}', _cleaned ):
+			if re.search( r'\\u[0-9a-fA-F]{4}|\\x[0-9a-fA-F]{2}', cleaned ):
 				try:
-					_cleaned = bytes( _cleaned, 'utf-8' ).decode( 'unicode_escape' )
+					cleaned = bytes( cleaned, 'utf-8' ).decode( 'unicode_escape' )
 				except UnicodeDecodeError:
 					pass
 			
-			_replacements = {
+			replacements = {
 					'â': '’',
 					'â': '‘',
 					'â': '“',
@@ -845,16 +845,16 @@ class TextParser( Processor ):
 					'Â': '',
 			}
 			
-			for bad, good in _replacements.items( ):
-				_cleaned = _cleaned.replace( bad, good )
+			for bad, good in replacements.items( ):
+				cleaned = cleaned.replace( bad, good )
 			
-			_cleaned = unicodedata.normalize( 'NFKC', _cleaned )
-			_cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', _cleaned )
-			_cleaned = re.sub( r'[ \t]{2,}', ' ', _cleaned )
-			_cleaned = re.sub( r' +\n', '\n', _cleaned )
-			_cleaned = re.sub( r'\n +', '\n', _cleaned )
-			_cleaned = re.sub( r'\n{3,}', '\n\n', _cleaned )
-			return _cleaned.strip( )
+			cleaned = unicodedata.normalize( 'NFKC', cleaned )
+			cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', cleaned )
+			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
+			cleaned = re.sub( r' +\n', '\n', cleaned )
+			cleaned = re.sub( r'\n +', '\n', cleaned )
+			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -2354,18 +2354,57 @@ class PdfParser( Processor ):
 
 		Purpose:
 		--------
-		A utility class for extracting clean pages from PDF files into a list of strings.
-		Handles nuances such as layout artifacts, page separation, optional filtering,
-		and includes df detection capabilities.
+		Provides general-purpose PDF extraction and cleanup functionality using
+		PyMuPDF geometry, repeated marginalia detection, generic artifact cleanup,
+		spacing repair, and conservative line-break hyphenation repair.
 
+		Attributes:
+		-----------
+		strip_headers : Optional[ bool ]
+			Indicates whether simple extraction-time header filtering is requested.
+		minimum_length : Optional[ int ]
+			Minimum extracted line length preserved by legacy line extraction methods.
+		extract_tables : Optional[ bool ]
+			Indicates whether legacy table extraction should be attempted.
+		pages : Optional[ List ]
+			Page-level extraction records.
+		lines : Optional[ List ]
+			Line-level extraction records.
+		blocks : Optional[ List ]
+			Block-level extraction records.
+		clean_lines : Optional[ List ]
+			Cleaned line records.
+		extracted_lines : Optional[ List ]
+			Extracted PDF lines.
+		extracted_tables : Optional[ List ]
+			Extracted PDF tables.
+		extracted_pages : Optional[ List ]
+			Extracted PDF pages.
+		file_path : Optional[ str ]
+			Active PDF path.
+		page : Optional[ str ]
+			Current page content.
 
 		Methods:
 		--------
-		extract_lines( self, path, max: int=None) -> List[ str ]
-		extract_text( self, path, max: int=None) -> str
-		export_csv( self, tables: List[ pd.DataFrame ], filename: str=None ) -> None
-		export_text( self, words: List[ str ], path: str=None ) -> None
-		export_excel( self, tables: List[ pd.DataFrame ], path: str=None ) -> None
+		geometric_extract( self, path: str, count: Optional[ int ]=None,
+			header_ratio: float=0.08, footer_ratio: float=0.08,
+			preserve_page_breaks: bool=False ) -> str | None
+		extract_pages( self, path: str, count: Optional[ int ]=None,
+			header_ratio: float=0.08, footer_ratio: float=0.08 ) -> List[ Dict[ str, Any ] ] | None
+		remove_repeats( self, pages: List[ Dict[ str, Any ] ],
+			minimum_repeats: int=3 ) -> List[ Dict[ str, Any ] ] | None
+		clean_artifacts( self, text: str ) -> str
+		repair_spacing( self, text: str ) -> str
+		rejoin_hyphenation( self, text: str ) -> str
+		rebuild_pages( self, pages: List[ Dict[ str, Any ] ],
+			preserve_page_breaks: bool=False ) -> str
+		extract_lines( self, path: str, count: Optional[ int ]=None ) -> List[ str ] | None
+		extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None
+		extract_tables( self, path: str, count: Optional[ int ]=None ) -> List[ pd.DataFrame ] | None
+		export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None
+		export_text( self, lines: List[ str ], path: str ) -> None
+		export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None
 
 	"""
 	strip_headers: Optional[ bool ]
@@ -2375,19 +2414,26 @@ class PdfParser( Processor ):
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
 	
-	def __init__( self, headers: bool=False, size: int=10, tables: bool=True ) -> None:
+	def __init__( self, headers: bool = False, size: int = 10, tables: bool = True ) -> None:
 		"""
 
 			Purpose:
-			-----------
-			Initialize the PDF pages extractor with configurable settings.
+			--------
+			Initializes the PDF parser with extraction and filtering options.
 
 			Parameters:
 			-----------
-			- headers (bool): If True, attempts to strip recurring headers/footers.
-			- min (int): Minimum num of characters for a line to be included.
-			- tables (bool): If True, extract pages from detected tables using block
-			grouping.
+			headers : bool
+				Indicates whether simple header filtering is requested by legacy
+				line-extraction methods.
+			size : int
+				Minimum line length preserved by legacy line-extraction methods.
+			tables : bool
+				Indicates whether legacy table extraction should be attempted.
+
+			Returns:
+			--------
+			None
 
 		"""
 		super( ).__init__( )
@@ -2396,6 +2442,7 @@ class PdfParser( Processor ):
 		self.extract_tables = tables
 		self.pages = [ ]
 		self.lines = [ ]
+		self.blocks = [ ]
 		self.clean_lines = [ ]
 		self.extracted_lines = [ ]
 		self.extracted_tables = [ ]
@@ -2405,274 +2452,330 @@ class PdfParser( Processor ):
 		self.page = ''
 	
 	def __dir__( self ) -> List[ str ] | None:
-		'''
+		"""
 
 			Purpose:
-			---------
+			--------
 			Provides a list of strings representing class members.
 
-
 			Parameters:
 			-----------
-			- self
+			None
 
 			Returns:
 			--------
-			- List[ str ] | None
+			List[ str ] | None
+				Class attributes and methods exposed by the parser.
 
-		'''
-		return [ 'strip_headers',
-		         'minimum_length',
-		         'extract_tables',
-		         'file_path',
-		         'page',
-		         'pages',
-		         'words',
-		         'clean_lines',
-		         'extracted_lines',
-		         'extracted_tables',
-		         'extracted_pages',
-		         'extract_lines',
-		         'extract_text',
-		         'export_csv',
-		         'export_text',
-		         'export_excel' ]
+		"""
+		return [
+				'strip_headers',
+				'minimum_length',
+				'extract_tables',
+				'file_path',
+				'page',
+				'pages',
+				'lines',
+				'blocks',
+				'clean_lines',
+				'extracted_lines',
+				'extracted_tables',
+				'extracted_pages',
+				'geometric_extract',
+				'extract_pages',
+				'remove_repeats',
+				'clean_artifacts',
+				'repair_spacing',
+				'rejoin_hyphenation',
+				'rebuild_pages',
+				'extract_lines',
+				'extract_text',
+				'export_csv',
+				'export_text',
+				'export_excel'
+		]
 	
-	def extract_lines( self, path: str, count: Optional[ int ]=None ) -> List[ str ] | None:
+	def geometric_extract( self, path: str, count: Optional[ int ] = None,
+			header_ratio: float = 0.08, footer_ratio: float = 0.08,
+			preserve_page_breaks: bool = False ) -> str | None:
 		"""
 
 			Purpose:
 			--------
-			Extract words of pages from a PDF,
-			optionally limiting to the first N pages.
+			Extracts PDF text using page geometry, removes repeated marginal text,
+			applies generic artifact cleanup, repairs spacing, and rejoins line-break
+			hyphenation.
 
 			Parameters:
-			----------
-			- path (str): Path to the PDF file
-			- count (Optional[int]): Max num of pages to process (None for all pages)
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+			header_ratio : float
+				Top-of-page height ratio treated as the candidate header band.
+			footer_ratio : float
+				Bottom-of-page height ratio treated as the candidate footer band.
+			preserve_page_breaks : bool
+				If true, inserts explicit page-break markers between extracted pages.
 
 			Returns:
 			--------
-			- List[str]: Cleaned list of non-empty words
+			str | None
+				Canonical extracted PDF text.
+
+		"""
+		try:
+			throw_if( 'path', path )
+			
+			if header_ratio < 0.0 or header_ratio > 0.30:
+				raise ValueError( 'Argument "header_ratio" must be between 0.00 and 0.30.' )
+			
+			if footer_ratio < 0.0 or footer_ratio > 0.30:
+				raise ValueError( 'Argument "footer_ratio" must be between 0.00 and 0.30.' )
+			
+			pages = self.extract_pages(
+				path=path,
+				count=count,
+				header_ratio=header_ratio,
+				footer_ratio=footer_ratio
+			) or [ ]
+			
+			pages = self.remove_repeats( pages ) or [ ]
+			text = self.rebuild_pages(
+				pages=pages,
+				preserve_page_breaks=preserve_page_breaks
+			)
+			
+			text = self.clean_artifacts( text )
+			text = self.repair_spacing( text )
+			text = self.rejoin_hyphenation( text )
+			return text.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'geometric_extract( self, path: str ) -> str'
+			raise exception
+	
+	def extract_pages( self, path: str, count: Optional[ int ] = None,
+			header_ratio: float = 0.08, footer_ratio: float = 0.08 ) -> List[ Dict[ str, Any ] ] | None:
+		"""
+
+			Purpose:
+			--------
+			Extracts page-level text blocks with PyMuPDF geometry and classifies each
+			block as header-band, footer-band, or body-band without deleting content.
+
+			Parameters:
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+			header_ratio : float
+				Top-of-page height ratio treated as the candidate header band.
+			footer_ratio : float
+				Bottom-of-page height ratio treated as the candidate footer band.
+
+			Returns:
+			--------
+			List[ Dict[ str, Any ] ] | None
+				Page dictionaries containing ordered block dictionaries.
 
 		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = path
+			self.pages = [ ]
+			
 			with fitz.open( self.file_path ) as doc:
-				for i, page in enumerate( doc ):
-					if count is not None and i >= count:
+				for page_index, page in enumerate( doc ):
+					if count is not None and page_index >= count:
 						break
-					if self.extract_tables:
-						page_lines = self._extract_tables( page )
-					else:
-						_text = page.get_text( 'text' )
-						page_lines = _text.splitlines( )
-					filtered = self._filter_lines( page_lines )
-					self.extracted_lines.extend( filtered )
-			return self.extracted_lines
+					
+					page_height = float( page.rect.height )
+					header_limit = page_height * header_ratio
+					footer_limit = page_height * (1.0 - footer_ratio)
+					raw_blocks = page.get_text( 'blocks' ) or [ ]
+					page_blocks = [ ]
+					
+					for block_index, block in enumerate( raw_blocks ):
+						if len( block ) < 5:
+							continue
+						
+						x0 = float( block[ 0 ] )
+						y0 = float( block[ 1 ] )
+						x1 = float( block[ 2 ] )
+						y1 = float( block[ 3 ] )
+						text = block[ 4 ]
+						block_type = block[ 6 ] if len( block ) > 6 else 0
+						
+						if block_type != 0:
+							continue
+						
+						if not isinstance( text, str ) or not text.strip( ):
+							continue
+						
+						midpoint = (y0 + y1) / 2.0
+						zone = 'body'
+						
+						if midpoint <= header_limit:
+							zone = 'header'
+						
+						if midpoint >= footer_limit:
+							zone = 'footer'
+						
+						page_blocks.append(
+							{
+									'page': page_index + 1,
+									'index': block_index,
+									'x0': x0,
+									'y0': y0,
+									'x1': x1,
+									'y1': y1,
+									'midpoint': midpoint,
+									'zone': zone,
+									'text': text,
+									'drop': False,
+							}
+						)
+					
+					page_blocks.sort( key=lambda item: (item[ 'y0' ], item[ 'x0' ]) )
+					
+					self.pages.append(
+						{
+								'page': page_index + 1,
+								'width': float( page.rect.width ),
+								'height': page_height,
+								'blocks': page_blocks,
+						}
+					)
+			
+			return self.pages
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = 'extract_lines( self, **kwargs ) ->  List[ str ]'
+			exception.cause = 'PdfParser'
+			exception.method = 'extract_pages( self, path: str ) -> List[ Dict[ str, Any ] ]'
 			raise exception
-			
 	
-	def _extract_tables( self, page: Page ) -> List[ str ] | None:
+	def remove_repeats( self, pages: List[ Dict[ str, Any ] ],
+			minimum_repeats: int = 3 ) -> List[ Dict[ str, Any ] ] | None:
 		"""
 
 			Purpose:
 			--------
-			Attempt to extract structured blocks
-			such as tables using spatial grouping.
+			Removes repeated candidate marginalia from header/footer page bands using
+			normalized text recurrence and generic page-label detection.
 
 			Parameters:
-			----------
-			- page: PyMuPDF page object
-
-			Returns:
-			--------
-			- List[str]: Grouped blocks including potential tables
-
-		"""
-		try:
-			throw_if( 'page', page )
-			tf = page.find_tables( )
-			lines = [ ]
-			for t in getattr( tf, 'tables', [ ] ):
-				df = pd.DataFrame( t.extract( ) )  # or t.to_pandas()
-				for row in df.values.tolist( ):
-					lines.append( ' '.join( map( str, row ) ) )
-			return lines
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = '_extract_tables( self, page ) -> List[ str ]:'
-			raise exception
-			
-	
-	def _filter_lines( self, lines: List[ str ] ) -> List[ str ] | None:
-		"""
-
-			Purpose:
 			-----------
-			Filter and clean words from a page of pages.
-
-			Parameters:
-			- words (List[str]): Raw words of pages
+			pages : List[ Dict[ str, Any ] ]
+				Page dictionaries produced by extract_pages.
+			minimum_repeats : int
+				Minimum number of occurrences required before a marginal block is
+				treated as repeated marginalia.
 
 			Returns:
 			--------
-			- List[str]: Filtered, non-trivial words
+			List[ Dict[ str, Any ] ] | None
+				Page dictionaries with repeated marginal blocks marked for removal.
 
 		"""
 		try:
-			if lines is None:
-				raise Exception( 'The argument "lines" is None' )
-			else:
-				self.lines = lines
-				clean = [ ]
-				for line in lines:
-					line = line.strip( )
-					if len( line ) < self.minimum_length:
+			throw_if( 'pages', pages )
+			
+			def normalize_candidate( value: str ) -> str:
+				candidate = value.strip( ).lower( )
+				candidate = re.sub( r'\s+', ' ', candidate )
+				candidate = re.sub( r'\b\d{1,5}\b', '#', candidate )
+				candidate = re.sub( r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '#date#', candidate )
+				candidate = re.sub( r'\s+', ' ', candidate ).strip( )
+				return candidate
+			
+			def is_page_label( value: str ) -> bool:
+				candidate = value.strip( )
+				
+				if re.fullmatch( r'\d{1,5}', candidate ):
+					return True
+				
+				if re.fullmatch( r'[ivxlcdm]{1,10}', candidate, flags=re.IGNORECASE ):
+					return True
+				
+				if re.fullmatch( r'(?:page|p\.)\s+\d+(?:\s+of\s+\d+)?',
+						candidate, flags=re.IGNORECASE ):
+					return True
+				
+				return False
+			
+			counts: Dict[ str, int ] = { }
+			
+			for page in pages:
+				for block in page.get( 'blocks', [ ] ):
+					if block.get( 'zone' ) not in { 'header', 'footer' }:
 						continue
-					if self.strip_headers and self._has_header( line ):
+					
+					text = block.get( 'text' )
+					
+					if not isinstance( text, str ) or not text.strip( ):
 						continue
-					clean.append( line )
-				return clean
+					
+					key = normalize_candidate( text )
+					
+					if key:
+						counts[ key ] = counts.get( key, 0 ) + 1
+			
+			repeated = {
+					key for key, value in counts.items( )
+					if value >= max( 2, int( minimum_repeats ) )
+			}
+			
+			for page in pages:
+				for block in page.get( 'blocks', [ ] ):
+					if block.get( 'zone' ) not in { 'header', 'footer' }:
+						continue
+					
+					text = block.get( 'text' )
+					
+					if not isinstance( text, str ):
+						continue
+					
+					key = normalize_candidate( text )
+					
+					if key in repeated or is_page_label( text ):
+						block[ 'drop' ] = True
+			
+			return pages
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = '_filter_lines( self, words: List[ str ] ) -> List[ str ]'
+			exception.cause = 'PdfParser'
+			exception.method = 'remove_repeats( self, pages: List[ Dict[ str, Any ] ] )'
 			raise exception
-			
 	
-	def _has_header( self, line: str ) -> bool | None:
+	def clean_artifacts( self, text: str ) -> str:
 		"""
 
 			Purpose:
 			--------
-			Heuristic to detect common headers/footers (basic implementation).
-
-			Parameters:
-			- line (str): A line of pages
-
-			Returns:
-			--------
-			- bool: True if line is likely a header or footer
-
-		"""
-		try:
-			throw_if( 'line', line )
-			_keywords = [ 'page', 'public law', 'u.s. government', 'united states' ]
-			return any( kw in line.lower( ) for kw in _keywords )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = '_has_repeating_header( self, line: str ) -> bool'
-			raise exception
-			
-	
-	def extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None:
-		"""
-
-			Purpose:
-			---------
-			Extract the entire pages from a PDF into one continuous path.
-
-			Parameters:
-			-----------
-			- path (str): Path to the PDF file
-			- count (Optional[int]): Maximum num of pages to process
-
-			Returns:
-			--------
-			- str: Full concatenated pages
-
-		"""
-		try:
-			throw_if( 'path', path )
-			if count is not None and count > 0:
-				self.file_path = path
-				self.lines = self.extract_lines( self.file_path, size=count )
-				return '\n'.join( self.lines )
-			elif count is None or count <= 0:
-				self.file_path = path
-				self.lines = self.extract_lines( self.file_path )
-				return '\n'.join( self.lines )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None ) -> str:'
-			raise exception
-			
-	def extract_tables( self, path: str, count: Optional[ int ]=None ) -> (
-			List[ pd.DataFrame ] | None):
-		"""
-
-			Purpose:
-			-----------
-			Extract tables from the PDF and return them as a list of DataFrames.
-
-			Parameters:
-			- path (str): Path to the PDF file
-			- max (Optional[int]): Maximum num of pages to process
-
-			Returns:
-			--------
-			- List[pd.DataFrame]: List of DataFrames representing detected tables
-
-		"""
-		try:
-			throw_if( 'path', path )
-			throw_if( 'count', count )
-			self.file_path = path
-			self.tables = [ ]
-			with fitz.open( self.file_path ) as doc:
-				for i, page in enumerate( doc ):
-					if count is not None and i >= count:
-						break
-					tf = page.find_tables( )
-					for t in getattr( tf, 'tables', [ ] ):
-						self.tables.append( pd.DataFrame( t.extract( ) ) )
-			return self.tables
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = ( 'extract_tables( self, **kwargs ) -> List[ DataFrame ]')
-			raise exception
-		
-	def remove_artifacts( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Removes generic PDF extraction artifacts, file path residues, image
-			placeholder tags, page extraction markers, leader dots, control characters,
-			and common production metadata without assuming a specific document type.
+			Removes generic PDF/parser artifacts without using document-family-specific
+			vocabulary or document-specific rules.
 
 			Parameters:
 			-----------
 			text : str
-				The extracted PDF text to clean.
+				Extracted PDF text.
 
 			Returns:
 			--------
 			str
-				Text with generic PDF artifacts removed while preserving document
-				content, citations, punctuation, and numeric references.
+				Text with generic artifacts removed.
 
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			cleaned = self.raw_input
+			cleaned = text
 			
 			cleaned = re.sub(
 				r'<parsed\s+text\s+for\s+page:\s*\d+\s*/\s*\d+>',
@@ -2689,45 +2792,89 @@ class PdfParser( Processor ):
 			)
 			
 			cleaned = re.sub(
-				r'</?gph>',
+				r'</?[a-z][a-z0-9_-]{1,20}>',
 				' ',
 				cleaned,
 				flags=re.IGNORECASE
 			)
 			
 			cleaned = re.sub(
-				r'\b[a-z]:\\[^\s<>]*(?:\.ai|\.eps|\.tif|\.tiff|\.jpg|\.jpeg|\.png|'
-				r'\.gif|\.bmp|\.svg|\.wmf|\.emf|\.pdf|\.xml|\.sgml|\.xxx)\b',
+				r'\b[a-z]:\\[^\s<>]*(?:\.[a-z0-9]{2,5})\b',
 				' ',
 				cleaned,
 				flags=re.IGNORECASE
 			)
 			
 			cleaned = re.sub(
-				r'\b(?:/[^/\s<>]+)+/(?:[^/\s<>]+\.)'
-				r'(?:ai|eps|tif|tiff|jpg|jpeg|png|gif|bmp|svg|wmf|emf|pdf|xml|sgml|xxx)\b',
+				r'\b(?:/[^/\s<>]+)+/(?:[^/\s<>]+\.[a-z0-9]{2,5})\b',
 				' ',
 				cleaned,
 				flags=re.IGNORECASE
-			)
-			
-			cleaned = re.sub(
-				r'(?im)^\s*(?:verdate|jkt|po\s+\d+|frm\s+\d+|fmt\s+\d+|sfmt\s+\d+)'
-				r'.*$',
-				' ',
-				cleaned
-			)
-			
-			cleaned = re.sub(
-				r'(?im)^\s*[a-z0-9_]+(?:\s+on\s+[a-z0-9_]+)?\s*$',
-				lambda m: ' ' if re.search( r'\bdsk|prod|tmp|sgml\b', m.group( 0 ),
-					flags=re.IGNORECASE ) else m.group( 0 ),
-				cleaned
 			)
 			
 			cleaned = re.sub(
 				r'(?im)^\s*(?:endobj|obj|xref|trailer|startxref|%%eof)\s*$',
 				' ',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'(?im)^.*\b[A-Z0-9]{8,}\b.*$',
+				lambda m: ' ' if re.search( r'[A-Z]{2,}\d|\d[A-Z]{2,}', m.group( 0 ) )
+				else m.group( 0 ),
+				cleaned
+			)
+			
+			cleaned = re.sub( r'(?<=\S)\s*\.{4,}\s*(?=\S)', ' ', cleaned )
+			cleaned = re.sub( r'(?<=\S)\s*(?:\.\s*){4,}(?=\S)', ' ', cleaned )
+			cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', cleaned )
+			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
+			cleaned = re.sub( r' +\n', '\n', cleaned )
+			cleaned = re.sub( r'\n +', '\n', cleaned )
+			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			return cleaned.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'clean_artifacts( self, text: str ) -> str'
+			raise exception
+	
+	def repair_spacing( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Repairs generic spacing defects introduced by PDF extraction without using
+			document-family-specific terms, titles, headings, or legal/regulatory labels.
+
+			Parameters:
+			-----------
+			text : str
+				Extracted PDF text.
+
+			Returns:
+			--------
+			str
+				Text with generic spacing normalized.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			cleaned = text
+			
+			def repair_bracketed( match: re.Match ) -> str:
+				value = match.group( 1 )
+				
+				if re.fullmatch( r'[A-Z\s\-\n\r]+', value ):
+					value = re.sub( r'[\s\-]+', '', value )
+					return f'[{value}]'
+				
+				return match.group( 0 )
+			
+			cleaned = re.sub(
+				r'\[([A-Z\s\-\n\r]{3,})]',
+				repair_bracketed,
 				cleaned
 			)
 			
@@ -2743,153 +2890,19 @@ class PdfParser( Processor ):
 				cleaned
 			)
 			
-			cleaned = re.sub(
-				r'(?<=\S)\s*\.{4,}\s*(?=\S)',
-				' ',
-				cleaned
-			)
-			
-			cleaned = re.sub(
-				r'(?<=\S)\s*(?:\.\s*){4,}(?=\S)',
-				' ',
-				cleaned
-			)
-			
-			cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', cleaned )
+			cleaned = re.sub( r'[ \t]+([,.;:!?])', r'\1', cleaned )
+			cleaned = re.sub( r'([!?;:])(?=\S)', r'\1 ', cleaned )
+			cleaned = re.sub( r'(?<!\b[A-Z])\.(?=[A-Z][a-z])', '. ', cleaned )
 			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
 			cleaned = re.sub( r' +\n', '\n', cleaned )
 			cleaned = re.sub( r'\n +', '\n', cleaned )
 			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
-			
 			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
-			exception.method = 'remove_artifacts( self, text: str ) -> str'
-			raise exception
-	
-	def remove_headers( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Removes repeated PDF running headers, footers, and isolated page labels
-			using document-agnostic frequency and line-shape detection.
-
-			Parameters:
-			-----------
-			text : str
-				The extracted PDF text to clean.
-
-			Returns:
-			--------
-			str
-				Text with repeated running headers and footers removed while preserving
-				unique section headings and body content.
-
-		"""
-		try:
-			throw_if( 'text', text )
-			self.raw_input = text
-			self.lines = self.raw_input.splitlines( )
-			self.clean_lines = [ ]
-			
-			def normalize_header_candidate( value: str ) -> str:
-				value = value.strip( ).lower( )
-				value = re.sub( r'\s+', ' ', value )
-				value = re.sub( r'\b\d{1,5}\b', '#', value )
-				value = re.sub( r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '#date#', value )
-				value = re.sub( r'[§¶]\s*[\w.\-()]+', '#section#', value )
-				value = re.sub( r'\b(?:page|p\.)\s*#(?:\s+of\s+#)?\b', '#page#', value )
-				value = re.sub( r'\s+', ' ', value ).strip( )
-				return value
-			
-			def is_page_label( value: str ) -> bool:
-				if re.fullmatch( r'\d{1,5}', value ):
-					return True
-				
-				if re.fullmatch( r'[ivxlcdm]{1,10}', value, flags=re.IGNORECASE ):
-					return True
-				
-				if re.fullmatch( r'(?:page|p\.)\s+\d+(?:\s+of\s+\d+)?',
-						value, flags=re.IGNORECASE ):
-					return True
-				
-				return False
-			
-			def is_header_shaped( value: str ) -> bool:
-				if len( value ) < 4 or len( value ) > 160:
-					return False
-				
-				if value.endswith( '.' ) and len( value.split( ) ) > 8:
-					return False
-				
-				alpha = sum( 1 for c in value if c.isalpha( ) )
-				upper = sum( 1 for c in value if c.isupper( ) )
-				
-				if alpha and upper / alpha > 0.65:
-					return True
-				
-				if re.search(
-						r'\b(?:edition|volume|vol\.|chapter|part|section|appendix|'
-						r'subtitle|title|draft|confidential|proprietary)\b',
-						value,
-						flags=re.IGNORECASE ):
-					return True
-				
-				if re.search( r'[§¶]\s*[\w.\-()]+', value ):
-					return True
-				
-				return False
-			
-			normalized_counts: dict[ str, int ] = { }
-			
-			for line in self.lines:
-				value = line.strip( )
-				
-				if not value:
-					continue
-				
-				key = normalize_header_candidate( value )
-				
-				if key:
-					normalized_counts[ key ] = normalized_counts.get( key, 0 ) + 1
-			
-			repeated_candidates = {
-					key for key, count in normalized_counts.items( )
-					if count >= 3 and len( key ) >= 4
-			}
-			
-			for line in self.lines:
-				value = line.strip( )
-				
-				if not value:
-					self.clean_lines.append( line )
-					continue
-				
-				if is_page_label( value ):
-					continue
-				
-				key = normalize_header_candidate( value )
-				
-				if key in repeated_candidates and is_header_shaped( value ):
-					continue
-				
-				self.clean_lines.append( line )
-			
-			cleaned = '\n'.join( self.clean_lines )
-			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
-			cleaned = re.sub( r' +\n', '\n', cleaned )
-			cleaned = re.sub( r'\n +', '\n', cleaned )
-			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
-			
-			return cleaned.strip( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PdfParser'
-			exception.method = 'remove_headers( self, text: str ) -> str'
+			exception.method = 'repair_spacing( self, text: str ) -> str'
 			raise exception
 	
 	def rejoin_hyphenation( self, text: str ) -> str:
@@ -2897,24 +2910,23 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Repairs generic PDF line-break hyphenation and discretionary hyphen
-			artifacts without removing valid compound-word hyphenation.
+			Repairs PDF line-break hyphenation and discretionary hyphen artifacts
+			without removing valid compound-word hyphenation.
 
 			Parameters:
 			-----------
 			text : str
-				The extracted PDF text to repair.
+				Extracted PDF text.
 
 			Returns:
 			--------
 			str
-				Text with broken PDF hyphenation rejoined conservatively.
+				Text with broken line-wrap hyphenation repaired conservatively.
 
 		"""
 		try:
 			throw_if( 'text', text )
-			self.raw_input = text
-			cleaned = self.raw_input
+			cleaned = text
 			
 			try:
 				vocabulary = set( words.words( 'en' ) )
@@ -2932,20 +2944,7 @@ class PdfParser( Processor ):
 				if vocabulary and combined.lower( ) in vocabulary:
 					return combined
 				
-				if len( left ) >= 4 and len( right ) >= 3 and not vocabulary:
-					return combined
-				
-				return f'{left}-{right}'
-			
-			def repair_spaced_break( match: re.Match ) -> str:
-				left = match.group( 1 )
-				right = match.group( 2 )
-				combined = f'{left}{right}'
-				
-				if '-' in right:
-					return f'{left}-{right}'
-				
-				if vocabulary and combined.lower( ) in vocabulary:
+				if not vocabulary and len( left ) >= 4 and len( right ) >= 3:
 					return combined
 				
 				return f'{left}-{right}'
@@ -2974,7 +2973,7 @@ class PdfParser( Processor ):
 			
 			cleaned = re.sub(
 				r'\b([A-Za-z]{2,})-\s+([A-Za-z][A-Za-z-]*)\b',
-				repair_spaced_break,
+				repair_break,
 				cleaned
 			)
 			
@@ -2988,7 +2987,6 @@ class PdfParser( Processor ):
 			cleaned = re.sub( r' +\n', '\n', cleaned )
 			cleaned = re.sub( r'\n +', '\n', cleaned )
 			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
-			
 			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
@@ -2996,84 +2994,289 @@ class PdfParser( Processor ):
 			exception.cause = 'PdfParser'
 			exception.method = 'rejoin_hyphenation( self, text: str ) -> str'
 			raise exception
-		
+	
+	def rebuild_pages( self, pages: List[ Dict[ str, Any ] ],
+			preserve_page_breaks: bool = False ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Rebuilds text from page/block geometry after repeated marginalia has been
+			marked for removal.
+
+			Parameters:
+			-----------
+			pages : List[ Dict[ str, Any ] ]
+				Page dictionaries produced by extract_pages and remove_repeats.
+			preserve_page_breaks : bool
+				If true, inserts explicit page-break markers between pages.
+
+			Returns:
+			--------
+			str
+				Rebuilt PDF text.
+
+		"""
+		try:
+			throw_if( 'pages', pages )
+			page_texts = [ ]
+			
+			for page in pages:
+				page_number = page.get( 'page' )
+				blocks = page.get( 'blocks', [ ] )
+				parts = [ ]
+				
+				for block in blocks:
+					if block.get( 'drop' ) is True:
+						continue
+					
+					text = block.get( 'text' )
+					
+					if not isinstance( text, str ) or not text.strip( ):
+						continue
+					
+					block_lines = [
+							line.strip( )
+							for line in text.splitlines( )
+							if isinstance( line, str ) and line.strip( )
+					]
+					
+					if block_lines:
+						parts.append( '\n'.join( block_lines ) )
+				
+				page_text = '\n\n'.join( parts )
+				page_text = re.sub( r'[ \t]{2,}', ' ', page_text )
+				page_text = re.sub( r' +\n', '\n', page_text )
+				page_text = re.sub( r'\n +', '\n', page_text )
+				page_text = re.sub( r'\n{3,}', '\n\n', page_text ).strip( )
+				
+				if not page_text:
+					continue
+				
+				if preserve_page_breaks:
+					page_texts.append( f'<<<PAGE_BREAK:{page_number}>>>\n{page_text}' )
+				else:
+					page_texts.append( page_text )
+			
+			return '\n\n'.join( page_texts ).strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'rebuild_pages( self, pages: List[ Dict[ str, Any ] ] ) -> str'
+			raise exception
+	
+	def extract_lines( self, path: str, count: Optional[ int ] = None ) -> List[ str ] | None:
+		"""
+
+			Purpose:
+			--------
+			Extracts text lines from a PDF using the geometry extraction pipeline.
+
+			Parameters:
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+
+			Returns:
+			--------
+			List[ str ] | None
+				List of extracted non-empty lines.
+
+		"""
+		try:
+			throw_if( 'path', path )
+			text = self.geometric_extract( path=path, count=count ) or ''
+			self.extracted_lines = [
+					line.strip( )
+					for line in text.splitlines( )
+					if isinstance( line, str ) and line.strip( )
+			]
+			return self.extracted_lines
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'extract_lines( self, path: str, count: Optional[ int ]=None )'
+			raise exception
+	
+	def extract_text( self, path: str, count: Optional[ int ] = None ) -> str | None:
+		"""
+
+			Purpose:
+			--------
+			Extracts full PDF text using the geometry extraction pipeline.
+
+			Parameters:
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+
+			Returns:
+			--------
+			str | None
+				Extracted PDF text.
+
+		"""
+		try:
+			throw_if( 'path', path )
+			return self.geometric_extract( path=path, count=count )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None )'
+			raise exception
+	
+	def extract_tables( self, path: str, count: Optional[ int ] = None ) -> List[ pd.DataFrame ] | None:
+		"""
+
+			Purpose:
+			--------
+			Extracts tables from a PDF and returns them as DataFrames.
+
+			Parameters:
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+
+			Returns:
+			--------
+			List[ pd.DataFrame ] | None
+				Extracted table DataFrames.
+
+		"""
+		try:
+			throw_if( 'path', path )
+			self.file_path = path
+			self.tables = [ ]
+			
+			with fitz.open( self.file_path ) as doc:
+				for page_index, page in enumerate( doc ):
+					if count is not None and page_index >= count:
+						break
+					
+					tables = page.find_tables( )
+					
+					for table in getattr( tables, 'tables', [ ] ):
+						self.tables.append( pd.DataFrame( table.extract( ) ) )
+			
+			return self.tables
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'extract_tables( self, path: str, count: Optional[ int ]=None )'
+			raise exception
+	
 	def export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None:
 		"""
 
 			Purpose:
-			-----------
-			Export a list of DataFrames (tables) to individual CSV files.
+			--------
+			Exports a list of DataFrames to individual CSV files.
 
 			Parameters:
-			- tables (List[pd.DataFrame]): List of tables to export
-			- filename (str): Prefix for output filenames (e.g., 'output_table')
+			-----------
+			tables : List[ pd.DataFrame ]
+				List of tables to export.
+			filename : str
+				Output filename prefix.
+
+			Returns:
+			--------
+			None
 
 		"""
 		try:
 			throw_if( 'tables', tables )
 			throw_if( 'filename', filename )
 			self.tables = tables
-			for i, df in enumerate( self.tables ):
-				df.to_csv( f'{filename}_{i + 1}.csv', index=False )
+			
+			for index, df_table in enumerate( self.tables ):
+				df_table.to_csv( f'{filename}_{index + 1}.csv', index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method =  'export_csv( self, **kwargs ) -> None'
+			exception.cause = 'PdfParser'
+			exception.method = 'export_csv( self, tables: List[ pd.DataFrame ], filename: str )'
 			raise exception
-			
+	
 	def export_text( self, lines: List[ str ], path: str ) -> None:
 		"""
 
-			Export extracted words of
-			pages to a plain pages file.
+			Purpose:
+			--------
+			Exports extracted lines to a plain text file.
 
 			Parameters:
 			-----------
-			- words (List[str]): List of pages words
-			- path (str): Path to output pages file
+			lines : List[ str ]
+				Lines to export.
+			path : str
+				Output text file path.
+
+			Returns:
+			--------
+			None
 
 		"""
 		try:
-			throw_if( 'path', path )
 			throw_if( 'lines', lines )
-			self.file_path = path
+			throw_if( 'path', path )
 			self.lines = lines
-			with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as f:
+			self.file_path = path
+			
+			with open( self.file_path, 'w', encoding='utf-8', errors='ignore' ) as file:
 				for line in self.lines:
-					f.write( line + '\n' )
+					file.write( line + '\n' )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = 'export_text( self, lines: List[ str ], path: str ) -> None'
+			exception.cause = 'PdfParser'
+			exception.method = 'export_text( self, lines: List[ str ], path: str )'
 			raise exception
-			
+	
 	def export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None:
 		"""
 
-			Export all extracted tables into a single
-			Excel workbook with one sheet per df.
+			Purpose:
+			--------
+			Exports all extracted tables into a single Excel workbook.
 
 			Parameters:
 			-----------
-			- tables (List[pd.DataFrame]): List of tables to export
-			- path (str): Path to the output Excel file
+			tables : List[ pd.DataFrame ]
+				List of tables to export.
+			path : str
+				Output Excel workbook path.
+
+			Returns:
+			--------
+			None
 
 		"""
 		try:
 			throw_if( 'tables', tables )
+			throw_if( 'path', path )
 			self.tables = tables
 			self.file_path = path
-			with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as _writer:
-				for i, df in enumerate( self.tables ):
-					_sheet = f'Table_{i + 1}'
-					df.to_excel( _writer, sheet_name=_sheet, index=False )
+			
+			with pd.ExcelWriter( self.file_path, engine='xlsxwriter' ) as writer:
+				for index, df_table in enumerate( self.tables ):
+					sheet = f'Table_{index + 1}'
+					df_table.to_excel( writer, sheet_name=sheet, index=False )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
-			exception.cause = 'PDF'
-			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )->None'
+			exception.cause = 'PdfParser'
+			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )'
 			raise exception
 			
 

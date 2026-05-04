@@ -975,31 +975,57 @@ with tabs[ 0 ]:
 				pdf = st.file_uploader( 'Upload PDF', type=[ 'pdf' ], key='pdf_upload' )
 				
 				mode = st.selectbox( 'Mode', [ 'single', 'page' ], key='pdf_mode',
-					help='Use "single" for one combined document or "page" for page-wise loading.' )
+					help='Used only when legacy extraction is enabled.' )
 				
 				extract = st.selectbox( 'Extract', [ 'plain', 'layout' ], key='pdf_extract',
-					help='Use "plain" for standard extraction or "layout" for layout-aware extraction.' )
+					help='Used only when legacy extraction is enabled.' )
 				
-				include = st.checkbox( 'Include Images', value=False, key='pdf_include' )
+				include = st.checkbox( 'Include Images', value=False, key='pdf_include',
+					help='Used only when legacy extraction is enabled.' )
 				
-				fmt = st.selectbox( 'Format', [ 'markdown-img', 'html-img', 'text-img' ], key='pdf_fmt',
-					help='Inner representation to use when image extraction is enabled.' )
+				fmt = st.selectbox( 'Format', [ 'markdown-img', 'html-img', 'text-img' ],
+					key='pdf_fmt',
+					help='Used only when legacy extraction is enabled.' )
+				
+				use_geometry = st.checkbox( 'Use Geometry Cleanup', value=True,
+					key='pdf_use_geometry',
+					help='Uses PyMuPDF block coordinates and repeated marginalia detection.' )
+				
+				use_legacy_pdf_loader = st.checkbox( 'Use Legacy PdfLoader', value=False,
+					key='pdf_use_legacy_loader',
+					help='Falls back to the existing PdfLoader path instead of geometry extraction.' )
+				
+				band_left, band_right = st.columns( 2, border=True )
+				with band_left:
+					header_band = st.slider( 'Header Band', min_value=0, max_value=30,
+						value=8, step=1, key='pdf_header_band',
+						help='Percentage of page height treated as the top candidate header band.' )
+				
+				with band_right:
+					footer_band = st.slider( 'Footer Band', min_value=0, max_value=30, value=8,
+						step=1, key='pdf_footer_band',
+						help='Percentage of page height treated as the bottom candidate footer band.' )
+				
+				preserve_page_breaks = st.checkbox( 'Preserve Page Breaks', value=False,
+					key='pdf_preserve_page_breaks',
+					help='Adds explicit page-break markers between extracted pages.' )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				
 				load_pdf = col_load.button( 'Load', key='pdf_load' )
 				clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
-				
 				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader'
 				            and isinstance( st.session_state.get( 'raw_text' ), str )
 				            and st.session_state.get( 'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
-						file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save', )
+					col_save.download_button( 'Save',
+						data=st.session_state.get( 'raw_text' ),
+						file_name='pdf_loader_output.txt',
+						mime='text/plain',
+						key='pdf_save' )
 				else:
 					col_save.button( 'Save', key='pdf_save_disabled', disabled=True )
 				
@@ -1017,17 +1043,42 @@ with tabs[ 0 ]:
 				if load_pdf and pdf:
 					with tempfile.TemporaryDirectory( ) as tmp:
 						path = os.path.join( tmp, pdf.name )
+						
 						with open( path, 'wb' ) as f:
 							f.write( pdf.read( ) )
 						
-						loader = PdfLoader( )
-						documents = loader.load( path, mode=mode, extract=extract, include=include,
-							format=fmt, ) or [ ]
-					
-					raw_text = '\n\n'.join(
-						d.page_content for d in documents if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( ) )
+						if use_geometry and not use_legacy_pdf_loader:
+							parser = PdfParser( )
+							raw_text = parser.geometric_extract( path=path,
+								header_ratio=float( header_band ) / 100.0,
+								footer_ratio=float( footer_band ) / 100.0,
+								preserve_page_breaks=preserve_page_breaks ) or ''
+							
+							documents = [ Document( page_content=raw_text, metadata={
+												'loader': 'PdfLoader',
+												'source': pdf.name,
+												'extract': 'geometry',
+												'header_band': int( header_band ),
+												'footer_band': int( footer_band ),
+												'preserve_page_breaks': preserve_page_breaks,
+										} ) ]
+						else:
+							loader = PdfLoader( )
+							documents = loader.load( path, mode=mode, extract=extract,
+								include=include, format=fmt ) or [ ]
+							
+							for document in documents:
+								if not isinstance( getattr( document, 'metadata', None ), dict ):
+									document.metadata = { }
+								
+								document.metadata[ 'loader' ] = 'PdfLoader'
+								document.metadata.setdefault( 'source', pdf.name )
+								document.metadata.setdefault( 'extract', 'legacy' )
+							
+							raw_text = '\n\n'.join( d.page_content for d in documents
+								if hasattr( d, 'page_content' )
+								and isinstance( d.page_content, str )
+								and d.page_content.strip( ) )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
@@ -3210,6 +3261,7 @@ with tabs[ 1 ]:
 		# Layout
 		# ------------------------------------------------------------------
 		left, right = st.columns( [ 1, 1.5 ], border=True )
+		
 		with left:
 			active = st.session_state.get( 'active_loader' )
 			
@@ -3220,102 +3272,110 @@ with tabs[ 1 ]:
 				remove_html = st.checkbox( 'Remove HTML',
 					help='Removes Hypertext Markup Tags, eg. <, \\>, etc', value=False )
 				remove_markdown = st.checkbox( 'Remove Markdown',
-					help=r'Removes symobls used in .md files #, ##, ###, -, etc', value=False )
+					help=r'Removes symbols used in .md files #, ##, ###, -, etc',
+					value=False )
 				remove_symbols = st.checkbox( 'Remove Symbols',
 					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=False )
 				remove_numbers = st.checkbox( 'Remove Numbers',
-					help='Removes numeric digits 0 thour 9', value=False )
+					help='Removes numeric digits 0 through 9', value=False )
 				remove_xml = st.checkbox( 'Remove XML',
 					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
-					help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence '
-					     r'delimiters', value=False )
+					help=r'Removes punctuation while preserving sentence delimiters',
+					value=False )
 				remove_images = st.checkbox( 'Remove Images',
-					help=r'Remove image from text, including Markdown, HTML <img> tags, '
-					     r'and  image URLs', value=False )
+					help=r'Remove images from text, including Markdown, HTML <img> tags, '
+					     r'and image URLs',
+					value=True )
 				remove_stopwords = st.checkbox( 'Remove Stopwords',
-					help=r'Removes common words (e.g., "the", "is", "and", etc.)', value=False )
+					help=r'Removes common words (e.g., "the", "is", "and", etc.)',
+					value=False )
 				remove_numerals = st.checkbox( 'Remove Numerals',
-					help='Removes roman numbers I, II, IV, XI, etc', value=False )
+					help='Removes roman numerals I, II, IV, XI, etc', value=False )
 				remove_encodings = st.checkbox( 'Remove Encoding',
-					help=r'Removes encoding artifacts and over-encoded byte strings', value=False )
+					help=r'Removes encoding artifacts and over-encoded byte strings',
+					value=True )
 				normalize_text = st.checkbox( 'Normalize (lowercase)', value=False )
 				remove_fragments = st.checkbox( 'Remove Fragments',
 					help='Removes words less than 3 characters in length', value=False )
 				remove_errors = st.checkbox( 'Remove Errors',
-					help='Removes misspelled words', value=False )
+					help='Removes misspelled words using a dictionary filter', value=False )
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
-					help='Removes extra lines', value=False )
+					help='Collapses all whitespace into single spaces', value=False )
 			
 			# ==============================================================
-			# NLTK-Specific Processing (NltkParser)
+			# NLTK Processing
 			# ==============================================================
-			with st.expander( 'NLTK Processing', icon='🧰', expanded=False ):
-				
+			with st.expander( 'NLTK Processing', icon='🪶', expanded=False ):
 				nltk_word_tokenize = st.checkbox( 'Word Tokenize',
-					value=st.session_state.get( 'nltk_word_tokenize', False ),
-					key='nltk_word_tokenize',
-					help='Tokenizes cleaned text into individual word tokens' )
-				
+					help='Splits text into word tokens.' )
 				nltk_sentence_tokenize = st.checkbox( 'Sentence Tokenize',
-					value=st.session_state.get( 'nltk_sentence_tokenize', False ),
-					key='nltk_sentence_tokenize',
-					help='Splits cleaned text into sentence units' )
-				
-				nltk_stem = st.checkbox( 'Word Stemmer',
-					value=st.session_state.get( 'nltk_stem', False ), key='nltk_stem',
-					help='Applies stemming to cleaned text' )
-				
-				nltk_lemmatize = st.checkbox( 'Word Lemmatizer',
-					value=st.session_state.get( 'nltk_lemmatize', False ),
-					key='nltk_lemmatize', help='Applies NLTK lemmatization to cleaned text' )
-				
+					help='Splits text into sentence tokens.' )
+				nltk_stem = st.checkbox( 'Stem Words',
+					help='Applies stemming to word tokens.' )
+				nltk_lemmatize = st.checkbox( 'Lemmatize Words',
+					help='Applies lemmatization to word tokens.' )
 				nltk_pos_tag = st.checkbox( 'Part-of-Speech Tagging',
-					value=st.session_state.get( 'nltk_pos_tag', False ),
-					key='nltk_pos_tag', help='Annotates tokens with grammatical tags' )
-				
+					help='Applies POS tagging to word tokens.' )
 				nltk_named_entities = st.checkbox( 'Named Entity Recognition',
-					value=st.session_state.get( 'nltk_named_entities', False ),
-					key='cb_nltk_named_entities',
-					help='Extracts named entities such as persons, organizations, and places' )
+					help='Extracts named entities where available.' )
 			
 			# ==============================================================
 			# Word-Specific Processing (WordParser)
 			# ==============================================================
 			extract_tables = extract_paragraphs = False
-			with st.expander( label='Docx Processing', icon='📄', expanded=False ):
+			
+			with st.expander( 'Word Processing', icon='📄', expanded=False ):
 				if active == 'WordLoader':
 					extract_tables = st.checkbox( 'Extract Tables' )
 					extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
 				else:
 					st.caption( 'Available when Word documents are loaded.' )
-					
+			
 			# ==============================================================
 			# PDF-Specific Processing (PdfParser)
 			# ==============================================================
-			remove_pdf_artifacts = remove_headers = rejoin_hyphenation = False
+			apply_pdf_cleanup = False
+			clean_pdf_artifacts = False
+			repair_pdf_spacing = False
+			rejoin_pdf_hyphenation = False
+			
 			with st.expander( 'PDF Processing', icon='📕', expanded=False ):
 				if active == 'PdfLoader':
-					remove_pdf_artifacts = st.checkbox( 'Remove PDF Artifacts',
-						value=True, key='pdf_remove_artifacts',
-						help='Removes generic PDF extraction artifacts, image residues, '
-						     'production metadata, leader dots, and control characters.' )
+					st.caption(
+						'Core PDF cleanup is applied during PDF loading when Geometry Cleanup '
+						'is enabled. Use these controls only for additional cleanup.' )
 					
-					remove_headers = st.checkbox( 'Remove Headers/Footers', value=True,
-						key='pdf_remove_headers',
-						help='Removes repeated running headers, footers, and page labels.' )
+					apply_pdf_cleanup = st.checkbox(
+						'Apply Additional PDF Cleanup',
+						value=False,
+						key='pdf_apply_additional_cleanup' )
 					
-					rejoin_hyphenation = st.checkbox( 'Rejoin Hyphenation', value=True,
+					clean_pdf_artifacts = st.checkbox(
+						'Clean Artifacts',
+						value=False,
+						key='pdf_clean_artifacts',
+						disabled=not apply_pdf_cleanup )
+					
+					repair_pdf_spacing = st.checkbox(
+						'Repair Spacing',
+						value=False,
+						key='pdf_repair_spacing',
+						disabled=not apply_pdf_cleanup )
+					
+					rejoin_pdf_hyphenation = st.checkbox(
+						'Rejoin Hyphenation',
+						value=False,
 						key='pdf_rejoin_hyphenation',
-						help='Repairs PDF line-break hyphenation without removing valid '
-						     'compound-word hyphenation.' )
+						disabled=not apply_pdf_cleanup )
 				else:
 					st.caption( 'Available when PDF documents are loaded.' )
-			
+					
 			# ==============================================================
 			# HTML-Specific Processing (Structural)
 			# ==============================================================
 			strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
+			
 			with st.expander( 'HTML Processing', icon='🌐', expanded=False ):
 				if active == 'HtmlLoader':
 					strip_scripts = st.checkbox( 'Strip <script> / <style>' )
@@ -3340,7 +3400,7 @@ with tabs[ 1 ]:
 			save_processed_slot = col_save.empty( )
 			
 			# ==============================================================
-			# Buttons Events
+			# Button Events
 			# ==============================================================
 			if reset_processing:
 				st.session_state.processed_text = ''
@@ -3358,19 +3418,19 @@ with tabs[ 1 ]:
 				st.session_state.start_time = 0.0
 				st.session_state.end_time = 0.0
 				st.session_state.total_time = 0.0
-				
 				st.session_state.nltk_word_tokens = [ ]
 				st.session_state.nltk_sentence_tokens = [ ]
 				st.session_state.nltk_stemmed_tokens = [ ]
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
+				st.session_state.nltk_named_entities = [ ]
 				st.success( 'Processed text cleared.' )
-				
+			
 			if apply_processing:
 				start_time = time.perf_counter( )
 				
 				# ----------------------------------------------------------
-				# Initialize from raw text (authoritative source)
+				# Initialize from raw text
 				# ----------------------------------------------------------
 				processed_text = raw_text if isinstance( raw_text, str ) else ''
 				
@@ -3378,7 +3438,7 @@ with tabs[ 1 ]:
 				nlp = NltkParser( )
 				
 				# ----------------------------------------------------------
-				# 1 — Structural cleanup
+				# Structural cleanup
 				# ----------------------------------------------------------
 				if remove_html:
 					processed_text = tp.remove_html( processed_text )
@@ -3396,22 +3456,22 @@ with tabs[ 1 ]:
 					processed_text = tp.remove_xml( processed_text )
 				
 				# ----------------------------------------------------------
-				# 1A — PDF-specific cleanup
+				# Optional PDF post-load cleanup
 				# ----------------------------------------------------------
-				if active == 'PdfLoader':
-					parser = PdfParser( )
+				if active == 'PdfLoader' and apply_pdf_cleanup:
+					pdf_parser = PdfParser( )
 					
-					if remove_pdf_artifacts:
-						processed_text = parser.remove_artifacts( processed_text )
+					if clean_pdf_artifacts:
+						processed_text = pdf_parser.clean_artifacts( processed_text )
 					
-					if remove_headers:
-						processed_text = parser.remove_headers( processed_text )
+					if repair_pdf_spacing:
+						processed_text = pdf_parser.repair_spacing( processed_text )
 					
-					if rejoin_hyphenation:
-						processed_text = parser.rejoin_hyphenation( processed_text )
+					if rejoin_pdf_hyphenation:
+						processed_text = pdf_parser.rejoin_hyphenation( processed_text )
 				
 				# ----------------------------------------------------------
-				# 2 — Noise / non-lexical characters
+				# Noise / non-lexical cleanup
 				# ----------------------------------------------------------
 				if remove_symbols:
 					processed_text = tp.remove_symbols( processed_text )
@@ -3426,13 +3486,13 @@ with tabs[ 1 ]:
 					processed_text = tp.remove_punctuation( processed_text )
 				
 				# ----------------------------------------------------------
-				# 3 — Word normalization
+				# Word normalization
 				# ----------------------------------------------------------
 				if normalize_text:
 					processed_text = tp.normalize_text( processed_text )
 				
 				# ----------------------------------------------------------
-				# 4 — Lexical refinement
+				# Lexical refinement
 				# ----------------------------------------------------------
 				if remove_stopwords:
 					processed_text = tp.remove_stopwords( processed_text )
@@ -3444,31 +3504,32 @@ with tabs[ 1 ]:
 					processed_text = tp.remove_errors( processed_text )
 				
 				# ----------------------------------------------------------
-				# 5 — Whitespace cleanup
+				# Whitespace cleanup
 				# ----------------------------------------------------------
 				if collapse_whitespace:
 					processed_text = tp.collapse_whitespace( processed_text )
 				
 				# ----------------------------------------------------------
-				# 6 — Format-specific non-PDF processing
+				# Word-specific processing
 				# ----------------------------------------------------------
-				parser = st.session_state.get( 'parser' )
-				
 				if active == 'WordLoader':
-					if extract_tables and hasattr( parser, 'extract_tables' ):
-						parser = WordParser( )
-						processed_text = parser.extract_tables( processed_text )
+					word_parser = WordParser( )
 					
-					if extract_paragraphs and hasattr( parser, 'extract_paragraphs' ):
-						parser = WordParser( )
-						processed_text = parser.extract_paragraphs( processed_text )
+					if extract_tables and hasattr( word_parser, 'extract_tables' ):
+						processed_text = word_parser.extract_tables( processed_text )
+					
+					if extract_paragraphs and hasattr( word_parser, 'extract_paragraphs' ):
+						processed_text = word_parser.extract_paragraphs( processed_text )
 				
+				# ----------------------------------------------------------
+				# HTML-specific processing
+				# ----------------------------------------------------------
 				if active == 'HtmlLoader':
 					if strip_scripts:
 						processed_text = tp.remove_html( processed_text )
 				
 				# ----------------------------------------------------------
-				# 7 — Token Processing
+				# Token processing
 				# ----------------------------------------------------------
 				display_text = processed_text
 				
@@ -3562,38 +3623,41 @@ with tabs[ 1 ]:
 				st.session_state.processed_text_display = st.session_state.displayed_text
 				
 				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
-				
-				# ==============================================================
-				# Save Processed Text
-				# ==============================================================
-				can_save_processed = (
-						isinstance( st.session_state.get( 'processed_text' ), str )
-						and bool( st.session_state.get( 'processed_text' ).strip( ) )
-				)
-				
-				if can_save_processed:
-					save_processed_slot.download_button( 'Save',
-						data=st.session_state.get( 'processed_text' ),
-						file_name='processed_text.txt',
-						mime='text/plain',
-						key='processed_text_save' )
-				else:
-					save_processed_slot.button( 'Save',
-						key='processed_text_save_disabled',
-						disabled=True )
-				
+			
+			# ==============================================================
+			# Save Processed Text
+			# ==============================================================
+			can_save_processed = (
+					isinstance( st.session_state.get( 'processed_text' ), str )
+					and bool( st.session_state.get( 'processed_text' ).strip( ) )
+			)
+			
+			if can_save_processed:
+				save_processed_slot.download_button( 'Save',
+					data=st.session_state.get( 'processed_text' ),
+					file_name='processed_text.txt',
+					mime='text/plain',
+					key='processed_text_save' )
+			else:
+				save_processed_slot.button( 'Save',
+					key='processed_text_save_disabled',
+					disabled=True )
+		
 		# ------------------------------------------------------------------
 		# RIGHT COLUMN — Text Views
 		# ------------------------------------------------------------------
 		with right:
 			raw_text_view = st.session_state.get( 'raw_text_view' )
-			processed_text_view = st.session_state.get( 'processed_text_view' )
 			raw_text_current = st.session_state.get( 'raw_text' )
 			processed_text = st.session_state.get( 'processed_text' )
 			
-			st.text_area( label='Raw Text',
+			st.text_area(
+				label='Raw Text',
 				value=raw_text_view if isinstance( raw_text_view, str ) else '',
-				height=200, disabled=True, key='raw_text_view_display' )
+				height=200,
+				disabled=True,
+				key='raw_text_view_display'
+			)
 			
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
 				if (
@@ -3629,8 +3693,6 @@ with tabs[ 1 ]:
 					d4.metric( 'Compression Ratio', f'{compression:.2%}' )
 				else:
 					st.caption( 'Load and process text to view absolute and delta statistics.' )
-			
-			processed_text_view = st.session_state.get( 'displayed_text' )
 			
 			st.text_area(
 				'Processed Text',
