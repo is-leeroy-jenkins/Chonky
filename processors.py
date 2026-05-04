@@ -795,40 +795,66 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
 			raise exception
-			
+		
 	def remove_encodings( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
 			---------
-			Cleans text of encoding artifacts by resolving HTML entities,
-			Unicode escape sequences, and over-encoded byte strings.
+			Cleans encoding artifacts safely without corrupting already-decoded Unicode
+			text extracted from PDFs, Word documents, HTML, or plain text files.
 
-			Parameters
+			Parameters:
 			----------
 			text : str
-			Input string potentially containing encoded characters.
+				Input string potentially containing HTML entities, literal Unicode escape
+				sequences, control characters, or common mojibake artifacts.
 
-			Returns
+			Returns:
 			-------
-			str
-			Cleaned Unicode-normalized text.
+			str | None
+				Unicode-normalized text with encoding artifacts repaired or removed.
 
 		"""
 		try:
 			throw_if( 'text', text )
-			try:
-				_text = text.lower( )
-				text = bytes( _text, 'utf-8' ).decode( 'unicode_escape' )
-			except UnicodeDecodeError:
-				pass
-
 			self.raw_input = text
-			_html = html.unescape( self.raw_input )
-			_norm = unicodedata.normalize( 'NFKC', _html )
-			_chars = re.sub( r'[\x00-\x1F\x7F]', '', _norm )
-			cleaned_text = _chars.strip( )
-			return cleaned_text
+			_cleaned = html.unescape( self.raw_input )
+			
+			if re.search( r'\\u[0-9a-fA-F]{4}|\\x[0-9a-fA-F]{2}', _cleaned ):
+				try:
+					_cleaned = bytes( _cleaned, 'utf-8' ).decode( 'unicode_escape' )
+				except UnicodeDecodeError:
+					pass
+			
+			_replacements = {
+					'â': '’',
+					'â': '‘',
+					'â': '“',
+					'â': '”',
+					'â': '–',
+					'â': '—',
+					'â¢': '•',
+					'â': '⁄',
+					'â¢': '™',
+					'Â§': '§',
+					'Â¶': '¶',
+					'Â©': '©',
+					'Â®': '®',
+					'Ã': '×',
+					'Â': '',
+			}
+			
+			for bad, good in _replacements.items( ):
+				_cleaned = _cleaned.replace( bad, good )
+			
+			_cleaned = unicodedata.normalize( 'NFKC', _cleaned )
+			_cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', _cleaned )
+			_cleaned = re.sub( r'[ \t]{2,}', ' ', _cleaned )
+			_cleaned = re.sub( r' +\n', '\n', _cleaned )
+			_cleaned = re.sub( r'\n +', '\n', _cleaned )
+			_cleaned = re.sub( r'\n{3,}', '\n\n', _cleaned )
+			return _cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -2621,7 +2647,356 @@ class PdfParser( Processor ):
 			exception.cause = 'PDF'
 			exception.method = ( 'extract_tables( self, **kwargs ) -> List[ DataFrame ]')
 			raise exception
+		
+	def remove_artifacts( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Removes generic PDF extraction artifacts, file path residues, image
+			placeholder tags, page extraction markers, leader dots, control characters,
+			and common production metadata without assuming a specific document type.
+
+			Parameters:
+			-----------
+			text : str
+				The extracted PDF text to clean.
+
+			Returns:
+			--------
+			str
+				Text with generic PDF artifacts removed while preserving document
+				content, citations, punctuation, and numeric references.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			cleaned = self.raw_input
 			
+			cleaned = re.sub(
+				r'<parsed\s+text\s+for\s+page:\s*\d+\s*/\s*\d+>',
+				' ',
+				cleaned,
+				flags=re.IGNORECASE
+			)
+			
+			cleaned = re.sub(
+				r'<image\s+for\s+page:\s*\d+\s*/\s*\d+>',
+				' ',
+				cleaned,
+				flags=re.IGNORECASE
+			)
+			
+			cleaned = re.sub(
+				r'</?gph>',
+				' ',
+				cleaned,
+				flags=re.IGNORECASE
+			)
+			
+			cleaned = re.sub(
+				r'\b[a-z]:\\[^\s<>]*(?:\.ai|\.eps|\.tif|\.tiff|\.jpg|\.jpeg|\.png|'
+				r'\.gif|\.bmp|\.svg|\.wmf|\.emf|\.pdf|\.xml|\.sgml|\.xxx)\b',
+				' ',
+				cleaned,
+				flags=re.IGNORECASE
+			)
+			
+			cleaned = re.sub(
+				r'\b(?:/[^/\s<>]+)+/(?:[^/\s<>]+\.)'
+				r'(?:ai|eps|tif|tiff|jpg|jpeg|png|gif|bmp|svg|wmf|emf|pdf|xml|sgml|xxx)\b',
+				' ',
+				cleaned,
+				flags=re.IGNORECASE
+			)
+			
+			cleaned = re.sub(
+				r'(?im)^\s*(?:verdate|jkt|po\s+\d+|frm\s+\d+|fmt\s+\d+|sfmt\s+\d+)'
+				r'.*$',
+				' ',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'(?im)^\s*[a-z0-9_]+(?:\s+on\s+[a-z0-9_]+)?\s*$',
+				lambda m: ' ' if re.search( r'\bdsk|prod|tmp|sgml\b', m.group( 0 ),
+					flags=re.IGNORECASE ) else m.group( 0 ),
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'(?im)^\s*(?:endobj|obj|xref|trailer|startxref|%%eof)\s*$',
+				' ',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'\b([A-Z])\s+([A-Z]{2,})(?=\b)',
+				lambda m: f'{m.group( 1 )}{m.group( 2 )}',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'\b([A-Z])\s*\n\s*([A-Z]{2,})(?=\b)',
+				lambda m: f'{m.group( 1 )}{m.group( 2 )}',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'(?<=\S)\s*\.{4,}\s*(?=\S)',
+				' ',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'(?<=\S)\s*(?:\.\s*){4,}(?=\S)',
+				' ',
+				cleaned
+			)
+			
+			cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', cleaned )
+			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
+			cleaned = re.sub( r' +\n', '\n', cleaned )
+			cleaned = re.sub( r'\n +', '\n', cleaned )
+			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
+			return cleaned.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'remove_artifacts( self, text: str ) -> str'
+			raise exception
+	
+	def remove_headers( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Removes repeated PDF running headers, footers, and isolated page labels
+			using document-agnostic frequency and line-shape detection.
+
+			Parameters:
+			-----------
+			text : str
+				The extracted PDF text to clean.
+
+			Returns:
+			--------
+			str
+				Text with repeated running headers and footers removed while preserving
+				unique section headings and body content.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			self.lines = self.raw_input.splitlines( )
+			self.clean_lines = [ ]
+			
+			def normalize_header_candidate( value: str ) -> str:
+				value = value.strip( ).lower( )
+				value = re.sub( r'\s+', ' ', value )
+				value = re.sub( r'\b\d{1,5}\b', '#', value )
+				value = re.sub( r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '#date#', value )
+				value = re.sub( r'[§¶]\s*[\w.\-()]+', '#section#', value )
+				value = re.sub( r'\b(?:page|p\.)\s*#(?:\s+of\s+#)?\b', '#page#', value )
+				value = re.sub( r'\s+', ' ', value ).strip( )
+				return value
+			
+			def is_page_label( value: str ) -> bool:
+				if re.fullmatch( r'\d{1,5}', value ):
+					return True
+				
+				if re.fullmatch( r'[ivxlcdm]{1,10}', value, flags=re.IGNORECASE ):
+					return True
+				
+				if re.fullmatch( r'(?:page|p\.)\s+\d+(?:\s+of\s+\d+)?',
+						value, flags=re.IGNORECASE ):
+					return True
+				
+				return False
+			
+			def is_header_shaped( value: str ) -> bool:
+				if len( value ) < 4 or len( value ) > 160:
+					return False
+				
+				if value.endswith( '.' ) and len( value.split( ) ) > 8:
+					return False
+				
+				alpha = sum( 1 for c in value if c.isalpha( ) )
+				upper = sum( 1 for c in value if c.isupper( ) )
+				
+				if alpha and upper / alpha > 0.65:
+					return True
+				
+				if re.search(
+						r'\b(?:edition|volume|vol\.|chapter|part|section|appendix|'
+						r'subtitle|title|draft|confidential|proprietary)\b',
+						value,
+						flags=re.IGNORECASE ):
+					return True
+				
+				if re.search( r'[§¶]\s*[\w.\-()]+', value ):
+					return True
+				
+				return False
+			
+			normalized_counts: dict[ str, int ] = { }
+			
+			for line in self.lines:
+				value = line.strip( )
+				
+				if not value:
+					continue
+				
+				key = normalize_header_candidate( value )
+				
+				if key:
+					normalized_counts[ key ] = normalized_counts.get( key, 0 ) + 1
+			
+			repeated_candidates = {
+					key for key, count in normalized_counts.items( )
+					if count >= 3 and len( key ) >= 4
+			}
+			
+			for line in self.lines:
+				value = line.strip( )
+				
+				if not value:
+					self.clean_lines.append( line )
+					continue
+				
+				if is_page_label( value ):
+					continue
+				
+				key = normalize_header_candidate( value )
+				
+				if key in repeated_candidates and is_header_shaped( value ):
+					continue
+				
+				self.clean_lines.append( line )
+			
+			cleaned = '\n'.join( self.clean_lines )
+			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
+			cleaned = re.sub( r' +\n', '\n', cleaned )
+			cleaned = re.sub( r'\n +', '\n', cleaned )
+			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
+			return cleaned.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'remove_headers( self, text: str ) -> str'
+			raise exception
+	
+	def rejoin_hyphenation( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Repairs generic PDF line-break hyphenation and discretionary hyphen
+			artifacts without removing valid compound-word hyphenation.
+
+			Parameters:
+			-----------
+			text : str
+				The extracted PDF text to repair.
+
+			Returns:
+			--------
+			str
+				Text with broken PDF hyphenation rejoined conservatively.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			self.raw_input = text
+			cleaned = self.raw_input
+			
+			try:
+				vocabulary = set( words.words( 'en' ) )
+			except Exception:
+				vocabulary = set( )
+			
+			def repair_break( match: re.Match ) -> str:
+				left = match.group( 1 )
+				right = match.group( 2 )
+				combined = f'{left}{right}'
+				
+				if '-' in right:
+					return f'{left}-{right}'
+				
+				if vocabulary and combined.lower( ) in vocabulary:
+					return combined
+				
+				if len( left ) >= 4 and len( right ) >= 3 and not vocabulary:
+					return combined
+				
+				return f'{left}-{right}'
+			
+			def repair_spaced_break( match: re.Match ) -> str:
+				left = match.group( 1 )
+				right = match.group( 2 )
+				combined = f'{left}{right}'
+				
+				if '-' in right:
+					return f'{left}-{right}'
+				
+				if vocabulary and combined.lower( ) in vocabulary:
+					return combined
+				
+				return f'{left}-{right}'
+			
+			def repair_embedded_split( match: re.Match ) -> str:
+				left = match.group( 1 )
+				right = match.group( 2 )
+				combined = f'{left}{right}'
+				
+				if vocabulary and combined.lower( ) in vocabulary:
+					return combined
+				
+				return match.group( 0 )
+			
+			cleaned = re.sub(
+				r'(?<=[A-Za-z])[\u00AD\uFFFC\uFFFD\uFFFE]\s*(?=[A-Za-z])',
+				'',
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'\b([A-Za-z]{2,})-\s*\n\s*([A-Za-z][A-Za-z-]*)\b',
+				repair_break,
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'\b([A-Za-z]{2,})-\s+([A-Za-z][A-Za-z-]*)\b',
+				repair_spaced_break,
+				cleaned
+			)
+			
+			cleaned = re.sub(
+				r'\b([A-Za-z]{3,})-([a-z]{2,})\b',
+				repair_embedded_split,
+				cleaned
+			)
+			
+			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
+			cleaned = re.sub( r' +\n', '\n', cleaned )
+			cleaned = re.sub( r'\n +', '\n', cleaned )
+			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
+			return cleaned.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'rejoin_hyphenation( self, text: str ) -> str'
+			raise exception
+		
 	def export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None:
 		"""
 

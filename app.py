@@ -1572,7 +1572,7 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = "JsonLoader"
 					st.success( f"Loaded {len( documents )} JSON document(s)." )
 					
-		with st.expander( label='Web Documents', expanded=True ):
+		with st.expander( label='Web Documents', expanded=False ):
 		
 			# --------------------------- ArXiv Loader
 			with st.expander( label='ArXiv Loader', icon='🧠', expanded=False ):
@@ -3222,35 +3222,35 @@ with tabs[ 1 ]:
 				remove_markdown = st.checkbox( 'Remove Markdown',
 					help=r'Removes symobls used in .md files #, ##, ###, -, etc', value=False )
 				remove_symbols = st.checkbox( 'Remove Symbols',
-					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=True )
+					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=False )
 				remove_numbers = st.checkbox( 'Remove Numbers',
-					help='Removes numeric digits 0 thour 9', value=True )
+					help='Removes numeric digits 0 thour 9', value=False )
 				remove_xml = st.checkbox( 'Remove XML',
 					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
 					help=r'Removes @, #, $, ^, *, =, |, \, <, >, ~ but preserves sentence '
-					     r'delimiters', value=True )
+					     r'delimiters', value=False )
 				remove_images = st.checkbox( 'Remove Images',
 					help=r'Remove image from text, including Markdown, HTML <img> tags, '
-					     r'and  image URLs', value=True )
+					     r'and  image URLs', value=False )
 				remove_stopwords = st.checkbox( 'Remove Stopwords',
-					help=r'Removes common words (e.g., "the", "is", "and", etc.)', value=True )
+					help=r'Removes common words (e.g., "the", "is", "and", etc.)', value=False )
 				remove_numerals = st.checkbox( 'Remove Numerals',
-					help='Removes roman numbers I, II, IV, XI, etc', value=True )
+					help='Removes roman numbers I, II, IV, XI, etc', value=False )
 				remove_encodings = st.checkbox( 'Remove Encoding',
-					help=r'Removes encoding artifacts and over-encoded byte strings', value=True )
-				normalize_text = st.checkbox( 'Normalize (lowercase)', value=True )
+					help=r'Removes encoding artifacts and over-encoded byte strings', value=False )
+				normalize_text = st.checkbox( 'Normalize (lowercase)', value=False )
 				remove_fragments = st.checkbox( 'Remove Fragments',
-					help='Removes words less than 3 characters in length', value=True )
+					help='Removes words less than 3 characters in length', value=False )
 				remove_errors = st.checkbox( 'Remove Errors',
-					help='Removes misspelled words', value=True )
+					help='Removes misspelled words', value=False )
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
-					help='Removes extra lines', value=True )
+					help='Removes extra lines', value=False )
 			
 			# ==============================================================
 			# NLTK-Specific Processing (NltkParser)
 			# ==============================================================
-			with st.expander( 'NLTK Processing', icon='🧰', expanded=True ):
+			with st.expander( 'NLTK Processing', icon='🧰', expanded=False ):
 				
 				nltk_word_tokenize = st.checkbox( 'Word Tokenize',
 					value=st.session_state.get( 'nltk_word_tokenize', False ),
@@ -3258,7 +3258,7 @@ with tabs[ 1 ]:
 					help='Tokenizes cleaned text into individual word tokens' )
 				
 				nltk_sentence_tokenize = st.checkbox( 'Sentence Tokenize',
-					value=st.session_state.get( 'nltk_sentence_tokenize', True ),
+					value=st.session_state.get( 'nltk_sentence_tokenize', False ),
 					key='nltk_sentence_tokenize',
 					help='Splits cleaned text into sentence units' )
 				
@@ -3289,15 +3289,26 @@ with tabs[ 1 ]:
 					extract_paragraphs = st.checkbox( 'Extract Paragraphs' )
 				else:
 					st.caption( 'Available when Word documents are loaded.' )
-			
+					
 			# ==============================================================
 			# PDF-Specific Processing (PdfParser)
 			# ==============================================================
-			remove_headers = join_hyphenated = False
+			remove_pdf_artifacts = remove_headers = rejoin_hyphenation = False
 			with st.expander( 'PDF Processing', icon='📕', expanded=False ):
 				if active == 'PdfLoader':
-					remove_headers = st.checkbox( 'Remove Headers/Footers' )
-					join_hyphenated = st.checkbox( 'Join Hyphenated Lines' )
+					remove_pdf_artifacts = st.checkbox( 'Remove PDF Artifacts',
+						value=True, key='pdf_remove_artifacts',
+						help='Removes generic PDF extraction artifacts, image residues, '
+						     'production metadata, leader dots, and control characters.' )
+					
+					remove_headers = st.checkbox( 'Remove Headers/Footers', value=True,
+						key='pdf_remove_headers',
+						help='Removes repeated running headers, footers, and page labels.' )
+					
+					rejoin_hyphenation = st.checkbox( 'Rejoin Hyphenation', value=True,
+						key='pdf_rejoin_hyphenation',
+						help='Repairs PDF line-break hyphenation without removing valid '
+						     'compound-word hyphenation.' )
 				else:
 					st.caption( 'Available when PDF documents are loaded.' )
 			
@@ -3354,7 +3365,7 @@ with tabs[ 1 ]:
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
 				st.success( 'Processed text cleared.' )
-			
+				
 			if apply_processing:
 				start_time = time.perf_counter( )
 				
@@ -3371,60 +3382,75 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				if remove_html:
 					processed_text = tp.remove_html( processed_text )
-					
+				
 				if remove_markdown:
 					processed_text = tp.remove_markdown( processed_text )
-					
+				
 				if remove_images:
 					processed_text = tp.remove_images( processed_text )
-					
+				
 				if remove_encodings:
 					processed_text = tp.remove_encodings( processed_text )
-					
+				
 				if remove_xml:
 					processed_text = tp.remove_xml( processed_text )
+				
+				# ----------------------------------------------------------
+				# 1A — PDF-specific cleanup
+				# ----------------------------------------------------------
+				if active == 'PdfLoader':
+					parser = PdfParser( )
+					
+					if remove_pdf_artifacts:
+						processed_text = parser.remove_artifacts( processed_text )
+					
+					if remove_headers:
+						processed_text = parser.remove_headers( processed_text )
+					
+					if rejoin_hyphenation:
+						processed_text = parser.rejoin_hyphenation( processed_text )
 				
 				# ----------------------------------------------------------
 				# 2 — Noise / non-lexical characters
 				# ----------------------------------------------------------
 				if remove_symbols:
 					processed_text = tp.remove_symbols( processed_text )
-					
+				
 				if remove_numbers:
 					processed_text = tp.remove_numbers( processed_text )
-					
+				
 				if remove_numerals:
 					processed_text = tp.remove_numerals( processed_text )
-					
+				
 				if remove_punctuation:
 					processed_text = tp.remove_punctuation( processed_text )
 				
 				# ----------------------------------------------------------
-				# 4 — Word normalization
+				# 3 — Word normalization
 				# ----------------------------------------------------------
 				if normalize_text:
 					processed_text = tp.normalize_text( processed_text )
 				
 				# ----------------------------------------------------------
-				# 5 — Lexical refinement
+				# 4 — Lexical refinement
 				# ----------------------------------------------------------
 				if remove_stopwords:
 					processed_text = tp.remove_stopwords( processed_text )
-					
+				
 				if remove_fragments:
 					processed_text = tp.remove_fragments( processed_text )
-					
+				
 				if remove_errors:
 					processed_text = tp.remove_errors( processed_text )
 				
 				# ----------------------------------------------------------
-				# 7 — Whitespace cleanup
+				# 5 — Whitespace cleanup
 				# ----------------------------------------------------------
 				if collapse_whitespace:
 					processed_text = tp.collapse_whitespace( processed_text )
 				
 				# ----------------------------------------------------------
-				# 8 — Format-specific processing
+				# 6 — Format-specific non-PDF processing
 				# ----------------------------------------------------------
 				parser = st.session_state.get( 'parser' )
 				
@@ -3437,21 +3463,12 @@ with tabs[ 1 ]:
 						parser = WordParser( )
 						processed_text = parser.extract_paragraphs( processed_text )
 				
-				if active == 'PdfLoader':
-					if remove_headers and hasattr( parser, 'remove_headers' ):
-						parser = PdfParser( )
-						processed_text = parser.remove_headers( processed_text )
-					
-					if join_hyphenated and hasattr( parser, 'join_hyphenated' ):
-						parser = PdfParser( )
-						processed_text = parser.join_hyphenated( processed_text )
-				
 				if active == 'HtmlLoader':
 					if strip_scripts:
 						processed_text = tp.remove_html( processed_text )
 				
 				# ----------------------------------------------------------
-				# 9 — Token Processing
+				# 7 — Token Processing
 				# ----------------------------------------------------------
 				display_text = processed_text
 				
@@ -3549,18 +3566,22 @@ with tabs[ 1 ]:
 				# ==============================================================
 				# Save Processed Text
 				# ==============================================================
-				can_save_processed = ( isinstance( st.session_state.get( 'processed_text' ), str )
-						and bool( st.session_state.get( 'processed_text' ).strip( ) ) )
+				can_save_processed = (
+						isinstance( st.session_state.get( 'processed_text' ), str )
+						and bool( st.session_state.get( 'processed_text' ).strip( ) )
+				)
 				
 				if can_save_processed:
 					save_processed_slot.download_button( 'Save',
 						data=st.session_state.get( 'processed_text' ),
-						file_name='processed_text.txt', mime='text/plain',
+						file_name='processed_text.txt',
+						mime='text/plain',
 						key='processed_text_save' )
 				else:
-					save_processed_slot.button( 'Save', key='processed_text_save_disabled',
+					save_processed_slot.button( 'Save',
+						key='processed_text_save_disabled',
 						disabled=True )
-			
+				
 		# ------------------------------------------------------------------
 		# RIGHT COLUMN — Text Views
 		# ------------------------------------------------------------------
