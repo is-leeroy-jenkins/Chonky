@@ -2648,7 +2648,8 @@ class PdfParser( Processor ):
 			exception.method = 'extract_pages( self, path: str ) -> List[ dict ]'
 			raise exception
 	
-	def remove_repeats( self, pages: List[ dict ], minimum_repeats: int = 3 ) -> List[ dict ] | None:
+	def remove_repeats( self, pages: List[ dict ], minimum_repeats: int = 3 ) -> List[
+		                                                                             dict ] | None:
 		"""
 
 			Purpose:
@@ -3159,7 +3160,8 @@ class PdfParser( Processor ):
 			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None )'
 			raise exception
 	
-	def extract_tables( self, path: str, count: Optional[ int ] = None ) -> List[ pd.DataFrame ] | None:
+	def extract_tables( self, path: str, count: Optional[ int ] = None ) -> List[
+		                                                                        pd.DataFrame ] | None:
 		"""
 
 			Purpose:
