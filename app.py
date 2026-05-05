@@ -987,24 +987,25 @@ with tabs[ 0 ]:
 					key='pdf_fmt',
 					help='Used only when legacy extraction is enabled.' )
 				
-				use_geometry = st.checkbox( 'Use Geometry Cleanup', value=True,
+				use_geometry = st.checkbox( 'Use Geometry Extraction', value=True,
 					key='pdf_use_geometry',
-					help='Uses PyMuPDF block coordinates and repeated marginalia detection.' )
+					help='Uses PyMuPDF block coordinates for layout-aware extraction only.' )
 				
 				use_legacy_pdf_loader = st.checkbox( 'Use Legacy PdfLoader', value=False,
 					key='pdf_use_legacy_loader',
 					help='Falls back to the existing PdfLoader path instead of geometry extraction.' )
 				
 				band_left, band_right = st.columns( 2, border=True )
+				
 				with band_left:
 					header_band = st.slider( 'Header Band', min_value=0, max_value=30,
 						value=8, step=1, key='pdf_header_band',
-						help='Percentage of page height treated as the top candidate header band.' )
+						help='Percentage of page height classified as the top candidate header band.' )
 				
 				with band_right:
-					footer_band = st.slider( 'Footer Band', min_value=0, max_value=30, value=8,
-						step=1, key='pdf_footer_band',
-						help='Percentage of page height treated as the bottom candidate footer band.' )
+					footer_band = st.slider( 'Footer Band', min_value=0, max_value=30,
+						value=8, step=1, key='pdf_footer_band',
+						help='Percentage of page height classified as the bottom candidate footer band.' )
 				
 				preserve_page_breaks = st.checkbox( 'Preserve Page Breaks', value=False,
 					key='pdf_preserve_page_breaks',
@@ -1016,6 +1017,7 @@ with tabs[ 0 ]:
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_pdf = col_load.button( 'Load', key='pdf_load' )
 				clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
+				
 				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader'
 				            and isinstance( st.session_state.get( 'raw_text' ), str )
 				            and st.session_state.get( 'raw_text' ).strip( ))
@@ -1034,7 +1036,8 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				if clear_pdf:
 					clear_if_active( 'PdfLoader' )
-					st.session_state[ '_loader_status' ] = 'Loader state cleared.'
+					st.session_state.pdf_pages = None
+					st.session_state[ '_loader_status' ] = 'PDF Loader state cleared.'
 					st.rerun( )
 				
 				# --------------------------------------------------
@@ -1049,19 +1052,32 @@ with tabs[ 0 ]:
 						
 						if use_geometry and not use_legacy_pdf_loader:
 							parser = PdfParser( )
-							raw_text = parser.geometric_extract( path=path,
+							pdf_pages = parser.extract_pages(
+								path=path,
 								header_ratio=float( header_band ) / 100.0,
-								footer_ratio=float( footer_band ) / 100.0,
-								preserve_page_breaks=preserve_page_breaks ) or ''
+								footer_ratio=float( footer_band ) / 100.0
+							) or [ ]
 							
-							documents = [ Document( page_content=raw_text, metadata={
+							raw_text = parser.rebuild_pages(
+								pages=pdf_pages,
+								preserve_page_breaks=preserve_page_breaks
+							) or ''
+							
+							documents = [
+									Document(
+										page_content=raw_text,
+										metadata={
 												'loader': 'PdfLoader',
 												'source': pdf.name,
 												'extract': 'geometry',
 												'header_band': int( header_band ),
 												'footer_band': int( footer_band ),
 												'preserve_page_breaks': preserve_page_breaks,
-										} ) ]
+										}
+									)
+							]
+							
+							st.session_state.pdf_pages = pdf_pages
 						else:
 							loader = PdfLoader( )
 							documents = loader.load( path, mode=mode, extract=extract,
@@ -1075,15 +1091,20 @@ with tabs[ 0 ]:
 								document.metadata.setdefault( 'source', pdf.name )
 								document.metadata.setdefault( 'extract', 'legacy' )
 							
-							raw_text = '\n\n'.join( d.page_content for d in documents
+							raw_text = '\n\n'.join(
+								d.page_content for d in documents
 								if hasattr( d, 'page_content' )
 								and isinstance( d.page_content, str )
 								and d.page_content.strip( ) )
+							
+							st.session_state.pdf_pages = None
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
 					st.session_state.raw_text = raw_text
 					st.session_state.processed_text = None
+					st.session_state.displayed_text = ''
+					st.session_state.processed_text_display = ''
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None

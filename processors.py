@@ -2354,20 +2354,21 @@ class PdfParser( Processor ):
 
 		Purpose:
 		--------
-		Provides general-purpose PDF extraction and cleanup functionality using
-		PyMuPDF geometry, repeated marginalia detection, generic artifact cleanup,
-		spacing repair, and conservative line-break hyphenation repair.
+		Provides general-purpose PDF extraction and PDF text-cleanup utilities. The
+		class separates extraction from processing: geometry methods extract page and
+		block content, while cleanup methods are invoked explicitly by the Processing
+		tab.
 
 		Attributes:
 		-----------
 		strip_headers : Optional[ bool ]
-			Indicates whether simple extraction-time header filtering is requested.
+			Legacy extraction flag retained for compatibility.
 		minimum_length : Optional[ int ]
-			Minimum extracted line length preserved by legacy line extraction methods.
-		extract_tables : Optional[ bool ]
-			Indicates whether legacy table extraction should be attempted.
+			Minimum line length retained by line extraction helpers.
+		extract_tables_enabled : Optional[ bool ]
+			Indicates whether table extraction should be attempted where supported.
 		pages : Optional[ List ]
-			Page-level extraction records.
+			Page-level geometry records.
 		lines : Optional[ List ]
 			Line-level extraction records.
 		blocks : Optional[ List ]
@@ -2379,11 +2380,11 @@ class PdfParser( Processor ):
 		extracted_tables : Optional[ List ]
 			Extracted PDF tables.
 		extracted_pages : Optional[ List ]
-			Extracted PDF pages.
+			Extracted PDF page records.
 		file_path : Optional[ str ]
-			Active PDF path.
+			Active PDF file path.
 		page : Optional[ str ]
-			Current page content.
+			Current page text.
 
 		Methods:
 		--------
@@ -2391,17 +2392,17 @@ class PdfParser( Processor ):
 			header_ratio: float=0.08, footer_ratio: float=0.08,
 			preserve_page_breaks: bool=False ) -> str | None
 		extract_pages( self, path: str, count: Optional[ int ]=None,
-			header_ratio: float=0.08, footer_ratio: float=0.08 ) -> List[ Dict[ str, Any ] ] | None
-		remove_repeats( self, pages: List[ Dict[ str, Any ] ],
-			minimum_repeats: int=3 ) -> List[ Dict[ str, Any ] ] | None
+			header_ratio: float=0.08, footer_ratio: float=0.08 ) -> List[ dict ] | None
+		remove_repeats( self, pages: List[ dict ], minimum_repeats: int=3 )
+			-> List[ dict ] | None
 		clean_artifacts( self, text: str ) -> str
 		repair_spacing( self, text: str ) -> str
-		rejoin_hyphenation( self, text: str ) -> str
-		rebuild_pages( self, pages: List[ Dict[ str, Any ] ],
-			preserve_page_breaks: bool=False ) -> str
+		rejoin_hyphenation( self, text: str, repair_embedded: bool=True ) -> str
+		rebuild_pages( self, pages: List[ dict ], preserve_page_breaks: bool=False ) -> str
 		extract_lines( self, path: str, count: Optional[ int ]=None ) -> List[ str ] | None
 		extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None
-		extract_tables( self, path: str, count: Optional[ int ]=None ) -> List[ pd.DataFrame ] | None
+		extract_tables( self, path: str, count: Optional[ int ]=None )
+			-> List[ pd.DataFrame ] | None
 		export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None
 		export_text( self, lines: List[ str ], path: str ) -> None
 		export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None
@@ -2409,7 +2410,7 @@ class PdfParser( Processor ):
 	"""
 	strip_headers: Optional[ bool ]
 	minimum_length: Optional[ int ]
-	extract_tables: Optional[ bool ]
+	extract_tables_enabled: Optional[ bool ]
 	extracted_lines: Optional[ List ]
 	extracted_tables: Optional[ List ]
 	extracted_pages: Optional[ List ]
@@ -2419,17 +2420,16 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Initializes the PDF parser with extraction and filtering options.
+			Initializes the PDF parser.
 
 			Parameters:
 			-----------
 			headers : bool
-				Indicates whether simple header filtering is requested by legacy
-				line-extraction methods.
+				Legacy header flag retained for compatibility.
 			size : int
-				Minimum line length preserved by legacy line-extraction methods.
+				Minimum line length retained by line-oriented helpers.
 			tables : bool
-				Indicates whether legacy table extraction should be attempted.
+				Indicates whether table extraction should be attempted where supported.
 
 			Returns:
 			--------
@@ -2439,7 +2439,7 @@ class PdfParser( Processor ):
 		super( ).__init__( )
 		self.strip_headers = headers
 		self.minimum_length = size
-		self.extract_tables = tables
+		self.extract_tables_enabled = tables
 		self.pages = [ ]
 		self.lines = [ ]
 		self.blocks = [ ]
@@ -2456,7 +2456,7 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Provides a list of strings representing class members.
+			Provides a list of public attributes and methods.
 
 			Parameters:
 			-----------
@@ -2471,7 +2471,7 @@ class PdfParser( Processor ):
 		return [
 				'strip_headers',
 				'minimum_length',
-				'extract_tables',
+				'extract_tables_enabled',
 				'file_path',
 				'page',
 				'pages',
@@ -2490,6 +2490,7 @@ class PdfParser( Processor ):
 				'rebuild_pages',
 				'extract_lines',
 				'extract_text',
+				'extract_tables',
 				'export_csv',
 				'export_text',
 				'export_excel'
@@ -2502,9 +2503,9 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Extracts PDF text using page geometry, removes repeated marginal text,
-			applies generic artifact cleanup, repairs spacing, and rejoins line-break
-			hyphenation.
+			Extracts PDF text using PyMuPDF page geometry. This method performs
+			extraction only. It does not remove repeated marginalia, clean artifacts,
+			repair spacing, or rejoin hyphenation.
 
 			Parameters:
 			-----------
@@ -2513,16 +2514,56 @@ class PdfParser( Processor ):
 			count : Optional[ int ]
 				Maximum number of pages to process. None processes all pages.
 			header_ratio : float
-				Top-of-page height ratio treated as the candidate header band.
+				Top-of-page height ratio used only to classify candidate header blocks.
 			footer_ratio : float
-				Bottom-of-page height ratio treated as the candidate footer band.
+				Bottom-of-page height ratio used only to classify candidate footer blocks.
 			preserve_page_breaks : bool
 				If true, inserts explicit page-break markers between extracted pages.
 
 			Returns:
 			--------
 			str | None
-				Canonical extracted PDF text.
+				Geometry-extracted PDF text.
+
+		"""
+		try:
+			throw_if( 'path', path )
+			pages = self.extract_pages( path=path, count=count,
+				header_ratio=header_ratio, footer_ratio=footer_ratio ) or [ ]
+			
+			return self.rebuild_pages( pages=pages,
+				preserve_page_breaks=preserve_page_breaks )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'PdfParser'
+			exception.method = 'geometric_extract( self, path: str ) -> str'
+			raise exception
+	
+	def extract_pages( self, path: str, count: Optional[ int ] = None,
+			header_ratio: float = 0.08, footer_ratio: float = 0.08 ) -> List[ dict ] | None:
+		"""
+
+			Purpose:
+			--------
+			Extracts page-level text blocks with PyMuPDF geometry and classifies each
+			block as header-band, body-band, or footer-band without removing content.
+
+			Parameters:
+			-----------
+			path : str
+				Path to the PDF file.
+			count : Optional[ int ]
+				Maximum number of pages to process. None processes all pages.
+			header_ratio : float
+				Top-of-page height ratio used to classify candidate header blocks.
+			footer_ratio : float
+				Bottom-of-page height ratio used to classify candidate footer blocks.
+
+			Returns:
+			--------
+			List[ dict ] | None
+				Page dictionaries containing ordered block dictionaries.
 
 		"""
 		try:
@@ -2534,58 +2575,6 @@ class PdfParser( Processor ):
 			if footer_ratio < 0.0 or footer_ratio > 0.30:
 				raise ValueError( 'Argument "footer_ratio" must be between 0.00 and 0.30.' )
 			
-			pages = self.extract_pages(
-				path=path,
-				count=count,
-				header_ratio=header_ratio,
-				footer_ratio=footer_ratio
-			) or [ ]
-			
-			pages = self.remove_repeats( pages ) or [ ]
-			text = self.rebuild_pages(
-				pages=pages,
-				preserve_page_breaks=preserve_page_breaks
-			)
-			
-			text = self.clean_artifacts( text )
-			text = self.repair_spacing( text )
-			text = self.rejoin_hyphenation( text )
-			return text.strip( )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'processors'
-			exception.cause = 'PdfParser'
-			exception.method = 'geometric_extract( self, path: str ) -> str'
-			raise exception
-	
-	def extract_pages( self, path: str, count: Optional[ int ] = None,
-			header_ratio: float = 0.08, footer_ratio: float = 0.08 ) -> List[ Dict[ str, Any ] ] | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts page-level text blocks with PyMuPDF geometry and classifies each
-			block as header-band, footer-band, or body-band without deleting content.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-			header_ratio : float
-				Top-of-page height ratio treated as the candidate header band.
-			footer_ratio : float
-				Bottom-of-page height ratio treated as the candidate footer band.
-
-			Returns:
-			--------
-			List[ Dict[ str, Any ] ] | None
-				Page dictionaries containing ordered block dictionaries.
-
-		"""
-		try:
-			throw_if( 'path', path )
 			self.file_path = path
 			self.pages = [ ]
 			
@@ -2622,8 +2611,7 @@ class PdfParser( Processor ):
 						
 						if midpoint <= header_limit:
 							zone = 'header'
-						
-						if midpoint >= footer_limit:
+						elif midpoint >= footer_limit:
 							zone = 'footer'
 						
 						page_blocks.append(
@@ -2657,29 +2645,28 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
-			exception.method = 'extract_pages( self, path: str ) -> List[ Dict[ str, Any ] ]'
+			exception.method = 'extract_pages( self, path: str ) -> List[ dict ]'
 			raise exception
 	
-	def remove_repeats( self, pages: List[ Dict[ str, Any ] ],
-			minimum_repeats: int = 3 ) -> List[ Dict[ str, Any ] ] | None:
+	def remove_repeats( self, pages: List[ dict ], minimum_repeats: int = 3 ) -> List[ dict ] | None:
 		"""
 
 			Purpose:
 			--------
-			Removes repeated candidate marginalia from header/footer page bands using
-			normalized text recurrence and generic page-label detection.
+			Marks repeated candidate marginalia for removal using page-band location and
+			normalized recurrence. This method does not use document titles, agencies,
+			legal labels, or document-family vocabulary.
 
 			Parameters:
 			-----------
-			pages : List[ Dict[ str, Any ] ]
+			pages : List[ dict ]
 				Page dictionaries produced by extract_pages.
 			minimum_repeats : int
-				Minimum number of occurrences required before a marginal block is
-				treated as repeated marginalia.
+				Minimum occurrences required before a marginal block is removed.
 
 			Returns:
 			--------
-			List[ Dict[ str, Any ] ] | None
+			List[ dict ] | None
 				Page dictionaries with repeated marginal blocks marked for removal.
 
 		"""
@@ -2709,7 +2696,8 @@ class PdfParser( Processor ):
 				
 				return False
 			
-			counts: Dict[ str, int ] = { }
+			counts = { }
+			threshold = max( 2, int( minimum_repeats ) )
 			
 			for page in pages:
 				for block in page.get( 'blocks', [ ] ):
@@ -2726,32 +2714,35 @@ class PdfParser( Processor ):
 					if key:
 						counts[ key ] = counts.get( key, 0 ) + 1
 			
-			repeated = {
-					key for key, value in counts.items( )
-					if value >= max( 2, int( minimum_repeats ) )
-			}
+			repeated = { key for key, value in counts.items( ) if value >= threshold }
+			cleaned_pages = [ ]
 			
 			for page in pages:
+				page_copy = dict( page )
+				new_blocks = [ ]
+				
 				for block in page.get( 'blocks', [ ] ):
-					if block.get( 'zone' ) not in { 'header', 'footer' }:
-						continue
+					block_copy = dict( block )
+					text = block_copy.get( 'text' )
 					
-					text = block.get( 'text' )
+					if isinstance( text, str ) and block_copy.get( 'zone' ) in { 'header',
+					                                                             'footer' }:
+						key = normalize_candidate( text )
+						
+						if key in repeated or is_page_label( text ):
+							block_copy[ 'drop' ] = True
 					
-					if not isinstance( text, str ):
-						continue
-					
-					key = normalize_candidate( text )
-					
-					if key in repeated or is_page_label( text ):
-						block[ 'drop' ] = True
+					new_blocks.append( block_copy )
+				
+				page_copy[ 'blocks' ] = new_blocks
+				cleaned_pages.append( page_copy )
 			
-			return pages
+			return cleaned_pages
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
-			exception.method = 'remove_repeats( self, pages: List[ Dict[ str, Any ] ] )'
+			exception.method = 'remove_repeats( self, pages: List[ dict ] )'
 			raise exception
 	
 	def clean_artifacts( self, text: str ) -> str:
@@ -2759,8 +2750,8 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Removes generic PDF/parser artifacts without using document-family-specific
-			vocabulary or document-specific rules.
+			Removes generic parser and PDF extraction artifacts without using document
+			family, agency, legal, regulatory, or document-title vocabulary.
 
 			Parameters:
 			-----------
@@ -2770,7 +2761,7 @@ class PdfParser( Processor ):
 			Returns:
 			--------
 			str
-				Text with generic artifacts removed.
+				Text with generic parser artifacts removed.
 
 		"""
 		try:
@@ -2819,9 +2810,9 @@ class PdfParser( Processor ):
 			)
 			
 			cleaned = re.sub(
-				r'(?im)^.*\b[A-Z0-9]{8,}\b.*$',
-				lambda m: ' ' if re.search( r'[A-Z]{2,}\d|\d[A-Z]{2,}', m.group( 0 ) )
-				else m.group( 0 ),
+				r'(?im)^\s*[a-z][a-z0-9_.-]{1,40}\s+on\s+[a-z0-9_.-]{6,}'
+				r'(?:\s+with\s+[a-z0-9_.-]+)?\s*$',
+				' ',
 				cleaned
 			)
 			
@@ -2832,6 +2823,7 @@ class PdfParser( Processor ):
 			cleaned = re.sub( r' +\n', '\n', cleaned )
 			cleaned = re.sub( r'\n +', '\n', cleaned )
 			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
 			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
@@ -2846,7 +2838,8 @@ class PdfParser( Processor ):
 			Purpose:
 			--------
 			Repairs generic spacing defects introduced by PDF extraction without using
-			document-family-specific terms, titles, headings, or legal/regulatory labels.
+			document-family-specific terms, titles, headings, agencies, legal labels, or
+			regulatory vocabulary.
 
 			Parameters:
 			-----------
@@ -2866,37 +2859,38 @@ class PdfParser( Processor ):
 			def repair_bracketed( match: re.Match ) -> str:
 				value = match.group( 1 )
 				
-				if re.fullmatch( r'[A-Z\s\-\n\r]+', value ):
+				if re.fullmatch( r'[A-Z\s\-\n\r]{3,}', value ):
 					value = re.sub( r'[\s\-]+', '', value )
 					return f'[{value}]'
 				
 				return match.group( 0 )
 			
-			cleaned = re.sub(
-				r'\[([A-Z\s\-\n\r]{3,})]',
-				repair_bracketed,
-				cleaned
-			)
+			def repair_letter_spaced_line( match: re.Match ) -> str:
+				line = match.group( 0 )
+				tokens = line.split( )
+				single_letters = [ t for t in tokens if re.fullmatch( r'[A-Z]', t ) ]
+				
+				if len( single_letters ) >= 3 and len( single_letters ) >= len( tokens ) / 2:
+					return re.sub( r'\b([A-Z])(?:\s+)(?=[A-Z]\b)', r'\1', line )
+				
+				return line
+			
+			cleaned = re.sub( r'\[([A-Z\s\-\n\r]{3,})]', repair_bracketed, cleaned )
 			
 			cleaned = re.sub(
-				r'\b([A-Z])\s+([A-Z]{2,})(?=\b)',
-				lambda m: f'{m.group( 1 )}{m.group( 2 )}',
-				cleaned
-			)
-			
-			cleaned = re.sub(
-				r'\b([A-Z])\s*\n\s*([A-Z]{2,})(?=\b)',
-				lambda m: f'{m.group( 1 )}{m.group( 2 )}',
+				r'(?m)^[A-Z](?:\s+[A-Z]){2,}(?:\s+[A-Z]{2,})*\s*$',
+				repair_letter_spaced_line,
 				cleaned
 			)
 			
 			cleaned = re.sub( r'[ \t]+([,.;:!?])', r'\1', cleaned )
 			cleaned = re.sub( r'([!?;:])(?=\S)', r'\1 ', cleaned )
-			cleaned = re.sub( r'(?<!\b[A-Z])\.(?=[A-Z][a-z])', '. ', cleaned )
+			cleaned = re.sub( r'(?<=[a-z0-9])\.(?=[A-Z][a-z])', '. ', cleaned )
 			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
 			cleaned = re.sub( r' +\n', '\n', cleaned )
 			cleaned = re.sub( r'\n +', '\n', cleaned )
 			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
 			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
@@ -2905,23 +2899,26 @@ class PdfParser( Processor ):
 			exception.method = 'repair_spacing( self, text: str ) -> str'
 			raise exception
 	
-	def rejoin_hyphenation( self, text: str ) -> str:
+	def rejoin_hyphenation( self, text: str, repair_embedded: bool = True ) -> str:
 		"""
 
 			Purpose:
 			--------
-			Repairs PDF line-break hyphenation and discretionary hyphen artifacts
-			without removing valid compound-word hyphenation.
+			Repairs line-break hyphenation, soft-hyphen artifacts, and conservative
+			embedded PDF extraction splits without document-specific vocabulary.
 
 			Parameters:
 			-----------
 			text : str
 				Extracted PDF text.
+			repair_embedded : bool
+				If true, repairs embedded alphabetic splits only when morphology,
+				dictionary lookup, or token-shape evidence supports rejoining.
 
 			Returns:
 			--------
 			str
-				Text with broken line-wrap hyphenation repaired conservatively.
+				Text with broken PDF hyphenation repaired.
 
 		"""
 		try:
@@ -2929,32 +2926,61 @@ class PdfParser( Processor ):
 			cleaned = text
 			
 			try:
-				vocabulary = set( words.words( 'en' ) )
+				from nltk.corpus import words as nltk_words
+				
+				vocabulary = set( nltk_words.words( 'en' ) )
 			except Exception:
 				vocabulary = set( )
 			
-			def repair_break( match: re.Match ) -> str:
+			try:
+				from nltk.corpus import wordnet as nltk_wordnet
+			except Exception:
+				nltk_wordnet = None
+			
+			def is_known_word( value: str ) -> bool:
+				token = value.lower( )
+				
+				if token in vocabulary:
+					return True
+				
+				if nltk_wordnet is not None:
+					try:
+						if nltk_wordnet.synsets( token ):
+							return True
+						
+						if nltk_wordnet.morphy( token ) is not None:
+							return True
+					except Exception:
+						return False
+				
+				return False
+			
+			def repair_line_break( match: re.Match ) -> str:
 				left = match.group( 1 )
 				right = match.group( 2 )
-				combined = f'{left}{right}'
 				
 				if '-' in right:
 					return f'{left}-{right}'
 				
-				if vocabulary and combined.lower( ) in vocabulary:
-					return combined
-				
-				if not vocabulary and len( left ) >= 4 and len( right ) >= 3:
-					return combined
-				
-				return f'{left}-{right}'
+				return f'{left}{right}'
 			
 			def repair_embedded_split( match: re.Match ) -> str:
 				left = match.group( 1 )
 				right = match.group( 2 )
 				combined = f'{left}{right}'
 				
-				if vocabulary and combined.lower( ) in vocabulary:
+				combined_known = is_known_word( combined )
+				
+				if combined_known:
+					return combined
+				
+				if re.fullmatch(
+						r'(?:able|ible|ally|ance|ancy|ence|ency|ation|ations|'
+						r'cation|cations|cies|tion|tions|sion|sions|ment|ments|'
+						r'ness|less|ship|ships|ing|ings|ed|er|ers|or|ors|ies|'
+						r'ive|ives|ity|ities|al|als|ary|ory|ories|ous|ious|eous)',
+						right,
+						flags=re.IGNORECASE ):
 					return combined
 				
 				return match.group( 0 )
@@ -2967,26 +2993,28 @@ class PdfParser( Processor ):
 			
 			cleaned = re.sub(
 				r'\b([A-Za-z]{2,})-\s*\n\s*([A-Za-z][A-Za-z-]*)\b',
-				repair_break,
+				repair_line_break,
 				cleaned
 			)
 			
 			cleaned = re.sub(
 				r'\b([A-Za-z]{2,})-\s+([A-Za-z][A-Za-z-]*)\b',
-				repair_break,
+				repair_line_break,
 				cleaned
 			)
 			
-			cleaned = re.sub(
-				r'\b([A-Za-z]{3,})-([a-z]{2,})\b',
-				repair_embedded_split,
-				cleaned
-			)
+			if repair_embedded:
+				cleaned = re.sub(
+					r'\b([A-Za-z]{2,})-([a-z]{2,})\b',
+					repair_embedded_split,
+					cleaned
+				)
 			
 			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
 			cleaned = re.sub( r' +\n', '\n', cleaned )
 			cleaned = re.sub( r'\n +', '\n', cleaned )
 			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
+			
 			return cleaned.strip( )
 		except Exception as e:
 			exception = Error( e )
@@ -2995,19 +3023,18 @@ class PdfParser( Processor ):
 			exception.method = 'rejoin_hyphenation( self, text: str ) -> str'
 			raise exception
 	
-	def rebuild_pages( self, pages: List[ Dict[ str, Any ] ],
-			preserve_page_breaks: bool = False ) -> str:
+	def rebuild_pages( self, pages: List[ dict ], preserve_page_breaks: bool = False ) -> str:
 		"""
 
 			Purpose:
 			--------
-			Rebuilds text from page/block geometry after repeated marginalia has been
-			marked for removal.
+			Rebuilds text from page/block geometry. Blocks marked with drop=True are
+			excluded; all other blocks are preserved in y/x reading order.
 
 			Parameters:
 			-----------
-			pages : List[ Dict[ str, Any ] ]
-				Page dictionaries produced by extract_pages and remove_repeats.
+			pages : List[ dict ]
+				Page dictionaries produced by extract_pages or remove_repeats.
 			preserve_page_breaks : bool
 				If true, inserts explicit page-break markers between pages.
 
@@ -3063,7 +3090,7 @@ class PdfParser( Processor ):
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
-			exception.method = 'rebuild_pages( self, pages: List[ Dict[ str, Any ] ] ) -> str'
+			exception.method = 'rebuild_pages( self, pages: List[ dict ] ) -> str'
 			raise exception
 	
 	def extract_lines( self, path: str, count: Optional[ int ] = None ) -> List[ str ] | None:
@@ -3071,7 +3098,7 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Extracts text lines from a PDF using the geometry extraction pipeline.
+			Extracts non-empty text lines from a PDF using geometry extraction only.
 
 			Parameters:
 			-----------
@@ -3107,7 +3134,7 @@ class PdfParser( Processor ):
 
 			Purpose:
 			--------
-			Extracts full PDF text using the geometry extraction pipeline.
+			Extracts full PDF text using geometry extraction only.
 
 			Parameters:
 			-----------
