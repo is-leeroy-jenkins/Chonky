@@ -3257,25 +3257,14 @@ with tabs[ 0 ]:
 # ======================================================================================
 with tabs[ 1 ]:
 	raw_text = st.session_state.get( 'raw_text' )
-	processed_text = st.session_state.get( 'processed_text' )
 	active_loader = st.session_state.get( 'active_loader' )
-	displayed_text = st.session_state.get( 'displayed_text' )
 	
 	if not isinstance( raw_text, str ) or not raw_text.strip( ):
 		st.info( 'Load a document before running text processing.' )
-		st.stop( )
-	
-	if not active_loader:
+	elif not active_loader:
 		st.warning( 'No active loader detected. Load documents first.' )
-		st.stop( )
-	
-	if isinstance( raw_text, str ):
+	else:
 		st.session_state.raw_text_view = raw_text
-		processed_text = st.session_state.get( 'processed_text' )
-		displayed_text = st.session_state.get( 'displayed_text' )
-		start_time = st.session_state.get( 'start_time', 0.0 )
-		end_time = st.session_state.get( 'end_time', 0.0 )
-		total_time = st.session_state.get( 'total_time', 0.0 )
 		has_text = isinstance( raw_text, str ) and bool( raw_text.strip( ) )
 		
 		# ------------------------------------------------------------------
@@ -3344,7 +3333,8 @@ with tabs[ 1 ]:
 			# ==============================================================
 			# Word-Specific Processing (WordParser)
 			# ==============================================================
-			extract_tables = extract_paragraphs = False
+			extract_tables = False
+			extract_paragraphs = False
 			
 			with st.expander( 'Word Processing', icon='📄', expanded=False ):
 				if active == 'WordLoader':
@@ -3356,46 +3346,54 @@ with tabs[ 1 ]:
 			# ==============================================================
 			# PDF-Specific Processing (PdfParser)
 			# ==============================================================
-			apply_pdf_cleanup = False
+			remove_pdf_repeats = False
 			clean_pdf_artifacts = False
 			repair_pdf_spacing = False
 			rejoin_pdf_hyphenation = False
+			repair_embedded_hyphenation = False
 			
 			with st.expander( 'PDF Processing', icon='📕', expanded=False ):
 				if active == 'PdfLoader':
-					st.caption(
-						'Core PDF cleanup is applied during PDF loading when Geometry Cleanup '
-						'is enabled. Use these controls only for additional cleanup.' )
-					
-					apply_pdf_cleanup = st.checkbox(
-						'Apply Additional PDF Cleanup',
-						value=False,
-						key='pdf_apply_additional_cleanup' )
+					remove_pdf_repeats = st.checkbox(
+						'Remove Repeated Marginalia',
+						value=True,
+						key='pdf_remove_repeats',
+						help='Removes repeated header/footer-band blocks using geometry metadata.' )
 					
 					clean_pdf_artifacts = st.checkbox(
 						'Clean Artifacts',
-						value=False,
+						value=True,
 						key='pdf_clean_artifacts',
-						disabled=not apply_pdf_cleanup )
+						help='Removes generic parser artifacts, file paths, image tags, control '
+						     'characters, and leader-dot runs.' )
 					
 					repair_pdf_spacing = st.checkbox(
 						'Repair Spacing',
-						value=False,
+						value=True,
 						key='pdf_repair_spacing',
-						disabled=not apply_pdf_cleanup )
+						help='Repairs generic spacing defects without document-specific rules.' )
 					
 					rejoin_pdf_hyphenation = st.checkbox(
 						'Rejoin Hyphenation',
-						value=False,
+						value=True,
 						key='pdf_rejoin_hyphenation',
-						disabled=not apply_pdf_cleanup )
+						help='Repairs line-break hyphenation and soft-hyphen artifacts.' )
+					
+					repair_embedded_hyphenation = st.checkbox(
+						'Repair Embedded Hyphen Splits',
+						value=True,
+						key='pdf_repair_embedded_hyphenation',
+						help='Conservatively repairs embedded alphabetic extraction splits.' )
 				else:
 					st.caption( 'Available when PDF documents are loaded.' )
-					
+			
 			# ==============================================================
-			# HTML-Specific Processing (Structural)
+			# HTML-Specific Processing
 			# ==============================================================
-			strip_scripts = keep_headings = keep_paragraphs = keep_tables = False
+			strip_scripts = False
+			keep_headings = False
+			keep_paragraphs = False
+			keep_tables = False
 			
 			with st.expander( 'HTML Processing', icon='🌐', expanded=False ):
 				if active == 'HtmlLoader':
@@ -3454,7 +3452,6 @@ with tabs[ 1 ]:
 				# Initialize from raw text
 				# ----------------------------------------------------------
 				processed_text = raw_text if isinstance( raw_text, str ) else ''
-				
 				tp = TextParser( )
 				nlp = NltkParser( )
 				
@@ -3477,10 +3474,19 @@ with tabs[ 1 ]:
 					processed_text = tp.remove_xml( processed_text )
 				
 				# ----------------------------------------------------------
-				# Optional PDF post-load cleanup
+				# PDF-specific processing
 				# ----------------------------------------------------------
-				if active == 'PdfLoader' and apply_pdf_cleanup:
+				if active == 'PdfLoader':
 					pdf_parser = PdfParser( )
+					pdf_pages = st.session_state.get( 'pdf_pages' )
+					
+					if remove_pdf_repeats and isinstance( pdf_pages, list ) and pdf_pages:
+						clean_pages = pdf_parser.remove_repeats( pdf_pages )
+						processed_text = pdf_parser.rebuild_pages(
+							pages=clean_pages,
+							preserve_page_breaks=st.session_state.get(
+								'pdf_preserve_page_breaks', False )
+						)
 					
 					if clean_pdf_artifacts:
 						processed_text = pdf_parser.clean_artifacts( processed_text )
@@ -3489,7 +3495,10 @@ with tabs[ 1 ]:
 						processed_text = pdf_parser.repair_spacing( processed_text )
 					
 					if rejoin_pdf_hyphenation:
-						processed_text = pdf_parser.rejoin_hyphenation( processed_text )
+						processed_text = pdf_parser.rejoin_hyphenation(
+							processed_text,
+							repair_embedded=repair_embedded_hyphenation
+						)
 				
 				# ----------------------------------------------------------
 				# Noise / non-lexical cleanup
@@ -3553,24 +3562,6 @@ with tabs[ 1 ]:
 				# Token processing
 				# ----------------------------------------------------------
 				display_text = processed_text
-				
-				if 'nltk_word_tokens' not in st.session_state:
-					st.session_state.nltk_word_tokens = [ ]
-				
-				if 'nltk_sentence_tokens' not in st.session_state:
-					st.session_state.nltk_sentence_tokens = [ ]
-				
-				if 'nltk_stemmed_tokens' not in st.session_state:
-					st.session_state.nltk_stemmed_tokens = [ ]
-				
-				if 'nltk_lemmatized_tokens' not in st.session_state:
-					st.session_state.nltk_lemmatized_tokens = [ ]
-				
-				if 'nltk_pos_tags' not in st.session_state:
-					st.session_state.nltk_pos_tags = [ ]
-				
-				if 'nltk_named_entities' not in st.session_state:
-					st.session_state.nltk_named_entities = [ ]
 				
 				st.session_state.nltk_word_tokens = [ ]
 				st.session_state.nltk_sentence_tokens = [ ]
@@ -3670,7 +3661,8 @@ with tabs[ 1 ]:
 		with right:
 			raw_text_view = st.session_state.get( 'raw_text_view' )
 			raw_text_current = st.session_state.get( 'raw_text' )
-			processed_text = st.session_state.get( 'processed_text' )
+			processed_current = st.session_state.get( 'processed_text' )
+			displayed_current = st.session_state.get( 'displayed_text' )
 			
 			st.text_area(
 				label='Raw Text',
@@ -3683,12 +3675,12 @@ with tabs[ 1 ]:
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
 				if (
 						isinstance( raw_text_current, str ) and raw_text_current.strip( )
-						and isinstance( processed_text, str ) and processed_text.strip( )
+						and isinstance( processed_current, str ) and processed_current.strip( )
 				):
 					raw_tokens = raw_text_current.split( )
-					proc_tokens = processed_text.split( )
+					proc_tokens = processed_current.split( )
 					raw_chars = len( raw_text_current )
-					proc_chars = len( processed_text )
+					proc_chars = len( processed_current )
 					raw_vocab = len( set( raw_tokens ) )
 					proc_vocab = len( set( proc_tokens ) )
 					
@@ -3717,9 +3709,9 @@ with tabs[ 1 ]:
 			
 			st.text_area(
 				'Processed Text',
-				value=st.session_state.get( 'displayed_text' ) or '',
+				value=displayed_current if isinstance( displayed_current, str ) else '',
 				height=800,
-				key='processed_text_display'
+				key='processed_text_display_area'
 			)
 
 # ======================================================================================
