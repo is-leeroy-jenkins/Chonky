@@ -261,7 +261,7 @@ class TextParser( Processor ):
 	DIGITS: Optional[ Set[ str ] ]
 	SYMBOLS: Optional[ Set[ str ] ]
 	NUMERALS: Optional[ str ]
-
+	
 	def __init__( self ):
 		'''
 
@@ -272,7 +272,7 @@ class TextParser( Processor ):
 		'''
 		super( ).__init__( )
 		self.PUNCTUATION = PUNCTUATION
-		self.CONTROL_CHARACTERS = ( {chr(i) for i in range(0x00, 0x20)} | {chr(0x7F)} )
+		self.CONTROL_CHARACTERS = ({ chr( i ) for i in range( 0x00, 0x20 ) } | { chr( 0x7F ) })
 		self.DELIMITERS = DELIMITERS
 		self.DIGITS = DIGITS
 		self.SYMBOLS = SYMBOLS
@@ -321,7 +321,7 @@ class TextParser( Processor ):
 			- List[ str ] | None
 
 		'''
-		return [ # Attributes
+		return [  # Attributes
 				'file_path',
 				'raw_input',
 				'raw_pages',
@@ -401,7 +401,7 @@ class TextParser( Processor ):
 				raise FileNotFoundError( f'File not found: {filepath}' )
 			else:
 				self.file_path = filepath
-			raw_text = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read()
+			raw_text = open( self.file_path, mode='r', encoding='utf-8', errors='ignore' ).read( )
 			return raw_text
 		except Exception as e:
 			exception = Error( e )
@@ -409,7 +409,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'load_text( self, file_path: str ) -> str'
 			raise exception
-			
+	
 	def collapse_whitespace( self, text: str ) -> str | None:
 		"""
 
@@ -439,7 +439,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
 			raise exception
-		
+	
 	def remove_punctuation( self, text: str ) -> str:
 		"""
 
@@ -485,7 +485,40 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
 			raise exception
-			
+		
+	def reduce_repeats( self, text: str ) -> str:
+		"""
+
+			Purpose:
+			--------
+			Reduces two or more contiguous punctuation or symbol characters to the
+			left-most character, then ensures the retained delimiter is followed by a
+			single space when another non-space character follows it.
+
+			Parameters:
+			-----------
+			text : str
+				The raw input text containing repeated punctuation or symbol sequences.
+
+			Returns:
+			--------
+			str
+				Text with contiguous punctuation and symbol sequences reduced to the
+				left-most character and followed by delimiter spacing where needed.
+
+		"""
+		try:
+			throw_if( 'text', text )
+			_cleaned = re.sub( r'([^\w\s]){2,}', lambda match: match.group( 0 )[ 0 ], text )
+			_cleaned = re.sub( r'([^\w\s])\s*(?=\S)', r'\1 ', _cleaned )
+			return _cleaned
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'processors'
+			exception.cause = 'TextParser'
+			exception.method = 'reduce_repeats( self, text: str ) -> str'
+			raise exception
+		
 	def normalize_text( self, text: str ) -> str | None:
 		"""
 
@@ -517,7 +550,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
 			raise exception
-		
+	
 	def remove_errors( self, text: str ) -> str:
 		"""
 
@@ -591,7 +624,7 @@ class TextParser( Processor ):
 			_cleaned = [ ]
 			_fragments = _text.split( )
 			for char in _fragments:
-				if len( char) > 2:
+				if len( char ) > 2:
 					_cleaned.append( char )
 			return ' '.join( _cleaned )
 		except Exception as e:
@@ -600,7 +633,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_fragments( self, text: str ) -> str:'
 			raise exception
-		
+	
 	def remove_symbols( self, text: str ) -> str | None:
 		"""
 
@@ -632,7 +665,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_symbols( self, text: str ) -> str:'
 			raise exception
-			
+	
 	def remove_html( self, text: str ) -> str | None:
 		"""
 
@@ -666,7 +699,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_html( self, text: str ) -> str'
 			raise exception
-			
+	
 	def remove_xml( self, text: str ) -> str:
 		"""
 		
@@ -717,7 +750,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_xml( self, text: str ) -> str'
 			raise exception
-			
+	
 	def remove_markdown( self, text: str ) -> str | None:
 		"""
 
@@ -750,7 +783,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
 			raise exception
-		
+	
 	def remove_stopwords( self, text: str ) -> str:
 		"""
 
@@ -795,74 +828,49 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
 			raise exception
-		
+	
 	def remove_encodings( self, text: str ) -> str | None:
 		"""
 
 			Purpose:
 			---------
-			Cleans encoding artifacts safely without corrupting already-decoded Unicode
-			text extracted from PDFs, Word documents, HTML, or plain text files.
+			Cleans text of encoding artifacts by resolving HTML entities,
+			Unicode escape sequences, and over-encoded byte strings.
 
-			Parameters:
+			Parameters
 			----------
 			text : str
-				Input string potentially containing HTML entities, literal Unicode escape
-				sequences, control characters, or common mojibake artifacts.
+			Input string potentially containing encoded characters.
 
-			Returns:
+			Returns
 			-------
-			str | None
-				Unicode-normalized text with encoding artifacts repaired or removed.
+			str
+			Cleaned Unicode-normalized text.
 
 		"""
 		try:
 			throw_if( 'text', text )
+			try:
+				_text = text.lower( )
+				text = bytes( _text, 'utf-8' ).decode( 'unicode_escape' )
+			except UnicodeDecodeError:
+				pass
+			
 			self.raw_input = text
-			cleaned = html.unescape( self.raw_input )
-			
-			if re.search( r'\\u[0-9a-fA-F]{4}|\\x[0-9a-fA-F]{2}', cleaned ):
-				try:
-					cleaned = bytes( cleaned, 'utf-8' ).decode( 'unicode_escape' )
-				except UnicodeDecodeError:
-					pass
-			
-			replacements = {
-					'â': '’',
-					'â': '‘',
-					'â': '“',
-					'â': '”',
-					'â': '–',
-					'â': '—',
-					'â¢': '•',
-					'â': '⁄',
-					'â¢': '™',
-					'Â§': '§',
-					'Â¶': '¶',
-					'Â©': '©',
-					'Â®': '®',
-					'Ã': '×',
-					'Â': '',
-			}
-			
-			for bad, good in replacements.items( ):
-				cleaned = cleaned.replace( bad, good )
-			
-			cleaned = unicodedata.normalize( 'NFKC', cleaned )
-			cleaned = re.sub( r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', cleaned )
-			cleaned = re.sub( r'[ \t]{2,}', ' ', cleaned )
-			cleaned = re.sub( r' +\n', '\n', cleaned )
-			cleaned = re.sub( r'\n +', '\n', cleaned )
-			cleaned = re.sub( r'\n{3,}', '\n\n', cleaned )
-			return cleaned.strip( )
+			_html = html.unescape( self.raw_input )
+			_norm = unicodedata.normalize( 'NFKC', _html )
+			_chars = re.sub( r'[\x00-\x1F\x7F]', '', _norm )
+			cleaned_text = _chars.strip( )
+			return cleaned_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
 			raise exception
-			
-	def remove_headers( self, filepath: str, lines: int=50, headers: int=3, footers: int=3 ) -> str | None:
+	
+	def remove_headers( self, filepath: str, lines: int = 50, headers: int = 3,
+			footers: int = 3 ) -> str | None:
 		"""
 		
 			Purpose:
@@ -885,7 +893,7 @@ class TextParser( Processor ):
 			--------
 			str:
 			Cleaned document text with repetitive headers and footers removed.
-				
+			
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -903,7 +911,7 @@ class TextParser( Processor ):
 				self.lines = fh.readlines( )
 			
 			self.pages = [ self.lines[ i: i + lines ] for i in
-			          range( 0, len( self.lines ), lines ) ]
+			               range( 0, len( self.lines ), lines ) ]
 			
 			header_counts = { }
 			footer_counts = { }
@@ -954,7 +962,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_headers( self, filepath: str ) -> str'
 			raise exception
-			
+	
 	def remove_numbers( self, text: str ) -> str | None:
 		"""
 
@@ -983,7 +991,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
 			raise exception
-			
+	
 	def remove_numerals( self, text: str ) -> str | None:
 		"""
 
@@ -1013,7 +1021,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'remove_numerals( self, text: str ) -> str'
 			raise exception
-			
+	
 	def remove_images( self, text: str ) -> str:
 		"""
 			Purpose:
@@ -1071,8 +1079,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = ('remove_formatting( self, text: str ) -> str')
 			raise exception
-			
-	def tiktokenize( self, text: str, encoding: str='cl100k_base' ) -> DataFrame | None:
+	
+	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -1111,8 +1119,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
 			raise exception
-			
-	def split_sentences( self, text: str  ) -> List[ str ] | None:
+	
+	def split_sentences( self, text: str ) -> List[ str ] | None:
 		"""
 
 			Purpose:
@@ -1145,8 +1153,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'split_sentences( self, text: str ) -> DataFrame'
 			raise exception
-			
-	def split_pages( self, filepath: str, num: int=50 ) -> List[ str ] | None:
+	
+	def split_pages( self, filepath: str, num: int = 50 ) -> List[ str ] | None:
 		"""
 		    
 		    Purpose:
@@ -1191,7 +1199,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'split_pages( file_path )'
 			raise exception
-			
+	
 	def split_paragraphs( self, filepath: str ) -> DataFrame | None:
 		"""
 
@@ -1256,7 +1264,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
 			raise exception
-			
+	
 	def create_vocabulary( self, tokens: List[ str ] ) -> Series | None:
 		"""
 
@@ -1292,7 +1300,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
 			raise exception
-			
+	
 	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame | None:
 		"""
 
@@ -1322,7 +1330,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
 			raise exception
-			
+	
 	def create_vectors( self, tokens: List[ str ] ) -> DataFrame | None:
 		"""
 		
@@ -1370,7 +1378,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
 			raise exception
-			
+	
 	def clean_file( self, filepath: str ) -> str | None:
 		"""
 
@@ -1410,7 +1418,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'clean_file( self, src: str ) -> str'
 			raise exception
-			
+	
 	def clean_files( self, source: str, destination: str ) -> None:
 		"""
 
@@ -1464,7 +1472,7 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'clean_files( self, src: str, dest: str )'
 			raise exception
-			
+	
 	def chunk_files( self, source: str, destination: str ) -> None:
 		"""
 
@@ -1499,11 +1507,11 @@ class TextParser( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _source + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_sentences =  self.split_sentences( _text )
+					_sentences = self.split_sentences( _text )
 					_datamap = [ ]
 					for v in _sentences:
 						_datamap.append( v )
-						
+					
 					for s in _datamap:
 						_processed.append( s )
 					
@@ -1517,8 +1525,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_files( self, src: str, dest: str )'
 			raise exception
-			
-	def chunk_data( self, filepath: str, size: int=10  ) -> DataFrame | None:
+	
+	def chunk_data( self, filepath: str, size: int = 10 ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -1549,9 +1557,10 @@ class TextParser( Processor ):
 				for s in _tokens:
 					if s.isalpha( ) and s in _vocab:
 						_wordlist.append( s )
-				self.chunks = [ _wordlist[ i: i + size ] for i in range( 0, len( _wordlist ), size ) ]
+				self.chunks = [ _wordlist[ i: i + size ] for i in
+				                range( 0, len( _wordlist ), size ) ]
 				for i, c in enumerate( self.chunks ):
-					_item =  '[' + ' '.join( c ) + '],'
+					_item = '[' + ' '.join( c ) + '],'
 					_processed.append( _item )
 				_data = pd.DataFrame( _processed )
 				return _data
@@ -1561,8 +1570,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
 			raise exception
-			
-	def chunk_datasets( self, source: str, destination: str, size: int=10 ) -> DataFrame:
+	
+	def chunk_datasets( self, source: str, destination: str, size: int = 10 ) -> DataFrame:
 		"""
 
 			Purpose:
@@ -1593,7 +1602,7 @@ class TextParser( Processor ):
 				for f in _files:
 					_processed = [ ]
 					_filename = os.path.basename( f )
-					_sourcepath = _src+ '\\' + _filename
+					_sourcepath = _src + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
 					_collapsed = self.collapse_whitespace( _text )
 					_compressed = self.compress_whitespace( _collapsed )
@@ -1610,22 +1619,23 @@ class TextParser( Processor ):
 					for i, c in enumerate( _chunks ):
 						_row = ' '.join( c )
 						_datamap.append( _row )
-						
+					
 					for s in _datamap:
 						_processed.append( s )
 					
 					_name = _filename.replace( '.txt', '.xlsx' )
-					_savepath = ( _destination + f'\\' + _name )
+					_savepath = (_destination + f'\\' + _name)
 					_data = pd.DataFrame( _processed, columns=[ 'Data', ] )
-					_data.to_excel( _savepath, sheet_name='Dataset', index=False, columns=[ 'Data', ] )
+					_data.to_excel( _savepath, sheet_name='Dataset', index=False,
+						columns=[ 'Data', ] )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=15  ) -> DataFrame'
 			raise exception
-			
-	def convert_jsonl( self, source: str, destination: str, size: int=10 ) -> None:
+	
+	def convert_jsonl( self, source: str, destination: str, size: int = 10 ) -> None:
 		"""
 
 			Purpose:
@@ -1660,13 +1670,13 @@ class TextParser( Processor ):
 					_filename = os.path.basename( f )
 					_sourcepath = _source + '\\' + _filename
 					_text = open( _sourcepath, 'r', encoding='utf-8', errors='ignore' ).read( )
-					_tokens =  _text.split( ' ' )
+					_tokens = _text.split( ' ' )
 					_chunks = [ _tokens[ i: i + size ] for i in range( 0, len( _tokens ), size ) ]
 					_datamap = [ ]
 					for i, c in enumerate( _chunks ):
-						_value = '{ ' +f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
+						_value = '{ ' + f' {i} : [ ' + ' '.join( c ) + ' ] }, ' + "\n"
 						_datamap.append( _value )
-						
+					
 					for s in _datamap:
 						_processed.append( s )
 					
@@ -1680,8 +1690,8 @@ class TextParser( Processor ):
 			exception.cause = 'TextParser'
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
 			raise exception
-			
-	def encode_sentences( self, tokens: List[ str ], model: str='all-MiniLM-L6-v2' ) -> \
+	
+	def encode_sentences( self, tokens: List[ str ], model: str = 'all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
 		"""
 		
@@ -1702,16 +1712,16 @@ class TextParser( Processor ):
 			_transformer = SentenceTransformer( model )
 			_tokens = [ self.lemmatizer.lemmatize( t ) for t in tokens ]
 			_encoding = _transformer.encode( _tokens, show_progress_bar=True )
-			return ( self.cleaned_tokens, np.array( _encoding ) )
+			return (self.cleaned_tokens, np.array( _encoding ))
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
 			raise exception
-			
+	
 	def semantic_search( self, query: str, tokens: List[ str ], embeddings: np.ndarray,
-			model: SentenceTransformer, top: int=5 ) -> List[ tuple[ str, float ] ]:
+			model: SentenceTransformer, top: int = 5 ) -> List[ tuple[ str, float ] ]:
 		"""
 			Purpose:
 				Perform semantic search over embedded corpus using query.
@@ -1734,7 +1744,7 @@ class TextParser( Processor ):
 			query_vec = model.encode( [ query ] )
 			sims = cosine_similarity( query_vec, embeddings )[ 0 ]
 			top_indices = sims.argsort( )[ ::-1 ][ : top ]
-			return [ ( tokens[ i ], sims[ i ] ) for i in top_indices ]
+			return [ (tokens[ i ], sims[ i ]) for i in top_indices ]
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'processors'
@@ -2057,7 +2067,7 @@ class NltkParser( Processor ):
 			exception.method = 'named_entity_recogniztion( self, text: str ) -> str'
 			raise exception
 	
-	def chunk_words( self, text: str, size: int=5 ) -> DataFrame | None:
+	def chunk_words( self, text: str, size: int = 5 ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -2104,7 +2114,7 @@ class NltkParser( Processor ):
 			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
 			raise exception
 	
-	def chunk_sentences( self, text: str, size: int=15 ) -> DataFrame | None:
+	def chunk_sentences( self, text: str, size: int = 15 ) -> DataFrame | None:
 		"""
 
 			Purpose:
@@ -2228,7 +2238,7 @@ class WordParser( Processor ):
 		         'vocabulary',
 		         'freq_dist' ]
 	
-	def extract_text( self, num: int=1 ) -> str | None:
+	def extract_text( self, num: int = 1 ) -> str | None:
 		"""
 
 			Purpose:
@@ -2245,7 +2255,7 @@ class WordParser( Processor ):
 			exception.cause = 'Word'
 			exception.method = 'extract_text( self, num: int ) -> str'
 			raise exception
-			
+	
 	def split_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -2256,7 +2266,7 @@ class WordParser( Processor ):
 		"""
 		try:
 			_text = self.page_text.lower( )
-			self.sentences = sent_tokenize(_text )
+			self.sentences = sent_tokenize( _text )
 			return self.sentences
 		except Exception as e:
 			exception = Error( e )
@@ -2264,7 +2274,7 @@ class WordParser( Processor ):
 			exception.cause = 'Word'
 			exception.method = 'split_sentences( self ) -> List[ str ]'
 			raise exception
-			
+	
 	def clean_sentences( self ) -> List[ str ] | None:
 		"""
 
@@ -2286,7 +2296,7 @@ class WordParser( Processor ):
 			exception.cause = 'Word'
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
 			raise exception
-			
+	
 	def create_vocabulary( self ) -> set | None:
 		"""
 
@@ -2301,7 +2311,7 @@ class WordParser( Processor ):
 			for _sentence in self.cleaned_sentences:
 				_tokens = word_tokenize( _sentence )
 				self.tokens = [ token for token in _tokens if
-					token.isalpha( ) and token not in self.stop_words ]
+				                token.isalpha( ) and token not in self.stop_words ]
 				all_words.extend( self.tokens )
 			self.vocabulary = set( all_words )
 			return self.vocabulary
@@ -2311,7 +2321,7 @@ class WordParser( Processor ):
 			exception.cause = 'Word'
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
 			raise exception
-			
+	
 	def compute_frequency_distribution( self ) -> Dict[ str, int ] | None:
 		"""
 
@@ -2334,7 +2344,7 @@ class WordParser( Processor ):
 			exception.cause = 'Word'
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
 			raise exception
-			
+	
 	def summarize( self ) -> List[ str ] | None:
 		"""
 
@@ -2347,7 +2357,8 @@ class WordParser( Processor ):
 		print( f'Paragraphs: {len( self.paragraphs )}' )
 		print( f'Sentences: {len( self.sentences )}' )
 		print( f'Vocabulary Size: {len( self.vocabulary )}' )
-		print( f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
+		print(
+			f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
 
 class PdfParser( Processor ):
 	"""
@@ -3308,5 +3319,4 @@ class PdfParser( Processor ):
 			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )'
 			raise exception
 			
-
 

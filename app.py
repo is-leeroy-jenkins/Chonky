@@ -1017,19 +1017,7 @@ with tabs[ 0 ]:
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_pdf = col_load.button( 'Load', key='pdf_load' )
 				clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
-				
-				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
-				
-				if can_save:
-					col_save.download_button( 'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='pdf_loader_output.txt',
-						mime='text/plain',
-						key='pdf_save' )
-				else:
-					col_save.button( 'Save', key='pdf_save_disabled', disabled=True )
+				save_pdf = col_save.empty( )
 				
 				# --------------------------------------------------
 				# Clear
@@ -1038,7 +1026,6 @@ with tabs[ 0 ]:
 					clear_if_active( 'PdfLoader' )
 					st.session_state.pdf_pages = None
 					st.session_state[ '_loader_status' ] = 'PDF Loader state cleared.'
-					st.rerun( )
 				
 				# --------------------------------------------------
 				# Load
@@ -1052,30 +1039,21 @@ with tabs[ 0 ]:
 						
 						if use_geometry and not use_legacy_pdf_loader:
 							parser = PdfParser( )
-							pdf_pages = parser.extract_pages(
-								path=path,
+							pdf_pages = parser.extract_pages( path=path,
 								header_ratio=float( header_band ) / 100.0,
-								footer_ratio=float( footer_band ) / 100.0
-							) or [ ]
+								footer_ratio=float( footer_band ) / 100.0 ) or [ ]
 							
-							raw_text = parser.rebuild_pages(
-								pages=pdf_pages,
-								preserve_page_breaks=preserve_page_breaks
-							) or ''
+							raw_text = parser.rebuild_pages( pages=pdf_pages,
+								preserve_page_breaks=preserve_page_breaks ) or ''
 							
-							documents = [
-									Document(
-										page_content=raw_text,
-										metadata={
+							documents = [ Document( page_content=raw_text, metadata={
 												'loader': 'PdfLoader',
 												'source': pdf.name,
 												'extract': 'geometry',
 												'header_band': int( header_band ),
 												'footer_band': int( footer_band ),
 												'preserve_page_breaks': preserve_page_breaks,
-										}
-									)
-							]
+										} ) ]
 							
 							st.session_state.pdf_pages = pdf_pages
 						else:
@@ -1091,8 +1069,7 @@ with tabs[ 0 ]:
 								document.metadata.setdefault( 'source', pdf.name )
 								document.metadata.setdefault( 'extract', 'legacy' )
 							
-							raw_text = '\n\n'.join(
-								d.page_content for d in documents
+							raw_text = '\n\n'.join( d.page_content for d in documents
 								if hasattr( d, 'page_content' )
 								and isinstance( d.page_content, str )
 								and d.page_content.strip( ) )
@@ -1112,6 +1089,19 @@ with tabs[ 0 ]:
 					
 					st.session_state[ '_loader_status' ] = \
 						f'Loaded {len( documents )} PDF document(s).'
+				
+				# --------------------------------------------------
+				# Save
+				# --------------------------------------------------
+				can_save = ( st.session_state.get( 'active_loader' ) == 'PdfLoader'
+						and isinstance( st.session_state.get( 'raw_text' ), str )
+						and st.session_state.get( 'raw_text' ).strip( ) )
+				
+				if can_save:
+					save_pdf.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='pdf_loader_output.txt', mime='text/plain', key='pdf_save' )
+				else:
+					save_pdf.button( 'Save', key='pdf_save_disabled', disabled=True )
 			
 			# --------------------------- Power Point Loader
 			with st.expander( label='Power Point Loader', icon='📽', expanded=False ):
@@ -3259,6 +3249,76 @@ with tabs[ 1 ]:
 	raw_text = st.session_state.get( 'raw_text' )
 	active_loader = st.session_state.get( 'active_loader' )
 	
+	# ------------------------------------------------------------------
+	# Session State Defaults
+	# ------------------------------------------------------------------
+	st.session_state.setdefault( 'raw_text_view', '' )
+	st.session_state.setdefault( 'processed_text', '' )
+	st.session_state.setdefault( 'displayed_text', '' )
+	st.session_state.setdefault( 'processed_text_display', '' )
+	st.session_state.setdefault( 'processing_display_version', 0 )
+	st.session_state.setdefault( 'start_time', 0.0 )
+	st.session_state.setdefault( 'end_time', 0.0 )
+	st.session_state.setdefault( 'total_time', 0.0 )
+	st.session_state.setdefault( 'nltk_word_tokens', [ ] )
+	st.session_state.setdefault( 'nltk_sentence_tokens', [ ] )
+	st.session_state.setdefault( 'nltk_stemmed_tokens', [ ] )
+	st.session_state.setdefault( 'nltk_lemmatized_tokens', [ ] )
+	st.session_state.setdefault( 'nltk_pos_tags', [ ] )
+	st.session_state.setdefault( 'nltk_named_entities', [ ] )
+	
+	def refresh_processing_display( ) -> None:
+		"""
+		
+			Purpose:
+			--------
+			Increment the processing display version so Streamlit recreates the read-only
+			text-area widgets after processing, reset, or clear actions.
+			
+			Parameters:
+			-----------
+			None
+			
+			Returns:
+			--------
+			None
+		
+		"""
+		st.session_state.processing_display_version = (
+				int( st.session_state.get( 'processing_display_version', 0 ) ) + 1 )
+	
+	def coerce_text( value: object ) -> str:
+		"""
+		
+			Purpose:
+			--------
+			Convert parser output into a display-safe string without allowing None values
+			to break later processing steps.
+			
+			Parameters:
+			-----------
+			value : object
+				The value returned by a processing method.
+			
+			Returns:
+			--------
+			str
+				The string representation of the value, or an empty string.
+		
+		"""
+		if value is None:
+			return ''
+		
+		if isinstance( value, str ):
+			return value
+		
+		if isinstance( value, list ):
+			return '\n'.join(
+				str( item ) for item in value
+				if item is not None and str( item ).strip( ) )
+		
+		return str( value )
+	
 	if not isinstance( raw_text, str ) or not raw_text.strip( ):
 		st.info( 'Load a document before running text processing.' )
 	elif not active_loader:
@@ -3281,35 +3341,55 @@ with tabs[ 1 ]:
 			with st.expander( label='Text Processing', icon='🧠', expanded=True ):
 				remove_html = st.checkbox( 'Remove HTML',
 					help='Removes Hypertext Markup Tags, eg. <, \\>, etc', value=False )
+				
 				remove_markdown = st.checkbox( 'Remove Markdown',
 					help=r'Removes symbols used in .md files #, ##, ###, -, etc',
 					value=False )
+				
 				remove_symbols = st.checkbox( 'Remove Symbols',
 					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=False )
+				
 				remove_numbers = st.checkbox( 'Remove Numbers',
 					help='Removes numeric digits 0 through 9', value=False )
+				
+				
 				remove_xml = st.checkbox( 'Remove XML',
 					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
+				
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
 					help=r'Removes punctuation while preserving sentence delimiters',
 					value=False )
+	
+				reduce_repeats = st.checkbox( 'Remove Repeats',
+					help='Reduces consecutive punctuation sequences to the left-most mark '
+					     'and inserts a following space when needed. Examples: ".." -> ". ", '
+					     '"??" -> "? ", "?;" -> "? ".',
+					value=False )
+				
 				remove_images = st.checkbox( 'Remove Images',
 					help=r'Remove images from text, including Markdown, HTML <img> tags, '
 					     r'and image URLs',
 					value=True )
+				
 				remove_stopwords = st.checkbox( 'Remove Stopwords',
 					help=r'Removes common words (e.g., "the", "is", "and", etc.)',
 					value=False )
+				
 				remove_numerals = st.checkbox( 'Remove Numerals',
 					help='Removes roman numerals I, II, IV, XI, etc', value=False )
+				
 				remove_encodings = st.checkbox( 'Remove Encoding',
 					help=r'Removes encoding artifacts and over-encoded byte strings',
 					value=True )
+				
 				normalize_text = st.checkbox( 'Normalize (lowercase)', value=False )
+				
 				remove_fragments = st.checkbox( 'Remove Fragments',
 					help='Removes words less than 3 characters in length', value=False )
+				
 				remove_errors = st.checkbox( 'Remove Errors',
 					help='Removes misspelled words using a dictionary filter', value=False )
+				
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
 					help='Collapses all whitespace into single spaces', value=False )
 			
@@ -3394,7 +3474,6 @@ with tabs[ 1 ]:
 			keep_headings = False
 			keep_paragraphs = False
 			keep_tables = False
-			
 			with st.expander( 'HTML Processing', icon='🌐', expanded=False ):
 				if active == 'HtmlLoader':
 					strip_scripts = st.checkbox( 'Strip <script> / <style>' )
@@ -3428,6 +3507,7 @@ with tabs[ 1 ]:
 				st.session_state.start_time = 0.0
 				st.session_state.end_time = 0.0
 				st.session_state.total_time = 0.0
+				refresh_processing_display( )
 				st.success( 'Processed text reset.' )
 			
 			if clear_processing:
@@ -3443,6 +3523,7 @@ with tabs[ 1 ]:
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
 				st.session_state.nltk_named_entities = [ ]
+				refresh_processing_display( )
 				st.success( 'Processed text cleared.' )
 			
 			if apply_processing:
@@ -3459,19 +3540,19 @@ with tabs[ 1 ]:
 				# Structural cleanup
 				# ----------------------------------------------------------
 				if remove_html:
-					processed_text = tp.remove_html( processed_text )
+					processed_text = coerce_text( tp.remove_html( processed_text ) )
 				
 				if remove_markdown:
-					processed_text = tp.remove_markdown( processed_text )
+					processed_text = coerce_text( tp.remove_markdown( processed_text ) )
 				
 				if remove_images:
-					processed_text = tp.remove_images( processed_text )
+					processed_text = coerce_text( tp.remove_images( processed_text ) )
 				
 				if remove_encodings:
-					processed_text = tp.remove_encodings( processed_text )
+					processed_text = coerce_text( tp.remove_encodings( processed_text ) )
 				
 				if remove_xml:
-					processed_text = tp.remove_xml( processed_text )
+					processed_text = coerce_text( tp.remove_xml( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# PDF-specific processing
@@ -3482,62 +3563,62 @@ with tabs[ 1 ]:
 					
 					if remove_pdf_repeats and isinstance( pdf_pages, list ) and pdf_pages:
 						clean_pages = pdf_parser.remove_repeats( pdf_pages )
-						processed_text = pdf_parser.rebuild_pages(
-							pages=clean_pages,
-							preserve_page_breaks=st.session_state.get(
-								'pdf_preserve_page_breaks', False )
-						)
+						processed_text = coerce_text( pdf_parser.rebuild_pages( pages=clean_pages,
+								preserve_page_breaks=st.session_state.get(
+									'pdf_preserve_page_breaks', False ) ) )
 					
 					if clean_pdf_artifacts:
-						processed_text = pdf_parser.clean_artifacts( processed_text )
+						processed_text = coerce_text(
+							pdf_parser.clean_artifacts( processed_text ) )
 					
 					if repair_pdf_spacing:
-						processed_text = pdf_parser.repair_spacing( processed_text )
+						processed_text = coerce_text( pdf_parser.repair_spacing( processed_text ) )
 					
 					if rejoin_pdf_hyphenation:
-						processed_text = pdf_parser.rejoin_hyphenation(
-							processed_text,
-							repair_embedded=repair_embedded_hyphenation
-						)
+						processed_text = coerce_text( pdf_parser.rejoin_hyphenation(
+								processed_text, repair_embedded=repair_embedded_hyphenation ) )
 				
 				# ----------------------------------------------------------
 				# Noise / non-lexical cleanup
 				# ----------------------------------------------------------
 				if remove_symbols:
-					processed_text = tp.remove_symbols( processed_text )
+					processed_text = coerce_text( tp.remove_symbols( processed_text ) )
 				
 				if remove_numbers:
-					processed_text = tp.remove_numbers( processed_text )
+					processed_text = coerce_text( tp.remove_numbers( processed_text ) )
 				
 				if remove_numerals:
-					processed_text = tp.remove_numerals( processed_text )
+					processed_text = coerce_text( tp.remove_numerals( processed_text ) )
 				
 				if remove_punctuation:
-					processed_text = tp.remove_punctuation( processed_text )
-				
+					processed_text = coerce_text( tp.remove_punctuation( processed_text ) )
+					
+				if reduce_repeats:
+					processed_text = tp.reduce_repeats( processed_text )
+					
 				# ----------------------------------------------------------
 				# Word normalization
 				# ----------------------------------------------------------
 				if normalize_text:
-					processed_text = tp.normalize_text( processed_text )
+					processed_text = coerce_text( tp.normalize_text( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# Lexical refinement
 				# ----------------------------------------------------------
 				if remove_stopwords:
-					processed_text = tp.remove_stopwords( processed_text )
+					processed_text = coerce_text( tp.remove_stopwords( processed_text ) )
 				
 				if remove_fragments:
-					processed_text = tp.remove_fragments( processed_text )
+					processed_text = coerce_text( tp.remove_fragments( processed_text ) )
 				
 				if remove_errors:
-					processed_text = tp.remove_errors( processed_text )
+					processed_text = coerce_text( tp.remove_errors( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# Whitespace cleanup
 				# ----------------------------------------------------------
 				if collapse_whitespace:
-					processed_text = tp.collapse_whitespace( processed_text )
+					processed_text = coerce_text( tp.collapse_whitespace( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# Word-specific processing
@@ -3546,17 +3627,18 @@ with tabs[ 1 ]:
 					word_parser = WordParser( )
 					
 					if extract_tables and hasattr( word_parser, 'extract_tables' ):
-						processed_text = word_parser.extract_tables( processed_text )
+						processed_text = coerce_text( word_parser.extract_tables( processed_text ) )
 					
 					if extract_paragraphs and hasattr( word_parser, 'extract_paragraphs' ):
-						processed_text = word_parser.extract_paragraphs( processed_text )
+						processed_text = coerce_text(
+							word_parser.extract_paragraphs( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# HTML-specific processing
 				# ----------------------------------------------------------
 				if active == 'HtmlLoader':
 					if strip_scripts:
-						processed_text = tp.remove_html( processed_text )
+						processed_text = coerce_text( tp.remove_html( processed_text ) )
 				
 				# ----------------------------------------------------------
 				# Token processing
@@ -3576,7 +3658,7 @@ with tabs[ 1 ]:
 				
 				if nltk_sentence_tokenize:
 					st.session_state.nltk_sentence_tokens = (
-							nlp.sentence_tokenizer( processed_text ) or [ ])
+							nlp.sentence_tokenizer( processed_text ) or [ ] )
 					
 					display_text = '\n'.join(
 						s for s in st.session_state.nltk_sentence_tokens
@@ -3613,28 +3695,39 @@ with tabs[ 1 ]:
 						f'{entity}\t{label}'
 						for entity, label in st.session_state.nltk_named_entities
 						if isinstance( entity, str ) and entity.strip( ) )
-				
+					
+				# ----------------------------------------------------------
+				# Final punctuation / delimiter cleanup
+				# ----------------------------------------------------------
+				if reduce_repeats:
+					processed_text = coerce_text( tp.reduce_repeats( processed_text ) )
+					display_text = coerce_text( tp.reduce_repeats( display_text ) )
+					
 				# ----------------------------------------------------------
 				# Finalize timing
 				# ----------------------------------------------------------
 				end_time = time.perf_counter( )
+				st.session_state.start_time = start_time
+				st.session_state.end_time = end_time
 				st.session_state.total_time = end_time - start_time
 				
 				# ----------------------------------------------------------
 				# Commit processed text
 				# ----------------------------------------------------------
-				st.session_state.processed_text = (
-						processed_text if isinstance( processed_text, str ) else ''
-				)
+				st.session_state.processed_text = coerce_text( processed_text )
+				st.session_state.displayed_text = coerce_text( display_text )
 				
-				st.session_state.displayed_text = (
-						display_text if isinstance( display_text, str )
-						else st.session_state.processed_text
-				)
+				if not st.session_state.displayed_text.strip( ):
+					st.session_state.displayed_text = st.session_state.processed_text
 				
 				st.session_state.processed_text_display = st.session_state.displayed_text
+				refresh_processing_display( )
 				
-				st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
+				if st.session_state.processed_text.strip( ):
+					st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
+				else:
+					st.warning(
+						'Processing completed, but the selected options produced empty text.' )
 			
 			# ==============================================================
 			# Save Processed Text
@@ -3663,20 +3756,16 @@ with tabs[ 1 ]:
 			raw_text_current = st.session_state.get( 'raw_text' )
 			processed_current = st.session_state.get( 'processed_text' )
 			displayed_current = st.session_state.get( 'displayed_text' )
+			display_version = int( st.session_state.get( 'processing_display_version', 0 ) )
 			
-			st.text_area(
-				label='Raw Text',
+			st.text_area( label='Raw Text',
 				value=raw_text_view if isinstance( raw_text_view, str ) else '',
-				height=200,
-				disabled=True,
-				key='raw_text_view_display'
-			)
+				height=200, disabled=True, key=f'raw_text_view_display_{display_version}' )
 			
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
-				if (
-						isinstance( raw_text_current, str ) and raw_text_current.strip( )
-						and isinstance( processed_current, str ) and processed_current.strip( )
-				):
+				if ( isinstance( raw_text_current, str ) and raw_text_current.strip( )
+						and isinstance( processed_current, str ) and processed_current.strip( ) ):
+					
 					raw_tokens = raw_text_current.split( )
 					proc_tokens = processed_current.split( )
 					raw_chars = len( raw_text_current )
@@ -3707,12 +3796,9 @@ with tabs[ 1 ]:
 				else:
 					st.caption( 'Load and process text to view absolute and delta statistics.' )
 			
-			st.text_area(
-				'Processed Text',
-				value=displayed_current if isinstance( displayed_current, str ) else '',
-				height=800,
-				key='processed_text_display_area'
-			)
+			st.text_area( 'Processed Text',
+				value=displayed_current if isinstance( displayed_current, str ) else '', height=800,
+				key=f'processed_text_display_area_{display_version}' )
 
 # ======================================================================================
 # Tab - Semantic Analysis
