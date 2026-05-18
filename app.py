@@ -3560,7 +3560,6 @@ with tabs[ 1 ]:
 				if active == 'PdfLoader':
 					pdf_parser = PdfParser( )
 					pdf_pages = st.session_state.get( 'pdf_pages' )
-					
 					if remove_pdf_repeats and isinstance( pdf_pages, list ) and pdf_pages:
 						clean_pages = pdf_parser.remove_repeats( pdf_pages )
 						processed_text = coerce_text( pdf_parser.rebuild_pages( pages=clean_pages,
