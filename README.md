@@ -18,7 +18,7 @@ feature extraction, and document analysis.
 
 ___
 ###### Demo
-![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
+![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
 
 ## 🧠 Features
 
