@@ -16,8 +16,7 @@ feature extraction, and document analysis.
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://chonky-py.streamlit.app/)
 
 
-___
-###### Demo
+## 🎥 Demo
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
 
 ## 🧠 Features
