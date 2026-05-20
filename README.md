@@ -58,7 +58,7 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 ## ☁️ Google (Cloud)
 
 - A hosted Jupyter Notebook service that requires no setup to use and provides free access to GPUs and TPUs.
-- 
+  
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
 
