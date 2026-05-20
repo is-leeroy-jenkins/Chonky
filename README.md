@@ -55,11 +55,18 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 | Similarity retrieval          | Run semantic similarity search with top-k controls and similarity-threshold filtering.                                                                                            |
 | Cloud and connected sources   | Load from Google Cloud files/buckets, AWS S3 files/buckets, OneDrive, SharePoint, GitHub, web crawlers, PubMed, and open-city datasets.                                           |
 
-## ☁️ Google Cloud
+## ☁️ Google (Cloud)
 
+- A hosted Jupyter Notebook service that requires no setup to use and provides free access to GPUs and TPUs.
+- 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
+
 ## 🕸️ Streamlit (Web)
+
+
+- A Python framework to build dynamic, interactive web applications.
+
 
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
 
