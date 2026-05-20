@@ -36,17 +36,18 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
 
+
+## 🕸️ Streamlit (Web)
+
+[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
+![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
+- A Python framework to build dynamic, interactive web applications.
+
 ## ☁️ Google (Cloud)
   
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
 - A hosted Jupyter Notebook service that requires no setup to use and provides free access to GPUs and TPUs.
-
-## 🕸️ Streamlit (Web)
-
-[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
-
-- A Python framework to build dynamic, interactive web applications.
 
 
 ## 🧱 Databricks
