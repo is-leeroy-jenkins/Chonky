@@ -15,7 +15,7 @@
   <a href="#-vector-database">Vectors</a> ·
   <a href="#-similarity-search">Search</a> ·
   <a href="#-requirements">Requirements</a> ·
-  <a href="#-configuration">Configuration</a> ·
+
 </p>
 
 ___
