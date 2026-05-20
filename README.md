@@ -2,30 +2,6 @@
 
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/github/chonky_project.png)
 
-Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,
-and machine-learning practitioners working with unstructured, semi-structured, and document-based
-text. It provides a complete pipeline for document ingestion, text cleaning, NLP preprocessing,
-token diagnostics, semantic analysis, embedding generation, vector persistence, and similarity
-retrieval.
-
-The application is designed around an explicit, staged workflow. Users load documents from local,
-web, email, cloud, notebook, public-data, and repository sources; clean and normalize text; tokenize
-and inspect corpus structure; generate embeddings through hosted providers; persist vectors with
-sqlite-vec; and run semantic similarity search over stored chunks.
-
-#### Local Setup
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
-
-#### Web-Based
-
-[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
-
-## 🎥 Demo
-
-![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
-
-## 📚 Navigation
 
 <p align="center">
   <a href="#-features">Features</a> ·
@@ -43,6 +19,26 @@ sqlite-vec; and run semantic similarity search over stored chunks.
   <a href="#-configuration">Configuration</a> ·
 </p>
 
+___
+
+Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,
+and machine-learning practitioners working with unstructured, semi-structured, and document-based
+text. It provides a complete pipeline for document ingestion, text cleaning, NLP preprocessing,
+token diagnostics, semantic analysis, embedding generation, vector persistence, and similarity
+retrieval.
+
+The application is designed around an explicit, staged workflow. Users load documents from local,
+web, email, cloud, notebook, public-data, and repository sources; clean and normalize text; tokenize
+and inspect corpus structure; generate embeddings through hosted providers; persist vectors with
+sqlite-vec; and run semantic similarity search over stored chunks.
+
+
+## 🎥 Demo
+
+![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
+
+
+
 ## 🧠 Features
 
 | Feature                       | Description                                                                                                                                                                       |
@@ -59,6 +55,14 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 | Vector persistence            | Store embeddings in SQLite vector tables using sqlite-vec and LangChain-compatible vector store workflows.                                                                        |
 | Similarity retrieval          | Run semantic similarity search with top-k controls and similarity-threshold filtering.                                                                                            |
 | Cloud and connected sources   | Load from Google Cloud files/buckets, AWS S3 files/buckets, OneDrive, SharePoint, GitHub, web crawlers, PubMed, and open-city datasets.                                           |
+
+#### Local Setup
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
+
+#### Web-Based
+
+[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
 
 ## 🧭 Application Tabs
 
