@@ -55,7 +55,7 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 | Similarity retrieval          | Run semantic similarity search with top-k controls and similarity-threshold filtering.                                                                                            |
 | Cloud and connected sources   | Load from Google Cloud files/buckets, AWS S3 files/buckets, OneDrive, SharePoint, GitHub, web crawlers, PubMed, and open-city datasets.                                           |
 
-### ☁️ Google Cloud
+## ☁️ Google Cloud
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
