@@ -6,15 +6,14 @@
 <p align="center">
   <a href="#-features">Features</a> ·
   <a href="#-application-tabs">Modes</a> ·
-  <a href="#-architecture">Architecture</a> ·
   <a href="#-setup-instructions">Setup</a> ·
   <a href="#-document-loading">Loading</a> ·
   <a href="#-text-processing">Processing</a> ·
-  <a href="#-semantic-analysis">Semantic-Analysis</a> ·
-  <a href="#-data-tokenization">Tokenization</a> ·
+  <a href="#-semantic-analysis">Analysis</a> ·
+  <a href="#-data-tokenization">Tokens</a> ·
   <a href="#-tensor-embeddings">Embeddings</a> ·
-  <a href="#-vector-database">Vector-Database</a> ·
-  <a href="#-similarity-search">Similarity-Search</a> ·
+  <a href="#-vector-database">Vectors</a> ·
+  <a href="#-similarity-search">Search</a> ·
   <a href="#-requirements">Requirements</a> ·
   <a href="#-configuration">Configuration</a> ·
 </p>
