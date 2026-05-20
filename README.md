@@ -59,7 +59,7 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
-## 🕸️ Web-Based
+## 🕸️ Streamlit (Web)
 
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
 
