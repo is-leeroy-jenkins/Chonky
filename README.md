@@ -181,6 +181,57 @@ export GEMINI_API_KEY="your_gemini_key"
 export GROQ_API_KEY="your_groq_key"
 export GOOGLE_API_KEY="your_google_key"
 ```
+## 🧪 Example Usage
+
+### Basic Text Processing
+
+```python
+from processors import TextParser
+
+processor = TextParser()
+raw_text = "<p>This is an example document.</p>"
+clean_text = processor.remove_html(raw_text)
+clean_text = processor.normalize_text(clean_text)
+clean_text = processor.collapse_whitespace(clean_text)
+print(clean_text)
+```
+
+### Chunk Text for Embedding
+
+```python
+from nltk.tokenize import word_tokenize
+
+text = "This is a processed document ready for semantic analysis."
+tokens = word_tokenize(text)
+chunks = [" ".join(tokens[index:index + 100]) for index in range(0, len(tokens), 100)]
+print(chunks)
+```
+
+### Similarity Retrieval with sqlite-vec
+
+```python
+import sqlite3
+import sqlite_vec
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
+from langchain_community.vectorstores import SQLiteVec
+
+conn = sqlite3.connect("vectors.db")
+conn.enable_load_extension(True)
+sqlite_vec.load(conn)
+
+embedding_fn = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+
+vector_store = SQLiteVec(
+    connection=conn,
+    table_name="example__OpenAI__text-embedding-3-small__1536",
+    embedding=embedding_fn,
+)
+
+results = vector_store.similarity_search(query="What is this document about?", k=5)
+
+for document in results:
+    print(document.page_content)
+```
 
 ## 📥 Document Loading
 
@@ -324,57 +375,6 @@ Chonky includes an interactive sqlite-vec similarity search interface.
 | Minimum Similarity Threshold | Filters results below the selected similarity score. |
 | Expandable results           | Displays rank, similarity score, and chunk text.     |
 
-## 🧪 Example Usage
-
-### Basic Text Processing
-
-```python
-from processors import TextParser
-
-processor = TextParser()
-raw_text = "<p>This is an example document.</p>"
-clean_text = processor.remove_html(raw_text)
-clean_text = processor.normalize_text(clean_text)
-clean_text = processor.collapse_whitespace(clean_text)
-print(clean_text)
-```
-
-### Chunk Text for Embedding
-
-```python
-from nltk.tokenize import word_tokenize
-
-text = "This is a processed document ready for semantic analysis."
-tokens = word_tokenize(text)
-chunks = [" ".join(tokens[index:index + 100]) for index in range(0, len(tokens), 100)]
-print(chunks)
-```
-
-### Similarity Retrieval with sqlite-vec
-
-```python
-import sqlite3
-import sqlite_vec
-from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import SQLiteVec
-
-conn = sqlite3.connect("vectors.db")
-conn.enable_load_extension(True)
-sqlite_vec.load(conn)
-
-embedding_fn = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-
-vector_store = SQLiteVec(
-    connection=conn,
-    table_name="example__OpenAI__text-embedding-3-small__1536",
-    embedding=embedding_fn,
-)
-
-results = vector_store.similarity_search(query="What is this document about?", k=5)
-
-for document in results:
-    print(document.page_content)
-```
 
 ## 📦 Requirements
 
