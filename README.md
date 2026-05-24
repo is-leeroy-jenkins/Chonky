@@ -432,25 +432,7 @@ present.
 | python-dotenv                  | `python-dotenv`                                         | Optional local `.env` configuration.                                                    | Local setup.                                               |
 | Typing Extensions              | `typing-extensions`                                     | Compatibility for type hints on older Python environments.                              | General dependency support.                                |
 
-## ⚙️ Configuration
 
-| Configuration Item                   | Purpose                                                       |
-| ------------------------------------ | ------------------------------------------------------------- |
-| `cfg.ICON`                           | Streamlit page icon.                                          |
-| `cfg.LOGO`                           | Sidebar/application logo.                                     |
-| `cfg.TABS`                           | Tab names used by the Streamlit application.                  |
-| `cfg.SESSION_STATE_DEFAULTS`         | Initial session-state values for shared workflow state.       |
-| `cfg.REQUIRED_CORPORA`               | NLTK corpora checked/downloaded at startup.                   |
-| `cfg.CHUNKABLE_LOADERS`              | Loader-to-chunk-mode mapping for downstream chunking support. |
-| `cfg.GPT_MODELS`                     | OpenAI embedding model choices.                               |
-| `cfg.GEMINI_MODELS`                  | Gemini embedding model choices.                               |
-| `cfg.BLUE_DIVIDER`                   | Shared Streamlit divider styling.                             |
-| `cfg.OPENAI_API_KEY`                 | Default OpenAI key.                                           |
-| `cfg.GEMINI_API_KEY`                 | Default Gemini key.                                           |
-| `cfg.GROQ_API_KEY`                   | Default Groq key.                                             |
-| `cfg.GOOGLE_API_KEY`                 | Default Google key.                                           |
-| `cfg.PINECONE_API_KEY`               | Reserved Pinecone key.                                        |
-| `cfg.GOOGLE_APPLICATION_CREDENTIALS` | Google service-account credentials path.                      |
 
 ## 📝 License
 
