@@ -20,7 +20,7 @@
 
 ___
 
-![License: Public Domain](https://img.shields.io/badge/license-public%20domain-brightgreen.svg)
+![License: Open Source](https://img.shields.io/badge/license-public%20domain-brightgreen.svg)
 
 Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,
 and machine-learning practitioners working with unstructured, semi-structured, and document-based
