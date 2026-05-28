@@ -17,7 +17,7 @@
   <a href="#-requirements">Requirements</a> ·
 
 </p>
-
+[projects](../../projects)
 ___
 
 Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,
@@ -29,6 +29,7 @@ retrieval.
 The application is designed around an explicit, staged workflow. Users load documents from local,
 web, email, cloud, notebook, public-data, and repository sources; clean and normalize text; tokenize
 and inspect corpus structure; generate embeddings through hosted providers; persist vectors with
+
 sqlite-vec; and run semantic similarity search over stored chunks.
 
 
