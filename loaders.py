@@ -47,7 +47,6 @@ import docx2txt
 from boogr import Error
 import config as cfg
 import glob
-from langchain_community.chat_models import ChatOpenAI
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter, CharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
@@ -61,7 +60,6 @@ from langchain_community.document_loaders import (
     UnstructuredExcelLoader,
     RecursiveUrlLoader,
     WebBaseLoader,
-    YoutubeLoader,
 	ArxivLoader,
     WikipediaLoader,
 	UnstructuredEmailLoader,
@@ -80,14 +78,12 @@ from langchain_community.document_loaders import (
 from langchain_google_community import (GCSFileLoader, SpeechToTextLoader)
 from langchain_community.document_loaders import S3DirectoryLoader
 from langchain_google_community import GCSDirectoryLoader
-from langchain_community.document_loaders.parsers import PyPDFParser
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_community.document_loaders.parsers import RapidOCRBlobParser
 import os
 from pathlib import Path
 import re
 from typing import Optional, List, Dict, Any
-import wikipedia
 from lxml import etree
 
 def throw_if( name: str, value: Any ) -> None:
