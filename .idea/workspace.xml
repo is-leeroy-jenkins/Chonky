@@ -5,8 +5,25 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4caaaf0f-a86b-4586-8159-753de1ab8fff" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/404.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/404.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/app/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/app/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/config/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/config/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/embedders/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/embedders/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/loaders/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/loaders/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/loca/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/loca/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/api/processors/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/api/processors/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/architecture/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/architecture/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/development/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/development/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/search/search_index.json" beforeDir="false" afterPath="$PROJECT_DIR$/site/search/search_index.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/analysis/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/analysis/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/embeddings/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/embeddings/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/loading/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/loading/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/processing/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/processing/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/tokenization/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/tokenization/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/site/user-guide/vector-database/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/site/user-guide/vector-database/index.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -109,7 +126,7 @@
       <workItem from="1779628994082" duration="10231000" />
       <workItem from="1779890504920" duration="7918000" />
       <workItem from="1780012405085" duration="553000" />
-      <workItem from="1781456323789" duration="7967000" />
+      <workItem from="1781456323789" duration="8286000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
@@ -359,7 +376,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781466000706</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="update">
+      <option name="closed" value="true" />
+      <created>1781466252213</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1781466252213</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
