@@ -1,12 +1,10 @@
-# Chonky
+![](./img/chonky-project.png)
 
-Chonky is a Streamlit-based document loading, text processing, embedding, and vector-search
-application for working with unstructured and semi-structured text.
+Chonky is a document loading, text processing, embedding, and vector-search
+application for working with unstructured and semi-structured text written in python.
 
 It provides an end-to-end workflow for loading documents, cleaning text, analyzing corpus structure,
 generating embeddings, storing vectors, and retrieving semantically relevant chunks.
-
-![Chonky Architecture](img/chonky-architecture.png)
 
 ## 🧭 Purpose
 
