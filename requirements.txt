@@ -49,3 +49,11 @@ rapidocr-onnxruntime>=1.3
 streamlit
 streamlit-extras
 streamlit-pdf
+
+
+mkdocs
+mkdocs-material
+mkdocstrings[python]
+mkdocs-autorefs
+pymdown-extensions
+black

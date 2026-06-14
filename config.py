@@ -37,21 +37,173 @@
 
   </copyright>
   <summary>
-    config.py
+    Provides centralized runtime configuration for the Chonky Streamlit application.
+
+    Purpose:
+        Defines environment readers, application paths, logging database settings, provider
+        credentials, model option lists, tab names, and session-state defaults used across the
+        loading, processing, analysis, tokenization, embedding, and vector-database workflows.
+        The module keeps import-time configuration safe by returning caller-provided defaults
+        when optional environment variables are missing or malformed.
   </summary>
   ******************************************************************************************
 '''
-import  os
+import os
+from pathlib import Path
 
-#------ PATHS ----------------------------------
+# -------------- APP-LEVEL UTILITIES -------------
+
+def throw_if( name: str, value: object ) -> None:
+	"""Validate a required argument or configuration value.
+
+	Purpose:
+		Provides a shared guard for required runtime values used by configuration helpers
+		and source modules. The function raises a deterministic exception when a caller
+		passes a falsy value for a required argument or setting name.
+
+	Args:
+		name: Name of the argument or configuration value being validated.
+		value: Runtime value to validate.
+
+	Raises:
+		ValueError: Raised when ``value`` is falsy.
+	"""
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
+
+def get_bool( name: str, default: bool = False ) -> bool:
+	"""Read a Boolean environment variable.
+
+	Purpose:
+		Converts optional environment-variable text into a Boolean value used by Chonky
+		configuration. Missing variables return the caller-provided default, while common
+		truthy strings are normalized to ``True`` and all other defined values are treated
+		as ``False``.
+
+	Args:
+		name: Environment variable name.
+		default: Boolean value returned when the variable is missing or parsing fails.
+
+	Returns:
+		bool: Parsed Boolean value or the supplied default.
+	"""
+	try:
+		throw_if( 'name', name )
+		value = os.getenv( name )
+		return default if value is None else value.strip( ).lower( ) in (
+				'1',
+				'true',
+				'yes',
+				'y',
+				'on'
+		)
+	except Exception:
+		return default
+
+def get_int( name: str, default: int ) -> int:
+	"""Read an integer environment variable.
+
+	Purpose:
+		Parses optional integer configuration while preserving safe import behavior for
+		local development, Streamlit deployment, and documentation generation. Missing,
+		empty, or malformed values return the supplied default rather than interrupting
+		module import.
+
+	Args:
+		name: Environment variable name.
+		default: Integer value returned when the variable is missing or invalid.
+
+	Returns:
+		int: Parsed integer value or the supplied default.
+	"""
+	try:
+		throw_if( 'name', name )
+		value = os.getenv( name )
+		return default if value in (None, '') else int( str( value ).strip( ) )
+	except Exception:
+		return default
+
+def get_float( name: str, default: float ) -> float:
+	"""Read a floating-point environment variable.
+
+	Purpose:
+		Parses optional numeric configuration for Chonky without making startup depend on
+		perfect environment state. Missing, empty, or malformed values return the supplied
+		default so downstream modules can import consistently.
+
+	Args:
+		name: Environment variable name.
+		default: Floating-point value returned when the variable is missing or invalid.
+
+	Returns:
+		float: Parsed floating-point value or the supplied default.
+	"""
+	try:
+		throw_if( 'name', name )
+		value = os.getenv( name )
+		return default if value in (None, '') else float( str( value ).strip( ) )
+	except Exception:
+		return default
+
+def get_path( name: str, default: Path ) -> Path:
+	"""Read a path environment variable.
+
+	Purpose:
+		Resolves optional filesystem configuration from the environment for Chonky paths
+		such as logging locations and data directories. Missing or invalid variables fall
+		back to the resolved default path to keep imports and MkDocs builds stable.
+
+	Args:
+		name: Environment variable name.
+		default: Default path returned when the variable is missing or invalid.
+
+	Returns:
+		Path: Resolved environment path or resolved default path.
+	"""
+	try:
+		throw_if( 'name', name )
+		throw_if( 'default', default )
+		value = os.getenv( name )
+		return Path( value ).resolve( ) if value else default.resolve( )
+	except Exception:
+		return default.resolve( )
+
+def get_text( name: str, default: str ) -> str:
+	"""Read a text environment variable.
+
+	Purpose:
+		Centralizes optional text configuration for paths, provider settings, and runtime
+		values. Missing or empty environment variables return the supplied default so the
+		application and generated documentation can load without complete credentials.
+
+	Args:
+		name: Environment variable name.
+		default: Default text returned when the variable is missing or empty.
+
+	Returns:
+		str: Environment value or supplied default text.
+	"""
+	try:
+		throw_if( 'name', name )
+		value = os.getenv( name )
+		return default if value in (None, '') else str( value )
+	except Exception:
+		return default
+
+# ------ PATHS ----------------------------------
+BASE_DIR = os.path.dirname( os.path.abspath( __file__ ) )
+ROOT_DIR = Path( __file__ ).resolve( ).parent
+LOG_DIR: Path = get_path( 'LOG_DIR', ROOT_DIR / 'logging' )
+LOG_PATH: str = get_text( 'LOG_PATH', str( LOG_DIR / 'Exceptions.db' ) )
+LOG_FILE: str = get_text( 'LOG_FILE', 'Exceptions' )
 ICON = r'resources/images/favicon.ico'
 LOGO = r'resources/images/chonky.png'
 DB = r'stores/sqlite/data.db'
 
-#------ CREDENTIALS ----------------------------------
+# ------ CREDENTIALS ----------------------------------
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv( 'GOOGLE_APPLICATION_CREDENTIALS' )
 
-#------ API KEYS ----------------------------------
+# ------ API KEYS ----------------------------------
 OPENAI_API_KEY = os.getenv( 'OPENAI_API_KEY' )
 GEMINI_API_KEY = os.getenv( 'GEMINI_API_KEY' )
 GROQ_API_KEY = os.getenv( 'GROQ_API_KEY' )
@@ -63,7 +215,6 @@ GOOGLE_APPLICATION_CREDENTIALS = os.getenv( 'GOOGLE_APPLICATION_CREDENTIALS' )
 LANGSMITH_API_KEYS = os.getenv( 'LANGSMITH_API_KEYS' )
 PINECONE_API_KEY = os.getenv( 'PINECONE_API_KEY' )
 VERTEX_API_KEY = os.getenv( 'VERTEX_API_KEY' )
-
 
 # ------- CONSTANTS ------------------------------
 BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:6px 0 10px 0;'></div>"
@@ -240,4 +391,3 @@ PUBMED = r'''The National Center for Biotechnology Information, National Library
 		
 		https://docs.langchain.com/oss/python/integrations/retrievers/pubmed
 '''
-

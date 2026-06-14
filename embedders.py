@@ -37,7 +37,14 @@
 
   </copyright>
   <summary>
-    embedders.py
+    Provides hosted embedding-provider wrappers for the Chonky document-processing workflow.
+
+    Purpose:
+        Defines OpenAI, Gemini, and Grok-compatible embedding classes used by the Tensor
+        Embeddings tab and downstream vector-database workflow. The module validates input text,
+        prepares provider-specific request payloads, stores raw provider responses on class
+        instances for diagnostics, returns embedding vectors in a consistent list-based shape,
+        and records wrapped provider or validation failures through the application logger.
   </summary>
   ******************************************************************************************
 '''
@@ -52,38 +59,47 @@ import config as cfg
 from typing import List, Optional, Any, Union, Dict
 import tiktoken
 import os
-from boogr import Error
+from boogr import Error, Logger
 import requests
 
 def throw_if( name: str, value: object ):
+	"""Validate a required runtime argument.
+
+	Purpose:
+		Provides a lightweight guard for provider wrapper methods that require non-empty
+		inputs before calling hosted embedding APIs. The function raises a deterministic
+		``ValueError`` when a required value is missing.
+
+	Args:
+		name: Name of the argument being validated.
+		value: Runtime value to validate.
+
+	Raises:
+		ValueError: Raised when ``value`` is ``None``.
+	"""
 	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 class GPT( ):
+	"""OpenAI embedding provider wrapper.
+
+	Purpose:
+		Creates single and batch text embeddings through OpenAI embedding models for Chonky's
+		semantic-analysis and vector-database pipeline. The class stores the active API key,
+		client, model, response, and generated vectors on the instance so the Streamlit workflow
+		can inspect provider state after an embedding operation.
+
+	Attributes:
+		web_options: Optional web option values retained for provider compatibility.
+		input: Current text input or batch input sent to the provider.
+		client: Initialized OpenAI client used for embedding requests.
+		prompt: Prompt state retained for provider compatibility.
+		response_format: Provider response-format state retained for compatibility.
+		response: Raw OpenAI embedding response from the last request.
+		embedding: Single embedding vector returned by the last single-text request.
+		encoding_format: Output encoding format requested from the provider.
+		dimensions: Optional vector dimensionality value retained for provider compatibility.
 	"""
-
-	    Purpose
-	    ___________
-	    Class used for creating vectors using OpenAI's embedding models
-
-	    Parameters
-	    ------------
-	    None
-
-	    Attributes
-	    -----------
-	    api_key
-	    client
-	    model
-	    embedding
-	    response
-
-	    Methods
-	    ------------
-	    create( self, text: str ) -> get_list[ float ]
-
-
-    """
 	
 	web_options: Optional[ List[ str ] ]
 	input: Optional[ List[ str ] ]
@@ -97,6 +113,13 @@ class GPT( ):
 	dimensions: Optional[ int ]
 	
 	def __init__( self ):
+		"""Initialize the OpenAI embedding wrapper.
+
+		Purpose:
+			Creates the OpenAI client from Chonky configuration and initializes request, response,
+			model, encoding, and embedding state used by later single-text and batch embedding
+			methods.
+		"""
 		super( ).__init__( )
 		self.api_key = cfg.OPENAI_API_KEY
 		self.client = OpenAI( api_key=cfg.OPENAI_API_KEY )
@@ -108,48 +131,53 @@ class GPT( ):
 	
 	@property
 	def model_options( self ) -> List[ str ]:
-		'''
-	
-			Returns:
-			--------
-			List[ str ] of embedding models
+		"""Return supported OpenAI embedding models.
 
-		'''
+		Purpose:
+			Exposes the OpenAI embedding model names used by Chonky UI controls and provider
+			selection logic.
+
+		Returns:
+			List[str]: Supported OpenAI embedding model names.
+		"""
 		return [ 'text-embedding-3-small',
 		         'text-embedding-3-large',
 		         'text-embedding-ada-002' ]
 	
 	@property
 	def encoding_options( self ) -> List[ str ]:
-		'''
+		"""Return supported OpenAI embedding encoding formats.
 
-			Returns:
-			--------
-			List[ str ] of available format options
+		Purpose:
+			Exposes provider-supported encoding format options for embedding responses so the UI
+			and calling code can request float vectors or base64-encoded vectors.
 
-		'''
+		Returns:
+			List[str]: Supported encoding format names.
+		"""
 		return [ 'float',
 		         'base64' ]
 	
 	def create( self, text: str, model: str = 'text-embedding-3-small', format: str = 'float' ) -> \
 			List[ float ]:
+		"""Create a single OpenAI embedding vector.
+
+		Purpose:
+			Validates a single text input, stores the request model and encoding format on the
+			instance, calls the OpenAI embeddings endpoint, captures the raw response, and returns
+			the first embedding vector for downstream similarity search and vector persistence.
+
+		Args:
+			text: Text value to embed.
+			model: OpenAI embedding model name.
+			format: Embedding response encoding format.
+
+		Returns:
+			List[float]: Embedding vector for the supplied text.
+
+		Raises:
+			Error: Raised when validation or OpenAI embedding generation fails.
 		"""
-
-	        Purpose
-	        _______
-	        Creates an embedding ginve a text
-
-
-	        Parameters
-	        ----------
-	        text: str
-
-
-	        Returns
-	        -------
-	        get_list[ float
-
-        """
 		try:
 			throw_if( 'text', text )
 			self.input = text
@@ -164,28 +192,27 @@ class GPT( ):
 			exception.module = 'embedders'
 			exception.cause = 'GPT'
 			exception.method = 'create( self, text: str, model: str ) -> List[ float ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def embed( self, texts: List[ str ], model: str = 'text-embedding-3-small' ) -> List[
 		List[ float ] ]:
-		"""
-		
-			Purpose:
-			--------
-			Generate embeddings for a batch of text inputs.
-			
-			Parameters:
-			-----------
-			texts : list[str]
-				Text inputs to embed.
-			model : str
-				OpenAI embedding model.
-			
-			Returns:
-			--------
-			list[list[float]]
-				Embedding vectors.
-				
+		"""Create batch OpenAI embedding vectors.
+
+		Purpose:
+			Validates and cleans a batch of text inputs, sends non-empty strings to the OpenAI
+			embeddings endpoint in provider-safe batches, and returns vectors aligned to the
+			cleaned batch for Chonky's embedding diagnostics and vector-database persistence.
+
+		Args:
+			texts: Text values to embed.
+			model: OpenAI embedding model name.
+
+		Returns:
+			List[List[float]]: Embedding vectors for the cleaned text inputs.
+
+		Raises:
+			Error: Raised when validation or OpenAI batch embedding generation fails.
 		"""
 		try:
 			throw_if( 'texts', texts )
@@ -222,25 +249,27 @@ class GPT( ):
 			exception.module = 'embedders'
 			exception.cause = 'GPT'
 			exception.method = 'embed( self, text: str, model: str ) -> List[ List[ float ] ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def count_tokens( self, text: str, coding: str ) -> int | None:
-		'''
+		"""Count tokens for text using a tiktoken encoding.
 
-	        Purpose:
-	        -------
-	        Returns the num of words in a documents path.
+		Purpose:
+			Measures provider-tokenized text length for embedding readiness diagnostics and UI
+			metrics. The method validates the text and encoding name, resolves the tiktoken
+			encoding, and returns the number of token identifiers produced from the input text.
 
-	        Parameters:
-	        -----------
-	        text: str - The string that is tokenized
-	        coding: str - The encoding to use for tokenizing
+		Args:
+			text: Text value to tokenize.
+			coding: tiktoken encoding name.
 
-	        Returns:
-	        --------
-	        int - The number of words
+		Returns:
+			int | None: Token count for the supplied text.
 
-        '''
+		Raises:
+			Error: Raised when validation or token encoding fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			throw_if( 'coding', coding )
@@ -252,24 +281,19 @@ class GPT( ):
 			exception.module = 'gpt'
 			exception.cause = 'Embedding'
 			exception.method = 'count_tokens( self, text: str, coding: str ) -> int'
+			Logger( ).write( exception )
 			raise exception
 	
 	def __dir__( self ) -> List[ str ] | None:
-		'''
+		"""Return public wrapper members.
 
-		        Purpose:
-		        --------
-                Method returns a list of strings representing members
+		Purpose:
+			Provides a stable list of public attributes and methods exposed by the OpenAI
+			embedding wrapper for introspection, diagnostics, and documentation generation.
 
-		        Parameters:
-		        ----------
-                self
-
-		        Returns:
-		        ---------
-                List[ str ] | None
-
-        '''
+		Returns:
+			List[str] | None: Public member names exposed by the wrapper.
+		"""
 		return [ 'create',
 		         'api_key',
 		         'client',
@@ -279,33 +303,38 @@ class GPT( ):
 		         'model_options', ]
 
 class Gemini( ):
-	'''
+	"""Google GenAI embedding provider wrapper.
 
-		Purpose:
-		--------
-		Class handling text embedding generation with the Google GenAI SDK.
+	Purpose:
+		Creates single and batch embeddings through the Google GenAI SDK for Chonky's hosted
+		embedding workflow. The class stores Google project, location, client, task type,
+		configuration, response, and vector state on the instance so embedding generation and
+		diagnostics can share a consistent provider contract.
 
-		Attributes:
-		-----------
-		client              : Client - Initialized GenAI client
-		response            : any - raw API response
-		embedding           : list - Generated vector of floats
-		encoding_format     : str - Format of the embedding response
-		dimensions          : int - Size of the embedding vector
-		use_vertex          : bool - Cloud integration flag
-		task_type           : str - Type of task (RETRIEVAL, etc)
-		http_options        : HttpOptions - Client networking settings
-		embedding_config    : EmbedContentConfig - Configuration for embeddings
-		contents            : list - Input strings
-		input_text          : str - Current text being processed
-		file_path           : str - Path to source text
-		response_modalities : str - Modality configuration
-
-		Methods:
-		--------
-		generate( text, model ) : Creates an embedding vector for input text
-
-	'''
+	Attributes:
+		number: Optional numeric state retained for provider compatibility.
+		api_key: Google or Vertex API key from Chonky configuration.
+		project: Google Cloud project identifier from configuration.
+		location: Google Cloud location from configuration.
+		prompt: Prompt state retained for provider compatibility.
+		credentials: Google application credentials path from configuration.
+		model: Active Gemini embedding model name.
+		response_format: Response format state retained for provider compatibility.
+		dimensions: Requested embedding dimensionality.
+		client: Initialized Google GenAI client.
+		response: Raw provider response from the last embedding request.
+		embedding: Single embedding vector from the last single-text request.
+		embeddings: Batch embedding vectors from the last batch request.
+		encoding_format: Encoding format state retained for provider compatibility.
+		use_vertex: Vertex AI client flag.
+		task_type: Gemini embedding task type.
+		http_options: Google GenAI HTTP options.
+		embedding_config: Google embedding request configuration.
+		contents: Provider content values retained for compatibility.
+		input_text: Current text input or batch input sent to the provider.
+		file_path: Source file path state retained for compatibility.
+		response_modalities: Response modality state retained for compatibility.
+	"""
 	number: Optional[ int ]
 	api_key: Optional[ str ]
 	project: Optional[ str ]
@@ -331,6 +360,18 @@ class Gemini( ):
 	response_modalities: Optional[ str ]
 	
 	def __init__( self, version: str = 'v1alpha', use_ai: bool = False, dimensions: int = 768 ):
+		"""Initialize the Gemini embedding wrapper.
+
+		Purpose:
+			Creates Google GenAI client state from Chonky configuration, stores API-version and
+			Vertex selection settings, and initializes embedding response fields used by single
+			and batch Gemini embedding methods.
+
+		Args:
+			version: Google GenAI API version used by HTTP options.
+			use_ai: Flag indicating whether to initialize the client for Vertex AI.
+			dimensions: Default requested embedding dimensionality.
+		"""
 		super( ).__init__( )
 		self.api_key = cfg.VERTEX_API_KEY
 		self.project = cfg.GOOGLE_CLOUD_PROJECT_ID
@@ -358,31 +399,48 @@ class Gemini( ):
 	
 	@property
 	def model_options( self ) -> List[ str ] | None:
-		"""Returns list of embedding models."""
+		"""Return supported Gemini embedding models.
+
+		Purpose:
+			Exposes Gemini embedding model options for Chonky UI controls and provider selection.
+
+		Returns:
+			List[str] | None: Supported Gemini embedding model names.
+		"""
 		return [ 'gemini-embedding-001', 'text-multilingual-embedding-002' ]
 	
 	@property
 	def task_options( self ) -> List[ str ] | None:
-		"""Returns list of task type options."""
+		"""Return supported Gemini embedding task types.
+
+		Purpose:
+			Exposes Gemini task-type values used to configure retrieval, document, and semantic
+			similarity embedding requests.
+
+		Returns:
+			List[str] | None: Supported Gemini embedding task types.
+		"""
 		return [ 'RETRIEVAL_QUERY', 'RETRIEVAL_DOCUMENT', 'SEMANTIC_SIMILARITY' ]
 	
 	def generate( self, text: str, model: str = 'gemini-embedding-001', dimensions: int = 768 ) -> \
-	Optional[ List[ float ] ]:
-		"""
-			
-			Purpose:
-			---------
-			Generates a vector representation of the provided text.
-			
-			Parameters:
-			-----------
-			text: str - Input text string.
-			model: str - Embedding model identifier.
-			
-			Returns:
-			--------
-			Optional[ List[ float ] ] - List of embedding values or None on failure.
-		
+			Optional[ List[ float ] ]:
+		"""Create a single Gemini embedding vector.
+
+		Purpose:
+			Validates a single text input, configures the active Gemini model and dimensionality,
+			calls the Google GenAI embedding endpoint, stores the provider response, and returns
+			the first embedding vector for downstream Chonky semantic retrieval workflows.
+
+		Args:
+			text: Text value to embed.
+			model: Gemini embedding model name.
+			dimensions: Requested output dimensionality.
+
+		Returns:
+			Optional[List[float]]: Embedding vector for the supplied text.
+
+		Raises:
+			Error: Raised when validation or Gemini embedding generation fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -399,27 +457,29 @@ class Gemini( ):
 			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'generate( self, text, model ) -> List[ float ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def embed( self, texts: List[ str ], task: str = 'RETRIEVAL_DOCUMENT',
 			model: str = 'gemini-embedding-001', dimensions: int = 768 ) -> List[ List[ float ] ]:
-		"""
-			
-			Purpose:
-			---------
-			Generates embeddings for a batch of strings.
-		
-			Parameters:
-			-----------
-			texts: List[str] - List of input text strings.
-			task: str - Gemini embedding task type.
-			model: str - Embedding model identifier.
-			dimensions: int - Requested output dimensionality.
-		
-			Returns:
-			--------
-			List[List[float]] - A list of embedding vectors.
-		
+		"""Create batch Gemini embedding vectors.
+
+		Purpose:
+			Validates and cleans a batch of text values, configures Gemini task and dimensionality
+			settings, submits provider-safe batches to Google GenAI, and returns vectors for
+			Chonky embedding diagnostics and vector persistence.
+
+		Args:
+			texts: Text values to embed.
+			task: Gemini embedding task type.
+			model: Gemini embedding model name.
+			dimensions: Requested output dimensionality.
+
+		Returns:
+			List[List[float]]: Embedding vectors for the cleaned text inputs.
+
+		Raises:
+			Error: Raised when validation or Gemini batch embedding generation fails.
 		"""
 		try:
 			throw_if( 'texts', texts )
@@ -468,23 +528,30 @@ class Gemini( ):
 			exception.module = 'embedders'
 			exception.cause = 'Gemini'
 			exception.method = 'embed( self, texts, task, model, dimensions ) -> List[ List[ float ] ]'
+			Logger( ).write( exception )
 			raise exception
 
 class Grok( ):
-	'''
+	"""Grok-compatible embedding provider wrapper.
 
-		Purpose:
-		-------
-		Base configuration class for Groq AI services and shared hyper-parameters.
+	Purpose:
+		Provides the embedding-provider contract used by Chonky for Grok/Groq-labeled hosted
+		embedding workflows. The class prepares authorization headers, request payloads, model
+		state, raw responses, and returned vector lists for single-text and batch embedding
+		requests.
 
-		Attributes:
-		-----------
-		api_key           : str - Groq API Key
-		prompt            : str - Current request prompt
-		model             : str - Current model ID
-		response_format   : dict - Schema control
-
-	'''
+	Attributes:
+		content_type: HTTP content type used for embedding requests.
+		api_key: Groq API key from Chonky configuration.
+		authorization: Bearer authorization header value.
+		prompt: Prompt state retained for provider compatibility.
+		model: Active embedding model name.
+		response_format: Response-format state retained for provider compatibility.
+		contents: Text contents retained for batch provider compatibility.
+		http_options: HTTP option state retained for provider compatibility.
+		embedding: Embedding vector returned by the last single-text request.
+		endpoint: Embedding endpoint URL used for requests.
+	"""
 	content_type: Optional[ str ]
 	api_key: Optional[ str ]
 	authorization: Optional[ str ]
@@ -497,6 +564,16 @@ class Grok( ):
 	endpoint: Optional[ str ]
 	
 	def __init__( self, model: str = 'text-embedding-3-small' ):
+		"""Initialize the Grok-compatible embedding wrapper.
+
+		Purpose:
+			Loads provider configuration from Chonky settings, prepares authorization headers,
+			creates the Groq client object, and initializes request, response, payload, encoding,
+			and embedding state used by hosted embedding calls.
+
+		Args:
+			model: Default embedding model name.
+		"""
 		self.api_key = cfg.GROQ_API_KEY
 		self.model = model
 		self.content_type = 'application/json'
@@ -513,6 +590,15 @@ class Grok( ):
 	
 	@property
 	def model_options( self ) -> List[ str ]:
+		"""Return supported Grok-compatible embedding models.
+
+		Purpose:
+			Exposes embedding model names for Chonky UI controls and provider selection where
+			Grok/Groq-compatible embedding requests are available.
+
+		Returns:
+			List[str]: Supported embedding model names.
+		"""
 		return [ 'nomic-embed-text-v1.5',
 		         'text-embedding-3-small',
 		         'text-embedding-3-large',
@@ -520,11 +606,37 @@ class Grok( ):
 	
 	@property
 	def encoding_options( self ) -> List[ str ]:
+		"""Return supported Grok-compatible encoding formats.
+
+		Purpose:
+			Exposes embedding response encoding formats for Chonky UI controls and request
+			configuration.
+
+		Returns:
+			List[str]: Supported encoding format names.
+		"""
 		return [ 'float', 'base64' ]
 	
 	def create( self, text: str, model: str = 'text-embedding-3-small', format: str = 'float' ) -> \
-	List[ float ] | None:
-		"""Purpose: Generates text embeddings via Hybrid POST."""
+			List[ float ] | None:
+		"""Create a single Grok-compatible embedding vector.
+
+		Purpose:
+			Validates a single text input, prepares an embedding request payload, submits the
+			request to the configured embedding endpoint, stores the raw JSON response, and returns
+			the first vector when the provider reports success.
+
+		Args:
+			text: Text value to embed.
+			model: Embedding model name.
+			format: Embedding response encoding format.
+
+		Returns:
+			List[float] | None: Embedding vector when the provider succeeds; otherwise ``None``.
+
+		Raises:
+			Error: Raised when validation, request construction, or provider execution fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			self.input_text = text;
@@ -548,28 +660,27 @@ class Grok( ):
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'create( self, text, model, format )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def embed( self, texts: List[ str ], model: str = 'text-embedding-3-small' ) -> List[
 		List[ float ] ]:
-		"""
-		
-			Purpose:
-			--------
-			Generate embeddings using xAI Grok.
-		
-			Parameters:
-			-----------
-			texts : List[str]
-				Text inputs to embed.
-			model : str
-				Grok embedding model.
-		
-			Returns:
-			--------
-			List[List[float]]
-				Embedding vectors.
-				
+		"""Create batch Grok-compatible embedding vectors.
+
+		Purpose:
+			Validates and cleans a batch of text inputs, prepares provider authorization headers,
+			submits provider-safe embedding batches to the configured endpoint, and returns vector
+			lists for Chonky embedding diagnostics and vector-database persistence.
+
+		Args:
+			texts: Text values to embed.
+			model: Embedding model name.
+
+		Returns:
+			List[List[float]]: Embedding vectors for the cleaned text inputs.
+
+		Raises:
+			Error: Raised when validation or batch provider execution fails.
 		"""
 		try:
 			throw_if( 'texts', texts )
@@ -617,21 +728,5 @@ class Grok( ):
 			exception.module = 'embeddings'
 			exception.cause = 'Grok'
 			exception.method = 'embed( self, texts, model )'
+			Logger( ).write( exception )
 			raise exception
-	
-	def count_tokens( self, text: str, coding: str = 'cl100k_base' ) -> Optional[ int ]:
-		"""Purpose: Simple word-count estimation for token limits."""
-		try:
-			throw_if( 'text', text )
-			self.input_text = text
-			self.encoding_format = coding
-			return len( self.input_text.split( ) )
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'embeddings'
-			exception.cause = 'Grok'
-			exception.method = 'count_tokens( self, text, coding )'
-			raise exception;
-
-
-

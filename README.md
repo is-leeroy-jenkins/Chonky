@@ -17,7 +17,8 @@
   <a href="#-requirements">Requirements</a> ·
 
 </p>
-[projects](../../projects)
+
+
 ___
 
 Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,

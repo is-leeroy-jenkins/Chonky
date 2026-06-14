@@ -44,7 +44,7 @@
 import os
 from typing import List, Optional, Any
 from llama_cpp import Llama
-from boogr import Error
+from boogr import Error, Logger
 
 def throw_if( name: str, value: object ):
 	if value is None:
