@@ -37,14 +37,21 @@
 
   </copyright>
   <summary>
-    loaders.py
+    Provides document-loader wrappers for the Chonky ingestion workflow.
+
+    Purpose:
+        Defines local, web, repository, cloud, email, notebook, XML, PDF, spreadsheet,
+        presentation, and public-data loader wrappers that normalize source content into
+        LangChain Document objects. The module centralizes path validation, metadata
+        assignment, chunking helpers, provider-specific loader construction, and logged
+        exception handling for Chonky's loading stage.
   </summary>
   ******************************************************************************************
 '''
 import arxiv
 import docx2txt
 
-from boogr import Error
+from boogr import Error, Logger
 import config as cfg
 import glob
 from langchain_text_splitters import Language, RecursiveCharacterTextSplitter, CharacterTextSplitter
@@ -52,27 +59,27 @@ from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
 from langchain_community.document_loaders import (
-    CSVLoader,
-    Docx2txtLoader,
-    PyPDFLoader,
-    JSONLoader,
-    GithubFileLoader,
-    UnstructuredExcelLoader,
-    RecursiveUrlLoader,
-    WebBaseLoader,
+	CSVLoader,
+	Docx2txtLoader,
+	PyPDFLoader,
+	JSONLoader,
+	GithubFileLoader,
+	UnstructuredExcelLoader,
+	RecursiveUrlLoader,
+	WebBaseLoader,
 	ArxivLoader,
-    WikipediaLoader,
+	WikipediaLoader,
 	UnstructuredEmailLoader,
-    SharePointLoader,
-    GoogleDriveLoader,
-    UnstructuredPowerPointLoader,
-    OutlookMessageLoader,
-    OneDriveLoader,
-    UnstructuredXMLLoader,
-    PubMedLoader,
-    OpenCityDataLoader,
-    NotebookLoader,
-    S3FileLoader,
+	SharePointLoader,
+	GoogleDriveLoader,
+	UnstructuredPowerPointLoader,
+	OutlookMessageLoader,
+	OneDriveLoader,
+	UnstructuredXMLLoader,
+	PubMedLoader,
+	OpenCityDataLoader,
+	NotebookLoader,
+	S3FileLoader,
 )
 
 from langchain_google_community import (GCSFileLoader, SpeechToTextLoader)
@@ -87,53 +94,43 @@ from typing import Optional, List, Dict, Any
 from lxml import etree
 
 def throw_if( name: str, value: Any ) -> None:
-	'''
-
-		Purpose:
-		-----------
-		Simple guard which raises ValueError when `value` is falsy (None, empty).
-
-		Parameters:
-		-----------
-		name (str): Variable name used in the raised message.
-		value (Any): Value to validate.
-
-		Returns:
-		-----------
-		None: Raises ValueError when `value` is falsy.
-
-	'''
+	"""Throw if.
+	
+	Purpose:
+		Executes the throw_if workflow for the loader wrapper while preserving loader state for
+		downstream Chonky stages.
+	
+	Args:
+		name: Runtime value used by the operation.
+		value: Runtime value used by the operation.
+	
+	Returns:
+		None: Result produced by the operation.
+	"""
 	if value is None:
 		raise ValueError( f"Argument '{name}' cannot be empty!" )
 
 class Loader( ):
-	'''
-
-		Purpose:
-		--------
-		Base class providing shared utilities for concrete loader wrappers.
-		Encapsulates file validation, path resolution, and document splitting.
-
-		Attributes:
-		----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		-------
-		_ensure_existing_file( self, path: str ) -> str
-		_resolve_paths( self, pattern: str ) -> List[ str ]
-		_split_documents( self, docs: List[ Document ], chunk: int=1000, overlap: int=200 ) ->
-		List[ Document ]
-
-	'''
+	"""Loader document loader wrapper.
+	
+	Purpose:
+		Provides shared file validation, path resolution, and document-splitting utilities used by
+		concrete Chonky loader wrappers. The class stores loader configuration, loaded documents,
+		splitting settings, and source metadata on the instance so the Streamlit application can
+		pass normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		documents: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		pattern: Runtime state used by the loader wrapper.
+		expanded: Runtime state used by the loader wrapper.
+		candidates: Runtime state used by the loader wrapper.
+		resolved: Runtime state used by the loader wrapper.
+		loader: Runtime state used by the loader wrapper.
+		splitter: Runtime state used by the loader wrapper.
+		chunk_size: Runtime state used by the loader wrapper.
+		overlap_amount: Runtime state used by the loader wrapper.
+	"""
 	documents: Optional[ List[ Document ] ]
 	file_path: Optional[ str ]
 	pattern: Optional[ str ]
@@ -157,21 +154,20 @@ class Loader( ):
 		self.loader = None
 	
 	def verify_exists( self, path: str ) -> str | None:
-		'''
-
-			Purpose:
-			--------
-			Ensure the given file path exists.
-
-			Parameters:
-			-----------
-			path (str): Path to a file on disk.
-
-			Returns:
-			--------
-			str: The validated file path.
-
-		'''
+		"""Verify exists.
+		
+		Purpose:
+			Validates that a supplied filesystem path exists before loader execution.
+		
+		Args:
+			path: Runtime value used by the operation.
+		
+		Returns:
+			str | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = path
@@ -185,24 +181,24 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
 			exception.method = '_ensure_existing_file( self, path: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
-			
+	
 	def resolve_paths( self, pattern: str ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			--------
-			Normalize a string glob pattern or a list of paths to a list of real file paths.
-
-			Parameters:
-			-----------
-			pattern (str | List[str]): Path pattern or list of file paths.
-
-			Returns:
-			--------
-			List[str]: Validated list of file paths.
-
-		'''
+		"""Resolve paths.
+		
+		Purpose:
+			Resolves a file path or glob pattern into concrete filesystem paths.
+		
+		Args:
+			pattern: Runtime value used by the operation.
+		
+		Returns:
+			List[str] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'pattern', pattern )
 			self.candidates.append( pattern )
@@ -222,27 +218,30 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
 			exception.method = 'resolve_paths( self, pattern: str ) -> List[ str ]'
+			Logger( ).write( exception )
 			raise exception
-			
-	def load_documents( self, path: str, encoding: Optional[ str ], csv_args: Optional[Dict[ str, Any ] ],
+	
+	def load_documents( self, path: str, encoding: Optional[ str ],
+			csv_args: Optional[ Dict[ str, Any ] ],
 			source_column: Optional[ str ] ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load files into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the CSV file.
-			encoding (Optional[str]): File encoding (e.g., 'utf-8') if known.
-			source_column (Optional[str]): Column name used for source attribution.
-
-			Returns:
-			--------
-			List[Document]: List of LangChain Document objects parsed from the CSV.
-
-		'''
+		"""Load documents.
+		
+		Purpose:
+			Executes the load_documents workflow for the Loader wrapper while preserving loader
+			state for downstream Chonky stages.
+		
+		Args:
+			path: Runtime value used by the operation.
+			encoding: Runtime value used by the operation.
+			csv_args: Runtime value used by the operation.
+			source_column: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			self.file_path = self.verify_exists( path )
 			self.encoding = encoding
@@ -257,33 +256,34 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'CSV'
 			exception.method = 'loader( )'
+			Logger( ).write( exception )
 			raise exception
-			
-	def split_documents( self, docs: List[ Document ], chunk: int=1000, overlap: int=200 ) -> \
-	List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split long Document objects into smaller chunks for better token management.
-
-			Parameters:
-			-----------
-			docs (List[Document]): Input LangChain Document objects.
-			chunk_size (int): Max characters in each chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Re-chunked list of Document objects.
-
-		'''
+	
+	def split_documents( self, docs: List[ Document ], chunk: int = 1000, overlap: int = 200 ) -> \
+			List[ Document ] | None:
+		"""Split documents.
+		
+		Purpose:
+			Splits supplied Document objects with the configured recursive text splitter.
+		
+		Args:
+			docs: Runtime value used by the operation.
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'docs', docs )
 			self.documents = docs
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
-			self.splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder( model_name='gpt-4o',
+			self.splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+				model_name='gpt-4o',
 				chunk_size=self.chunk_size, overlap=self.overlap_amount )
 			return self.splitter.split_documents( documents=self.documents )
 		except Exception as e:
@@ -291,16 +291,26 @@ class Loader( ):
 			exception.module = 'chonky'
 			exception.cause = 'Loader'
 			exception.method = ('split_documents( self, **kwargs ) -> List[ Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class TextLoader( Loader ):
-	'''
-		
-		Purpose:
-		-------
-		Class for loading text documents.
-		
-	'''
+	"""TextLoader document loader wrapper.
+	
+	Purpose:
+		Loads plain-text files into LangChain Document objects and prepares loaded text for
+		character or token splitting. The class stores loader configuration, loaded documents,
+		splitting settings, and source metadata on the instance so the Streamlit application can
+		pass normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		splitter: Runtime state used by the loader wrapper.
+		raw_text: Runtime state used by the loader wrapper.
+		separator: Runtime state used by the loader wrapper.
+		length_function: Runtime state used by the loader wrapper.
+	"""
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
 	splitter: Optional[ RecursiveCharacterTextSplitter | CharacterTextSplitter ]
@@ -320,13 +330,12 @@ class TextLoader( Loader ):
 		self.length_function = len
 	
 	def __dir__( self ):
-		'''
+		"""  dir  .
 		
-			Returns:
-			--------
-			A list of all available members.
-		
-		'''
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'documents',
 				'splitter',
@@ -349,21 +358,21 @@ class TextLoader( Loader ):
 		]
 	
 	def load( self, filepath: str ) -> List[ Document ] | None:
-		'''
+		"""Load.
 		
-			Purpose:
-			--------
-			Load raw text from a file into a single LangChain Document.
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
 		
-			Parameters:
-			-----------
-			filepath (str): Path to the text file.
+		Args:
+			filepath: Runtime value used by the operation.
 		
-			Returns:
-			--------
-			List[Document] | None: A single-item list containing the loaded text document.
+		Returns:
+			List[Document] | None: Result produced by the operation.
 		
-		'''
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'filepath', filepath )
 			self.file_path = self.verify_exists( filepath )
@@ -389,25 +398,26 @@ class TextLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'TextLoader'
 			exception.method = 'load( self, filepath: str ) -> List[ Document ] | None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_tokens( self, size: int = 1000, amount: int = 200 ) -> List[ Document ] | None:
-		'''
+		"""Split tokens.
 		
-			Purpose:
-			--------
-			Split loaded text into token-aware chunks.
+		Purpose:
+			Executes the split_tokens workflow for the TextLoader wrapper while preserving loader
+			state for downstream Chonky stages.
 		
-			Parameters:
-			-----------
-			size (int): Maximum chunk size.
-			amount (int): Number of overlapping characters/tokens.
+		Args:
+			size: Runtime value used by the operation.
+			amount: Runtime value used by the operation.
 		
-			Returns:
-			--------
-			List[Document] | None: Token-aware text chunks.
+		Returns:
+			List[Document] | None: Result produced by the operation.
 		
-		'''
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if not isinstance( self.raw_text, str ) or not self.raw_text:
 				raise ValueError( 'No text loaded!' )
@@ -426,7 +436,8 @@ class TextLoader( Loader ):
 				if not isinstance( getattr( document, 'metadata', None ), dict ):
 					document.metadata = { }
 				
-				document.metadata.setdefault( 'source', os.path.basename( self.file_path ) if self.file_path else '' )
+				document.metadata.setdefault( 'source',
+					os.path.basename( self.file_path ) if self.file_path else '' )
 				document.metadata[ 'loader' ] = 'TextLoader'
 				document.metadata[ 'split_mode' ] = 'tokens'
 			
@@ -436,28 +447,30 @@ class TextLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'TextLoader'
-			exception.method = 'split_tokens( self, size: int=1000, amount: int=200 ) -> List[ Document ] | None'
+			exception.method = ('split_tokens( self, size: int=1000, amount: int=200 ) -> List[ '
+			                    'Document ] | None')
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_chars( self, size: int = 1000, amount: int = 200,
 			seps: str = "\n\n" ) -> List[ Document ] | None:
-		'''
+		"""Split chars.
 		
-			Purpose:
-			--------
-			Split loaded text into character-aware chunks.
+		Purpose:
+			Executes the split_chars workflow for the TextLoader wrapper while preserving loader
+			state for downstream Chonky stages.
 		
-			Parameters:
-			-----------
-			size (int): Maximum chunk size.
-			amount (int): Number of overlapping characters.
-			seps (str): Separator used by the character splitter.
+		Args:
+			size: Runtime value used by the operation.
+			amount: Runtime value used by the operation.
+			seps: Runtime value used by the operation.
 		
-			Returns:
-			--------
-			List[Document] | None: Character-aware text chunks.
+		Returns:
+			List[Document] | None: Result produced by the operation.
 		
-		'''
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if not isinstance( self.raw_text, str ) or not self.raw_text:
 				raise ValueError( 'No text loaded!' )
@@ -478,7 +491,8 @@ class TextLoader( Loader ):
 				if not isinstance( getattr( document, 'metadata', None ), dict ):
 					document.metadata = { }
 				
-				document.metadata.setdefault( 'source', os.path.basename( self.file_path ) if self.file_path else '' )
+				document.metadata.setdefault( 'source',
+					os.path.basename( self.file_path ) if self.file_path else '' )
 				document.metadata[ 'loader' ] = 'TextLoader'
 				document.metadata[ 'split_mode' ] = 'chars'
 			
@@ -492,16 +506,27 @@ class TextLoader( Loader ):
 					'split_chars( self, size: int=1000, amount: int=200, '
 					'seps: str="\\n\\n" ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class CsvLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides CSVLoader functionality to parse CSV files into Document objects.
-
-	'''
+	"""CsvLoader document loader wrapper.
+	
+	Purpose:
+		Loads delimited CSV content into LangChain Document objects for downstream Chonky
+		processing. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		splitter: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		quote_char: Runtime state used by the loader wrapper.
+		csv_args: Runtime state used by the loader wrapper.
+		columns: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ CSVLoader ]
 	documents: Optional[ List[ Document ] ]
 	splitter: Optional[ RecursiveCharacterTextSplitter ]
@@ -523,13 +548,12 @@ class CsvLoader( Loader ):
 		self.loader = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -553,24 +577,24 @@ class CsvLoader( Loader ):
 	
 	def load( self, filepath: str, columns: Optional[ List[ str ] ] = None,
 			delimiter: str = ',', quotechar: str = '"' ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a CSV file into LangChain Document objects.
-
-			Parameters:
-			-----------
-			filepath (str): Path to the CSV file.
-			columns (Optional[List[str]]): Optional list of content columns.
-			delimiter (str): CSV delimiter character.
-			quotechar (str): CSV quote character.
-
-			Returns:
-			--------
-			List[Document] | None: Parsed CSV documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			filepath: Runtime value used by the operation.
+			columns: Runtime value used by the operation.
+			delimiter: Runtime value used by the operation.
+			quotechar: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'filepath', filepath )
 			
@@ -597,25 +621,26 @@ class CsvLoader( Loader ):
 					'load( self, filepath: str, columns: Optional[ List[ str ] ]=None, '
 					'delimiter: str=",", quotechar: str=\'"\' ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, size: int = 1000, amount: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded CSV documents into smaller text chunks.
-
-			Parameters:
-			-----------
-			size (int): Maximum number of characters per chunk.
-			amount (int): Number of overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: List of split Document chunks.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			size: Runtime value used by the operation.
+			amount: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -638,259 +663,231 @@ class CsvLoader( Loader ):
 					'split( self, size: int=1000, amount: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-			
+
 class XmlLoader( Loader ):
-    """
-    Purpose:
-    --------
-    Load XML files using two explicit and independent paths:
-
-    1. Unstructured semantic loading via LangChain's UnstructuredXMLLoader,
-       producing LangChain Document objects suitable for RAG and embeddings.
-
-    2. Structured XML loading via lxml, producing an ElementTree suitable for
-       XPath queries and schema-aware processing.
-
-    Attributes:
-    ----------
-    file_path : Optional[str]
-        Path to the XML file.
-
-    documents : Optional[List[Document]]
-        Documents produced by UnstructuredXMLLoader.
-
-    loader : Optional[UnstructuredXMLLoader]
-        Active unstructured loader instance.
-
-    splitter : Optional[RecursiveCharacterTextSplitter]
-        Text splitter for document chunking.
-
-    chunk_size : Optional[int]
-        Chunk size for splitting documents.
-
-    overlap_amount : Optional[int]
-        Overlap size for splitting documents.
-
-    xml_tree : Optional[etree._ElementTree]
-        Parsed XML tree produced by lxml.
-
-    xml_root : Optional[etree._Element]
-        Root element of the parsed XML tree.
-
-    xml_namespaces : Optional[Dict[str, str]]
-        Namespace mapping extracted from the XML root.
-
-    Public Methods:
-    ---------------
-    load
-    split
-    load_tree
-    get_elements
-    """
-
-    file_path: Optional[str]
-    documents: Optional[List[Document]]
-    loader: Optional[UnstructuredXMLLoader]
-    splitter: Optional[RecursiveCharacterTextSplitter]
-    chunk_size: Optional[int]
-    overlap_amount: Optional[int]
-    xml_tree: Optional[etree._ElementTree]
-    xml_root: Optional[etree._Element]
-    xml_namespaces: Optional[Dict[str, str]]
-
-    def __init__(self) -> None:
-        super( ).__init__( )
-        self.file_path = None
-        self.documents = None
-        self.loader = None
-        self.splitter = None
-        self.chunk_size = None
-        self.overlap_amount = None
-        self.xml_tree = None
-        self.xml_root = None
-        self.xml_namespaces = None
-
-    def __dir__(self) -> List[str]:
-        """
-        
-	        Returns:
-	        --------
-	        
-	        List[str]
-	            List of available members.
-	            
-        """
-        return [
-            "loader",
-            "documents",
-            "splitter",
-            "file_path",
-            "expanded",
-            "candidates",
-            "resolved",
-            "chunk_size",
-            "overlap_amount",
-            "xml_tree",
-            "xml_root",
-            "xml_namespaces",
-            "verify_exists",
-            "resolve_paths",
-            "split_documents",
-            "load",
-            "split",
-            "load_tree",
-            "get_elements",
-        ]
-
-    def load(self, filepath: str) -> List[Document] | None:
-        """
-	        
-	        Purpose:
-	        --------
-	        Load an XML file using LangChain's UnstructuredXMLLoader to produce
-	        semantic Document objects.
+	"""XmlLoader document loader wrapper.
 	
-	        Parameters:
-	        -----------
-	        filepath : str
-	            Path to the XML file.
+	Purpose:
+		Loads XML through semantic document parsing and structured lxml tree parsing for XPath
+		workflows. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
 	
-	        Returns:
-	        --------
-	        List[Document] | None
-	            Parsed LangChain Document objects.
-	            
-        """
-        try:
-            self.file_path = self.verify_exists(filepath)
-            self.loader = UnstructuredXMLLoader( file_path=self.file_path, mode="elements" )
-            self.documents = self.loader.load()
-            return self.documents
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "chonky"
-            exception.cause = "XmlLoader"
-            exception.method = "load(self, filepath: str)"
-            raise exception
-            
-
-    def split(self, size: int=1000, amount: int=200) -> List[Document] | None:
-        """
-	        
-	        Purpose:
-	        --------
-	        Split loaded unstructured Documents into smaller chunks.
+	Attributes:
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		loader: Runtime state used by the loader wrapper.
+		splitter: Runtime state used by the loader wrapper.
+		chunk_size: Runtime state used by the loader wrapper.
+		overlap_amount: Runtime state used by the loader wrapper.
+		xml_tree: Runtime state used by the loader wrapper.
+		xml_root: Runtime state used by the loader wrapper.
+		xml_namespaces: Runtime state used by the loader wrapper.
+	"""
 	
-	        Parameters:
-	        -----------
-	        size : int
-	            Maximum number of characters per chunk.
+	file_path: Optional[ str ]
+	documents: Optional[ List[ Document ] ]
+	loader: Optional[ UnstructuredXMLLoader ]
+	splitter: Optional[ RecursiveCharacterTextSplitter ]
+	chunk_size: Optional[ int ]
+	overlap_amount: Optional[ int ]
+	xml_tree: Optional[ etree._ElementTree ]
+	xml_root: Optional[ etree._Element ]
+	xml_namespaces: Optional[ Dict[ str, str ] ]
 	
-	        amount : int
-	            Number of overlapping characters between chunks.
+	def __init__( self ) -> None:
+		super( ).__init__( )
+		self.file_path = None
+		self.documents = None
+		self.loader = None
+		self.splitter = None
+		self.chunk_size = None
+		self.overlap_amount = None
+		self.xml_tree = None
+		self.xml_root = None
+		self.xml_namespaces = None
 	
-	        Returns:
-	        --------
-	        List[Document] | None
-	            Split Document chunks.
-            
-        """
-        try:
-            if self.documents is None:
-                raise ValueError("No documents loaded via load().")
-            self.chunk_size = size
-            self.overlap_amount = amount
-            split_docs = self.split_documents( docs=self.documents, chunk=self.chunk_size,
-	            overlap=self.overlap_amount )
-
-            return split_docs
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "chonky"
-            exception.cause = "XmlLoader"
-            exception.method = "split(self, size: int = 1000, amount: int = 200)"
-            raise exception
-            
-
-    def load_tree(self, filepath: str) -> etree._ElementTree | None:
-        """
-	        
-	        Purpose:
-	        --------
-	        Parse an XML file into a structured lxml ElementTree and store it
-	        on the instance.
+	def __dir__( self ) -> List[ str ]:
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		
+		Returns:
+			List[str]: Result produced by the operation.
+		"""
+		return [
+				"loader",
+				"documents",
+				"splitter",
+				"file_path",
+				"expanded",
+				"candidates",
+				"resolved",
+				"chunk_size",
+				"overlap_amount",
+				"xml_tree",
+				"xml_root",
+				"xml_namespaces",
+				"verify_exists",
+				"resolve_paths",
+				"split_documents",
+				"load",
+				"split",
+				"load_tree",
+				"get_elements",
+		]
 	
-	        Parameters:
-	        -----------
-	        filepath : str
-	            Path to the XML file.
+	def load( self, filepath: str ) -> List[ Document ] | None:
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			filepath: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
+		try:
+			self.file_path = self.verify_exists( filepath )
+			self.loader = UnstructuredXMLLoader( file_path=self.file_path, mode="elements" )
+			self.documents = self.loader.load( )
+			return self.documents
+		except Exception as e:
+			exception = Error( e )
+			exception.module = "chonky"
+			exception.cause = "XmlLoader"
+			exception.method = "load(self, filepath: str)"
+			Logger( ).write( exception )
+			raise exception
 	
-	        Returns:
-	        --------
-	        etree._ElementTree | None
-	            Parsed XML tree.
-            
-        """
-        try:
-            self.file_path = self.verify_exists(filepath)
-            parser = etree.XMLParser(recover=True, remove_comments=True, remove_blank_text=True )
-            self.xml_tree = etree.parse(self.file_path, parser)
-            self.xml_root = self.xml_tree.getroot()
-            self.xml_namespaces = {
-                prefix if prefix is not None else "default": uri
-                for prefix, uri in (self.xml_root.nsmap or {} ).items()
-            }
-
-            return self.xml_tree
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "chonky"
-            exception.cause = "XmlLoader"
-            exception.method = "load_tree(self, filepath: str)"
-            raise exception
-            
-
-    def get_elements(self, xpath: str) -> List[etree._Element] | None:
-        """
-        
-	        Purpose:
-	        --------
-	        Retrieve XML elements using an XPath expression against the
-	        loaded XML tree.
+	def split( self, size: int = 1000, amount: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			size: Runtime value used by the operation.
+			amount: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
+		try:
+			if self.documents is None:
+				raise ValueError( "No documents loaded via load()." )
+			self.chunk_size = size
+			self.overlap_amount = amount
+			split_docs = self.split_documents( docs=self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
+			
+			return split_docs
+		except Exception as e:
+			exception = Error( e )
+			exception.module = "chonky"
+			exception.cause = "XmlLoader"
+			exception.method = "split(self, size: int = 1000, amount: int = 200)"
+			Logger( ).write( exception )
+			raise exception
 	
-	        Parameters:
-	        -----------
-	        xpath : str
-	            XPath expression.
+	def load_tree( self, filepath: str ) -> etree._ElementTree | None:
+		"""Load tree.
+		
+		Purpose:
+			Parses XML into an lxml ElementTree and stores tree, root, and namespace state.
+		
+		Args:
+			filepath: Runtime value used by the operation.
+		
+		Returns:
+			etree._ElementTree | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
+		try:
+			self.file_path = self.verify_exists( filepath )
+			parser = etree.XMLParser( recover=True, remove_comments=True, remove_blank_text=True )
+			self.xml_tree = etree.parse( self.file_path, parser )
+			self.xml_root = self.xml_tree.getroot( )
+			self.xml_namespaces = {
+					prefix if prefix is not None else "default": uri
+					for prefix, uri in (self.xml_root.nsmap or { }).items( )
+			}
+			
+			return self.xml_tree
+		except Exception as e:
+			exception = Error( e )
+			exception.module = "chonky"
+			exception.cause = "XmlLoader"
+			exception.method = "load_tree(self, filepath: str)"
+			Logger( ).write( exception )
+			raise exception
 	
-	        Returns:
-	        --------
-	        List[etree._Element] | None
-	            Matching XML elements.
-            
-        """
-        try:
-            if self.xml_root is None:
-                raise ValueError("XML tree not loaded. Call load_tree() first.")
-            elements = self.xml_root.xpath( xpath, namespaces=self.xml_namespaces )
-            return list(elements)
-        except Exception as e:
-            exception = Error(e)
-            exception.module = "chonky"
-            exception.cause = "XmlLoader"
-            exception.method = "get_elements(self, xpath: str)"
-            raise exception
+	def get_elements( self, xpath: str ) -> List[ etree._Element ] | None:
+		"""Get elements.
+		
+		Purpose:
+			Runs an XPath expression against the loaded XML tree and returns matching elements.
+		
+		Args:
+			xpath: Runtime value used by the operation.
+		
+		Returns:
+			List[etree._Element] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
+		try:
+			if self.xml_root is None:
+				raise ValueError( "XML tree not loaded. Call load_tree() first." )
+			elements = self.xml_root.xpath( xpath, namespaces=self.xml_namespaces )
+			return list( elements )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = "chonky"
+			exception.cause = "XmlLoader"
+			exception.method = "get_elements(self, xpath: str)"
+			Logger( ).write( exception )
+			raise exception
 
 class WebLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Load one or more webpages into LangChain Document objects, with optional
-		recursive crawling support.
-
-	'''
+	"""WebLoader document loader wrapper.
+	
+	Purpose:
+		Loads one or more web pages into LangChain Document objects through direct page loading or
+		recursive crawling. The class stores loader configuration, loaded documents, splitting
+		settings, and source metadata on the instance so the Streamlit application can pass
+		normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		url: Runtime state used by the loader wrapper.
+		web_paths: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		max_depth: Runtime state used by the loader wrapper.
+		timeout: Runtime state used by the loader wrapper.
+		ignore: Runtime state used by the loader wrapper.
+		with_progress: Runtime state used by the loader wrapper.
+		recursive: Runtime state used by the loader wrapper.
+		prevent_outside: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ RecursiveUrlLoader | WebBaseLoader ]
 	url: Optional[ str ]
 	web_paths: Optional[ str | List[ str ] ]
@@ -906,27 +903,20 @@ class WebLoader( Loader ):
 	def __init__( self, recursive: bool = False, max_depth: int = 2,
 			prevent_outside: bool = True, timeout: int = 10,
 			ignore: bool = True, progress: bool = True ) -> None:
-		'''
-
-			Purpose:
-			--------
-			Initialize a WebLoader instance for either single-page loading
-			or recursive crawling.
-
-			Parameters:
-			-----------
-			recursive (bool): Whether to use RecursiveUrlLoader.
-			max_depth (int): Maximum crawl depth for recursive loading.
-			prevent_outside (bool): Prevent traversal outside the starting domain.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue on failure when loading pages.
-			progress (bool): Show progress during page loading.
-
-			Returns:
-			--------
-			None
-
-		'''
+		"""Initialize the wrapper.
+		
+		Purpose:
+			Initializes instance state used by the loader wrapper without changing the loader
+			execution contract.
+		
+		Args:
+			recursive: Runtime value used by the operation.
+			max_depth: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+		"""
 		super( ).__init__( )
 		self.file_path = None
 		self.documents = None
@@ -943,13 +933,12 @@ class WebLoader( Loader ):
 		self.prevent_outside = prevent_outside
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -980,27 +969,26 @@ class WebLoader( Loader ):
 	def load( self, urls: str | List[ str ], depth: int = 2, timeout: int = 10,
 			ignore: bool = True, progress: bool = True,
 			prevent_outside: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load one or more webpages, using either WebBaseLoader or
-			RecursiveUrlLoader depending on the instance configuration.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): One or more URLs to load.
-			depth (int): Maximum recursive crawl depth.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue loading on fetch failure.
-			progress (bool): Show progress while loading.
-			prevent_outside (bool): Restrict recursive traversal to the starting domain.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded webpage documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			depth: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.recursive:
 				return self.load_recursive(
@@ -1027,28 +1015,28 @@ class WebLoader( Loader ):
 					'timeout: int=10, ignore: bool=True, progress: bool=True, '
 					'prevent_outside: bool=True ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def load_pages( self, urls: str | List[ str ], timeout: int = 10,
 			ignore: bool = True, progress: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load one or more web pages and convert them into Document objects.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): One or more URL strings to load.
-			timeout (int): Maximum request timeout in seconds.
-			ignore (bool): Whether fetch failures should be ignored.
-			progress (bool): Whether WebBaseLoader should display progress.
-
-			Returns:
-			--------
-			List[Document] | None: Parsed Document objects from fetched HTML content.
-
-		'''
+		"""Load pages.
+		
+		Purpose:
+			Loads one or more web pages into LangChain Document objects.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'urls', urls )
 			
@@ -1076,30 +1064,30 @@ class WebLoader( Loader ):
 					'ignore: bool=True, progress: bool=True ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def load_recursive( self, urls: str | List[ str ], depth: int = 2,
 			timeout: int = 10, ignore: bool = True,
 			prevent_outside: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Recursively crawl one starting URL and load discovered pages.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): Starting URL. If a list is provided, the first URL is used.
-			depth (int): Maximum crawl depth.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue on crawl failures.
-			prevent_outside (bool): Restrict traversal to the starting domain.
-
-			Returns:
-			--------
-			List[Document] | None: Crawled documents.
-
-		'''
+		"""Load recursive.
+		
+		Purpose:
+			Recursively crawls a starting URL and loads discovered pages into Document objects.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			depth: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'urls', urls )
 			
@@ -1129,25 +1117,26 @@ class WebLoader( Loader ):
 					'timeout: int=10, ignore: bool=True, prevent_outside: bool=True ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded web documents into smaller chunks for downstream use.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum number of characters per chunk.
-			overlap (int): Number of overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -1168,19 +1157,28 @@ class WebLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class PdfLoader( Loader ):
-	"""
-
-		Purpose:
-		-------
-		PDF loader with:
-			- Page-aware metadata
-			- Configurable loading modes
-			- Configurable extraction modes
-			- Optional image extraction with OCR parsing
-
+	"""PdfLoader document loader wrapper.
+	
+	Purpose:
+		Loads PDF files into LangChain Document objects with configurable page mode, extraction
+		mode, and optional image parsing. The class stores loader configuration, loaded documents,
+		splitting settings, and source metadata on the instance so the Streamlit application can
+		pass normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		mode: Runtime state used by the loader wrapper.
+		extraction: Runtime state used by the loader wrapper.
+		include_images: Runtime state used by the loader wrapper.
+		image_format: Runtime state used by the loader wrapper.
+		custom_delimiter: Runtime state used by the loader wrapper.
+		image_parser: Runtime state used by the loader wrapper.
 	"""
 	loader: Optional[ PyPDFLoader ]
 	file_path: Optional[ str ]
@@ -1194,23 +1192,17 @@ class PdfLoader( Loader ):
 	
 	def __init__( self, size: int = 1000, overlap: int = 150,
 			has_tables: bool = True, include: bool = True ) -> None:
-		"""
-
-			Purpose:
-			---------
-			Initialize the PdfLoader.
-
-			Parameters:
-			-----------
-			size (int): Default chunk size.
-			overlap (int): Default chunk overlap.
-			has_tables (bool): Preserved for compatibility.
-			include (bool): Default include-images setting.
-
-			Returns:
-			--------
-			None
-
+		"""Initialize the wrapper.
+		
+		Purpose:
+			Initializes instance state used by the loader wrapper without changing the loader
+			execution contract.
+		
+		Args:
+			size: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+			has_tables: Runtime value used by the operation.
+			include: Runtime value used by the operation.
 		"""
 		super( ).__init__( )
 		self.enable_tables = has_tables
@@ -1228,13 +1220,12 @@ class PdfLoader( Loader ):
 		self.image_parser = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+ API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -1264,53 +1255,43 @@ class PdfLoader( Loader ):
 	
 	@property
 	def mode_options( self ):
-		'''
-
-			Returns:
-			--------
-			A List[ str ] of supported mode options.
-
-		'''
+		"""Mode options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'page', 'single' ]
 	
 	@property
 	def extraction_options( self ):
-		'''
-
-			Returns:
-			--------
-			A List[ str ] of supported extraction options.
-
-		'''
+		"""Extraction options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'plain', 'layout' ]
 	
 	@property
 	def image_options( self ):
-		'''
-
-			Returns:
-			--------
-			A List[ str ] of supported image format options.
-
-		'''
+		"""Image options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'html-img', 'markdown-img', 'text-img' ]
 	
 	def _normalize_mode( self, mode: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize legacy or UI-provided PDF modes to supported loader modes.
-
-			Parameters:
-			-----------
-			mode (str): Incoming mode value.
-
-			Returns:
-			--------
-			str: Supported PyPDFLoader mode.
-
-		'''
+		""" normalize mode.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = mode.strip( ).lower( ) if isinstance( mode, str ) else 'single'
 		
 		if value == 'elements':
@@ -1322,21 +1303,17 @@ class PdfLoader( Loader ):
 		return value
 	
 	def _normalize_extraction( self, extract: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize legacy or UI-provided extraction modes to supported values.
-
-			Parameters:
-			-----------
-			extract (str): Incoming extraction mode.
-
-			Returns:
-			--------
-			str: Supported extraction mode.
-
-		'''
+		""" normalize extraction.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			extract: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = extract.strip( ).lower( ) if isinstance( extract, str ) else 'plain'
 		
 		if value == 'ocr':
@@ -1348,21 +1325,17 @@ class PdfLoader( Loader ):
 		return value
 	
 	def _normalize_image_format( self, format: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize image formatting values to supported options.
-
-			Parameters:
-			-----------
-			format (str): Incoming image format.
-
-			Returns:
-			--------
-			str: Supported images_inner_format value.
-
-		'''
+		""" normalize image format.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			format: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = format.strip( ).lower( ) if isinstance( format, str ) else 'markdown-img'
 		
 		if value == 'text':
@@ -1375,28 +1348,24 @@ class PdfLoader( Loader ):
 	
 	def load( self, filepath: str, mode: str = 'single', extract: str = 'plain',
 			include: bool = False, format: str = 'markdown-img' ) -> List[ Document ]:
-		"""
-
-			Purpose:
-			---------
-			Load a PDF document into LangChain Document objects.
-
-			Parameters:
-			-----------
-			filepath (str): Path to the PDF file.
-			mode (str): Loading mode. Supported values are 'single' and 'page'.
-			            Legacy value 'elements' is normalized to 'page'.
-			extract (str): Extraction mode. Supported values are 'plain' and
-			               'layout'. Legacy value 'ocr' is normalized to 'layout'.
-			include (bool): Whether to extract images from the PDF.
-			format (str): Image inner format. Supported values are 'html-img',
-			              'markdown-img', and 'text-img'. Legacy value 'text'
-			              is normalized to 'markdown-img'.
-
-			Returns:
-			--------
-			List[Document]: Parsed PDF documents.
-
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			filepath: Runtime value used by the operation.
+			mode: Runtime value used by the operation.
+			extract: Runtime value used by the operation.
+			include: Runtime value used by the operation.
+			format: Runtime value used by the operation.
+		
+		Returns:
+			List[Document]: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
 		"""
 		try:
 			throw_if( 'path', filepath )
@@ -1436,25 +1405,26 @@ class PdfLoader( Loader ):
 					'extract: str="plain", include: bool=False, '
 					'format: str="markdown-img" ) -> List[ Document ]'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded PDF documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Max characters per chunk.
-			overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked list of PDF documents.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -1476,17 +1446,25 @@ class PdfLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class ExcelLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides LangChain's UnstructuredExcelLoader functionality
-		to parse Excel spreadsheets into Document objects.
-
-	'''
+	"""ExcelLoader document loader wrapper.
+	
+	Purpose:
+		Loads Excel spreadsheets into LangChain Document objects using LangChain unstructured
+		spreadsheet loading. The class stores loader configuration, loaded documents, splitting
+		settings, and source metadata on the instance so the Streamlit application can pass
+		normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		mode: Runtime state used by the loader wrapper.
+		has_headers: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ UnstructuredExcelLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -1504,13 +1482,12 @@ class ExcelLoader( Loader ):
 		self.has_headers = True
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -1534,31 +1511,25 @@ class ExcelLoader( Loader ):
 	
 	@property
 	def mode_options( self ):
-		'''
-
-			Returns:
-			--------
-			List[str]: Supported loading mode options.
-
-		'''
+		"""Mode options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'single', 'elements' ]
 	
 	def _normalize_mode( self, mode: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize incoming Excel loader modes to supported values.
-
-			Parameters:
-			-----------
-			mode (str): Incoming mode value.
-
-			Returns:
-			--------
-			str: Supported Excel loader mode.
-
-		'''
+		""" normalize mode.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = mode.strip( ).lower( ) if isinstance( mode, str ) else 'single'
 		
 		if value in [ 'page', 'paged' ]:
@@ -1571,23 +1542,23 @@ class ExcelLoader( Loader ):
 	
 	def load( self, path: str, mode: str = 'single',
 			has_headers: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load and convert Excel data into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): File path to the Excel spreadsheet.
-			mode (str): Extraction mode, either 'single' or 'elements'.
-			has_headers (bool): Preserved for compatibility.
-
-			Returns:
-			--------
-			List[Document] | None: Parsed Document objects from Excel content.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+			mode: Runtime value used by the operation.
+			has_headers: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			
@@ -1611,25 +1582,26 @@ class ExcelLoader( Loader ):
 					'load( self, path: str, mode: str="single", '
 					'has_headers: bool=True ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Excel documents into manageable chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum characters per chunk.
-			overlap (int): Characters overlapping between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked list of Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -1652,39 +1624,23 @@ class ExcelLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-			
+
 class WordLoader( Loader ):
-	'''
-
-
-		Purpose:
-		--------
-		Provides LangChain's Docx2txtLoader functionality to
-		convert docx files into Document objects.
-
-		Attributes:
-		----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str,
-		resolve_paths( self, pattern: str ) -> List[ str ],
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ]
-		load( path: str, mode: str ) -> List[ Document ]
-		split( ) -> List[ Document ]
-
-
-	'''
+	"""WordLoader document loader wrapper.
+	
+	Purpose:
+		Loads Word documents into LangChain Document objects using document text extraction
+		wrappers. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ Docx2txtLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -1699,14 +1655,12 @@ class WordLoader( Loader ):
 		self.loader = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -1724,23 +1678,21 @@ class WordLoader( Loader ):
 		         'split', ]
 	
 	def load( self, path: str ) -> List[ Document ] | None:
-		'''
-
-
-			Purpose:
-			--------
-			Load the contents of a Word .docx file into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): File path to the .docx document.
-
-			Returns:
-			--------
-			List[Document]: Parsed Document list from Word file.
-
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -1752,28 +1704,26 @@ class WordLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WordLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-
-			Purpose:
-			--------
-			Split Word documents into text chunks suitable for LLM processing.
-
-			Parameters:
-			-----------
-			chunk_size (int): Maximum characters per chunk.
-			chunk_overlap (int): Overlap between chunks in characters.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of Document objects.
-
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -1786,40 +1736,26 @@ class WordLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WordLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class MarkdownLoader( Loader ):
-	'''
-
-
-		Purpose:
-		--------
-		Wrap LangChain's UnstructuredMarkdownLoader to parse Markdown files into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path - str
-		pattern - str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-		mode - str
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str,
-		resolve_paths( self, pattern: str ) -> List[ str ],
-		split_documents( self, docs: List[ Document ] ) -> List[ Document ]
-		load( path: str, mode: str ) -> List[ Document ]
-		split( ) -> List[ Document ]
-
-
-	'''
+	"""MarkdownLoader document loader wrapper.
+	
+	Purpose:
+		Loads Markdown files into LangChain Document objects for downstream cleanup and semantic
+		processing. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		mode: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ UnstructuredMarkdownLoader ]
 	file_path: str | None
 	documents: List[ Document ] | None
@@ -1836,13 +1772,12 @@ class MarkdownLoader( Loader ):
 		self.mode = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+				API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -1865,31 +1800,25 @@ class MarkdownLoader( Loader ):
 	
 	@property
 	def mode_options( self ):
-		'''
-
-			Returns:
-			--------
-			A List[ str ] of supported mode options.
-
-		'''
+		"""Mode options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'single', 'elements' ]
 	
 	def _normalize_mode( self, mode: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize incoming Markdown loader modes to supported values.
-
-			Parameters:
-			-----------
-			mode (str): Incoming mode value.
-
-			Returns:
-			--------
-			str: Supported Markdown loader mode.
-
-		'''
+		""" normalize mode.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = mode.strip( ).lower( ) if isinstance( mode, str ) else 'single'
 		
 		if value in [ 'page', 'paged' ]:
@@ -1901,22 +1830,22 @@ class MarkdownLoader( Loader ):
 		return value
 	
 	def load( self, path: str, mode: str = 'single' ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a Markdown (.md) file into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): File path to the Markdown file.
-			mode (str): Extraction mode, either 'single' or 'elements'.
-
-			Returns:
-			--------
-			List[Document] | None: List of parsed Document objects from the Markdown file.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -1936,25 +1865,26 @@ class MarkdownLoader( Loader ):
 					'load( self, path: str, mode: str="single" ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Markdown content into text chunks for LLM consumption.
-
-			Parameters:
-			-----------
-			chunk (int): Max characters per chunk.
-			overlap (int): Number of characters that overlap between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Split Document chunks from the original Markdown content.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -1976,36 +1906,23 @@ class MarkdownLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-			
+
 class HtmlLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides the UnstructuredHTMLLoader's functionality to parse HTML files into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str,
-		resolve_paths( self, pattern: str ) -> List[ str ],
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ]
-		load( path: str, mode: str ) -> List[ Document ]
-		split( ) -> List[ Document ]
-
-	'''
+	"""HtmlLoader document loader wrapper.
+	
+	Purpose:
+		Loads HTML files into LangChain Document objects while preserving loader metadata for
+		downstream processing. The class stores loader configuration, loaded documents, splitting
+		settings, and source metadata on the instance so the Streamlit application can pass
+		normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ UnstructuredHTMLLoader ]
 	file_path: str | None
 	documents: List[ Document ] | None
@@ -2020,14 +1937,12 @@ class HtmlLoader( Loader ):
 		self.loader = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -2045,21 +1960,21 @@ class HtmlLoader( Loader ):
 		         'split', ]
 	
 	def load( self, path: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an HTML file and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -2071,26 +1986,26 @@ class HtmlLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'HTML'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded HTML documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2103,18 +2018,29 @@ class HtmlLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'HtmlLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class JsonLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Wrap LangChain's JSONLoader to parse JSON and JSONL files into
-		LangChain Document objects.
-
-	'''
+	"""JsonLoader document loader wrapper.
+	
+	Purpose:
+		Loads JSON and JSON Lines content into LangChain Document objects using jq-style
+		extraction settings. The class stores loader configuration, loaded documents, splitting
+		settings, and source metadata on the instance so the Streamlit application can pass
+		normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		jq_schema: Runtime state used by the loader wrapper.
+		content_key: Runtime state used by the loader wrapper.
+		text_content: Runtime state used by the loader wrapper.
+		json_lines: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ JSONLoader ]
 	file_path: Optional[ str ]
 	jq_schema: Optional[ str ]
@@ -2137,13 +2063,12 @@ class JsonLoader( Loader ):
 		self.json_lines = False
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -2169,32 +2094,33 @@ class JsonLoader( Loader ):
 	def load( self, filepath: str, jq_schema: str = '.',
 			content_key: Optional[ str ] = None, is_text: bool = True,
 			is_lines: bool = False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a JSON or JSON Lines file into LangChain Document objects.
-
-			Parameters:
-			-----------
-			filepath (str): Path to the JSON or JSONL file.
-			jq_schema (str): jq schema used to extract content or objects.
-			content_key (Optional[str]): Optional key to extract text from
-				object results.
-			is_text (bool): Whether extracted content is already text.
-			is_lines (bool): Whether the file is JSON Lines format.
-
-			Returns:
-			--------
-			List[Document] | None: Parsed JSON documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			filepath: Runtime value used by the operation.
+			jq_schema: Runtime value used by the operation.
+			content_key: Runtime value used by the operation.
+			is_text: Runtime value used by the operation.
+			is_lines: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'filepath', filepath )
 			self.file_path = self.verify_exists( filepath )
-			self.jq_schema = jq_schema if isinstance( jq_schema, str ) and jq_schema.strip( ) else '.'
-			self.content_key = ( content_key.strip( )
-					if isinstance( content_key, str ) and content_key.strip( ) else None )
+			self.jq_schema = jq_schema if isinstance( jq_schema,
+				str ) and jq_schema.strip( ) else '.'
+			self.content_key = (content_key.strip( )
+			                    if isinstance( content_key,
+				str ) and content_key.strip( ) else None)
 			self.text_content = bool( is_text )
 			self.json_lines = bool( is_lines )
 			kwargs = {
@@ -2220,25 +2146,26 @@ class JsonLoader( Loader ):
 					'content_key: Optional[ str ]=None, is_text: bool=True, '
 					'is_lines: bool=False ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded JSON documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum characters per chunk.
-			overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked list of JSON documents.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2260,38 +2187,27 @@ class JsonLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-			
+
 class ArXivLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		alaods documents from an open-access archive for 2 million scholarly articles in the
-		fields of physics,  mathematics, computer science, quantitative biology,
-		quantitative finance, statistics,  electrical engineering and systems science, and economics.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""ArXivLoader document loader wrapper.
+	
+	Purpose:
+		Loads arXiv search results and papers into LangChain Document objects for research-text
+		workflows. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		max_documents: Runtime state used by the loader wrapper.
+		max_characters: Runtime state used by the loader wrapper.
+		include_metadata: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ ArxivLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -2313,14 +2229,12 @@ class ArXivLoader( Loader ):
 		self.include_metadata = False
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+		         API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -2340,27 +2254,29 @@ class ArXivLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, query: str, max_chars: int=1000 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an video file and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+	def load( self, query: str, max_chars: int = 1000 ) -> List[ Document ] | None:
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			query: Runtime value used by the operation.
+			max_chars: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'query', query )
 			self.query = query
 			self.max_characters = max_chars
-			self.loader = ArxivLoader( query=self.query, doc_content_chars_max=self.max_characters )
+			self.loader = ArxivLoader( query=self.query,
+				doc_content_chars_max=self.max_characters )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -2368,26 +2284,26 @@ class ArXivLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'ArxivLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Youtube Transcript documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2400,18 +2316,29 @@ class ArXivLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'ArxivLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class WikiLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides WikipediaLoader functionality
-		to fetch Wikipedia articles into Document objects.
-
-	'''
+	"""WikiLoader document loader wrapper.
+	
+	Purpose:
+		Loads Wikipedia content into LangChain Document objects for reference-corpus processing.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		max_documents: Runtime state used by the loader wrapper.
+		max_characters: Runtime state used by the loader wrapper.
+		include_all: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ WikipediaLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -2433,13 +2360,12 @@ class WikiLoader( Loader ):
 		self.include_all = False
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+				API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -2463,24 +2389,24 @@ class WikiLoader( Loader ):
 	
 	def load( self, query: str, max_docs: int = 25, max_chars: int = 4000,
 			include_all: bool = False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load Wikipedia search results into LangChain Document objects.
-
-			Parameters:
-			-----------
-			query (str): Wikipedia search query.
-			max_docs (int): Maximum number of documents to fetch.
-			max_chars (int): Maximum number of characters per document.
-			include_all (bool): Whether to include all available metadata.
-
-			Returns:
-			--------
-			List[Document] | None: Wikipedia documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			query: Runtime value used by the operation.
+			max_docs: Runtime value used by the operation.
+			max_chars: Runtime value used by the operation.
+			include_all: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'query', query )
 			
@@ -2507,25 +2433,26 @@ class WikiLoader( Loader ):
 					'load( self, query: str, max_docs: int=25, max_chars: int=4000, '
 					'include_all: bool=False ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Wikipedia documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum characters per chunk.
-			overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked Wikipedia documents.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2548,17 +2475,29 @@ class WikiLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class GithubLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides GitHub file loading functionality through LangChain's
-		GithubFileLoader.
-
-	'''
+	"""GithubLoader document loader wrapper.
+	
+	Purpose:
+		Loads GitHub repository files into LangChain Document objects for source-documentation and
+		semantic-search workflows. The class stores loader configuration, loaded documents,
+		splitting settings, and source metadata on the instance so the Streamlit application can
+		pass normalized content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		repo: Runtime state used by the loader wrapper.
+		branch: Runtime state used by the loader wrapper.
+		access_token: Runtime state used by the loader wrapper.
+		github_url: Runtime state used by the loader wrapper.
+		file_filter: Runtime state used by the loader wrapper.
+		pattern: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ GithubFileLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -2584,13 +2523,12 @@ class GithubLoader( Loader ):
 		self.pattern = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -2616,26 +2554,25 @@ class GithubLoader( Loader ):
 	
 	def load( self, url: str, repo: str, branch: str, filetype: str = '.md',
 			access_token: Optional[ str ] = None ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load filtered contents of a GitHub repository branch into LangChain
-			Document objects.
-
-			Parameters:
-			-----------
-			url (str): GitHub API URL.
-			repo (str): Repository in owner/name format.
-			branch (str): Branch name.
-			filetype (str): File suffix filter such as '.py', '.md', or '.txt'.
-			access_token (Optional[str]): GitHub personal access token.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded GitHub documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			url: Runtime value used by the operation.
+			repo: Runtime value used by the operation.
+			branch: Runtime value used by the operation.
+			filetype: Runtime value used by the operation.
+			access_token: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'url', url )
 			throw_if( 'repo', repo )
@@ -2644,8 +2581,10 @@ class GithubLoader( Loader ):
 			self.github_url = url
 			self.repo = repo
 			self.branch = branch
-			self.access_token = access_token.strip( ) if isinstance( access_token, str ) and access_token.strip( ) else None
-			self.pattern = filetype.strip( ) if isinstance( filetype, str ) and filetype.strip( ) else '.md'
+			self.access_token = access_token.strip( ) if isinstance( access_token,
+				str ) and access_token.strip( ) else None
+			self.pattern = filetype.strip( ) if isinstance( filetype,
+				str ) and filetype.strip( ) else '.md'
 			self.file_filter = lambda file_path: file_path.endswith( self.pattern )
 			
 			kwargs = {
@@ -2671,25 +2610,26 @@ class GithubLoader( Loader ):
 					'filetype: str=".md", access_token: Optional[ str ]=None ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded GitHub documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Max characters per chunk.
-			overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked GitHub documents.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2711,39 +2651,25 @@ class GithubLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class PowerPointLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides PowerPoint loading functionality
-		to parse ppt files into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path - str
-		pattern - str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-		mode - str
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ] ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		load_multiple( path: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""PowerPointLoader document loader wrapper.
+	
+	Purpose:
+		Loads PowerPoint presentation files into LangChain Document objects for slide-text
+		processing. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		mode: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ UnstructuredPowerPointLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -2761,13 +2687,12 @@ class PowerPointLoader( Loader ):
 		self.mode = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -2790,21 +2715,17 @@ class PowerPointLoader( Loader ):
 		]
 	
 	def _normalize_mode( self, mode: str ) -> str:
-		'''
-
-			Purpose:
-			--------
-			Normalize legacy or UI-provided PowerPoint modes to supported loader modes.
-
-			Parameters:
-			-----------
-			mode (str): Incoming mode value.
-
-			Returns:
-			--------
-			str: Supported PowerPoint loader mode.
-
-		'''
+		""" normalize mode.
+		
+		Purpose:
+			Normalizes a UI or legacy option value into a supported loader option before execution.
+		
+		Args:
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			str: Result produced by the operation.
+		"""
 		value = mode.strip( ).lower( ) if isinstance( mode, str ) else 'single'
 		
 		if value == 'multiple':
@@ -2816,23 +2737,22 @@ class PowerPointLoader( Loader ):
 		return value
 	
 	def load( self, path: str, mode: str = 'single' ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load PowerPoint slides and convert their content into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the PowerPoint file.
-			mode (str): Loading mode. Supported values are 'single' and 'elements'.
-			            Legacy value 'multiple' is normalized to 'elements'.
-
-			Returns:
-			--------
-			List[Document] | None: List of Document objects parsed from the PowerPoint file.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+			mode: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			
@@ -2853,24 +2773,25 @@ class PowerPointLoader( Loader ):
 					'load( self, path: str, mode: str="single" ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def load_multiple( self, path: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Compatibility alias for the legacy non-single PowerPoint mode.
-
-			Parameters:
-			-----------
-			path (str): Path to the PowerPoint file.
-
-			Returns:
-			--------
-			List[Document] | None: List of Document objects parsed from the PowerPoint file.
-
-		'''
+		"""Load multiple.
+		
+		Purpose:
+			Executes the load_multiple workflow for the PowerPointLoader wrapper while preserving
+			loader state for downstream Chonky stages.
+		
+		Args:
+			path: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			return self.load( path, mode='elements' )
 		
@@ -2879,25 +2800,26 @@ class PowerPointLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'PowerPointLoader'
 			exception.method = 'load_multiple( self, path: str ) -> List[ Document ] | None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded PowerPoint documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk (int): Max characters per chunk.
-			overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked list of LangChain Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -2919,37 +2841,27 @@ class PowerPointLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-			
+
 class OutlookLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides the Arxiv loading functionality
-		to parse video research papers into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""OutlookLoader document loader wrapper.
+	
+	Purpose:
+		Loads Outlook message files into LangChain Document objects for email-content processing.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		max_documents: Runtime state used by the loader wrapper.
+		max_characters: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ OutlookMessageLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -2970,14 +2882,12 @@ class OutlookLoader( Loader ):
 		self.max_characters = 1000
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -2997,21 +2907,21 @@ class OutlookLoader( Loader ):
 		         'split', ]
 	
 	def load( self, path: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load Outlook Message from a path converting contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -3023,26 +2933,26 @@ class OutlookLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'OutlookLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Wikipedia search documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -3054,18 +2964,33 @@ class OutlookLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'OutlookLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class WebCrawler( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Load one or more webpages into LangChain Document objects, with optional
-		recursive crawling support.
-
-	'''
+	"""WebCrawler document loader wrapper.
+	
+	Purpose:
+		Crawls web pages into LangChain Document objects for recursive document ingestion. The
+		class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		url: Runtime state used by the loader wrapper.
+		web_paths: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		max_depth: Runtime state used by the loader wrapper.
+		timeout: Runtime state used by the loader wrapper.
+		ignore: Runtime state used by the loader wrapper.
+		with_progress: Runtime state used by the loader wrapper.
+		recursive: Runtime state used by the loader wrapper.
+		prevent_outside: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ RecursiveUrlLoader | WebBaseLoader ]
 	url: Optional[ str ]
 	web_paths: Optional[ str | List[ str ] ]
@@ -3081,27 +3006,21 @@ class WebCrawler( Loader ):
 	def __init__( self, url: str, recursive: bool = False, max_depth: int = 2,
 			prevent_outside: bool = True, timeout: int = 10,
 			ignore: bool = True, progress: bool = True ) -> None:
-		'''
-
-			Purpose:
-			--------
-			Initialize a WebLoader instance for either single-page loading
-			or recursive crawling.
-
-			Parameters:
-			-----------
-			recursive (bool): Whether to use RecursiveUrlLoader.
-			max_depth (int): Maximum crawl depth for recursive loading.
-			prevent_outside (bool): Prevent traversal outside the starting domain.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue on failure when loading pages.
-			progress (bool): Show progress during page loading.
-
-			Returns:
-			--------
-			None
-
-		'''
+		"""Initialize the wrapper.
+		
+		Purpose:
+			Initializes instance state used by the loader wrapper without changing the loader
+			execution contract.
+		
+		Args:
+			url: Runtime value used by the operation.
+			recursive: Runtime value used by the operation.
+			max_depth: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+		"""
 		super( ).__init__( )
 		self.file_path = None
 		self.documents = None
@@ -3120,13 +3039,12 @@ class WebCrawler( Loader ):
 			prevent_outside=self.prevent_outside )
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+			API documentation.
+		"""
 		return [
 				'loader',
 				'documents',
@@ -3157,27 +3075,26 @@ class WebCrawler( Loader ):
 	def load( self, urls: str | List[ str ], depth: int = 2, timeout: int = 10,
 			ignore: bool = True, progress: bool = True,
 			prevent_outside: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load one or more webpages, using either WebBaseLoader or
-			RecursiveUrlLoader depending on the instance configuration.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): One or more URLs to load.
-			depth (int): Maximum recursive crawl depth.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue loading on fetch failure.
-			progress (bool): Show progress while loading.
-			prevent_outside (bool): Restrict recursive traversal to the starting domain.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded webpage documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			depth: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.recursive:
 				return self.load_recursive(
@@ -3204,28 +3121,28 @@ class WebCrawler( Loader ):
 					'timeout: int=10, ignore: bool=True, progress: bool=True, '
 					'prevent_outside: bool=True ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def load_pages( self, urls: str | List[ str ], timeout: int = 10,
 			ignore: bool = True, progress: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load one or more web pages and convert them into Document objects.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): One or more URL strings to load.
-			timeout (int): Maximum request timeout in seconds.
-			ignore (bool): Whether fetch failures should be ignored.
-			progress (bool): Whether WebBaseLoader should display progress.
-
-			Returns:
-			--------
-			List[Document] | None: Parsed Document objects from fetched HTML content.
-
-		'''
+		"""Load pages.
+		
+		Purpose:
+			Loads one or more web pages into LangChain Document objects.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			progress: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'urls', urls )
 			
@@ -3253,30 +3170,30 @@ class WebCrawler( Loader ):
 					'ignore: bool=True, progress: bool=True ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def load_recursive( self, urls: str | List[ str ], depth: int = 2,
 			timeout: int = 10, ignore: bool = True,
 			prevent_outside: bool = True ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Recursively crawl one starting URL and load discovered pages.
-
-			Parameters:
-			-----------
-			urls (str | List[str]): Starting URL. If a list is provided, the first URL is used.
-			depth (int): Maximum crawl depth.
-			timeout (int): Request timeout in seconds.
-			ignore (bool): Continue on crawl failures.
-			prevent_outside (bool): Restrict traversal to the starting domain.
-
-			Returns:
-			--------
-			List[Document] | None: Crawled documents.
-
-		'''
+		"""Load recursive.
+		
+		Purpose:
+			Recursively crawls a starting URL and loads discovered pages into Document objects.
+		
+		Args:
+			urls: Runtime value used by the operation.
+			depth: Runtime value used by the operation.
+			timeout: Runtime value used by the operation.
+			ignore: Runtime value used by the operation.
+			prevent_outside: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'urls', urls )
 			
@@ -3306,25 +3223,26 @@ class WebCrawler( Loader ):
 					'timeout: int=10, ignore: bool=True, prevent_outside: bool=True ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded web documents into smaller chunks for downstream use.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum number of characters per chunk.
-			overlap (int): Number of overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			if self.documents is None:
 				raise ValueError( 'No documents loaded!' )
@@ -3345,45 +3263,30 @@ class WebCrawler( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) -> '
 					'List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class SpfxLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides the Sharepoint loading functionality
-		to parse video research papers into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-		loader - SharePointLoader
-		library_id - str
-		subsite_id - str
-		folder_id - str
-		object_ids - List[ str ]
-		query - str
-		with_token - bool
-		is_recursive - bool
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""SpfxLoader document loader wrapper.
+	
+	Purpose:
+		Loads SharePoint content into LangChain Document objects for connected-document workflows.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		library_id: Runtime state used by the loader wrapper.
+		subsite_id: Runtime state used by the loader wrapper.
+		folder_id: Runtime state used by the loader wrapper.
+		object_ids: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		with_token: Runtime state used by the loader wrapper.
+		is_recursive: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ SharePointLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -3410,14 +3313,12 @@ class SpfxLoader( Loader ):
 		self.is_recursive = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+		         API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -3441,21 +3342,21 @@ class SpfxLoader( Loader ):
 		         'split', ]
 	
 	def load( self, library_id: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load Sharepoint files and convert their contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			library_id: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'library_id', library_id )
 			self.library_id = library_id
@@ -3470,31 +3371,33 @@ class SpfxLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
 	def load_folder( self, library_id: str, folder_id: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load Sharepoint files and convert their contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load folder.
+		
+		Purpose:
+			Executes the load_folder workflow for the SpfxLoader wrapper while preserving loader
+			state for downstream Chonky stages.
+		
+		Args:
+			library_id: Runtime value used by the operation.
+			folder_id: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'library_id', library_id )
 			throw_if( 'folder_id', folder_id )
 			self.library_id = library_id
 			self.folder_id = folder_id
-			self.loader = SharePointLoader( document_library_id=self.library_id, folder_id=self.folder_id )
+			self.loader = SharePointLoader( document_library_id=self.library_id,
+				folder_id=self.folder_id )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -3502,26 +3405,26 @@ class SpfxLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Sharepoint file documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -3533,38 +3436,28 @@ class SpfxLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'SpfxLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
-			
+
 class OneDriveDocLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides OneDrvie loading functionality
-		to parse contents into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""OneDriveDocLoader document loader wrapper.
+	
+	Purpose:
+		Loads OneDrive documents into LangChain Document objects for connected-file workflows. The
+		class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		client_id: Runtime state used by the loader wrapper.
+		drive_id: Runtime state used by the loader wrapper.
+		client_secret: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ OneDriveLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -3585,14 +3478,12 @@ class OneDriveDocLoader( Loader ):
 		self.client_secret = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+		         API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -3616,31 +3507,29 @@ class OneDriveDocLoader( Loader ):
 	
 	@property
 	def file_options( self ):
-		'''
-
-			Returns:
-			-------
-			List[ str ] of file options
-
-		'''
-		return [ 'pdf', 'doc', 'docx', 'txt']
+		"""File options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
+		return [ 'pdf', 'doc', 'docx', 'txt' ]
 	
 	def load( self, id: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an onedrive file and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			id: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'id', id )
 			self.drive_id = id
@@ -3652,25 +3541,26 @@ class OneDriveDocLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
 	def load_folder( self, id: str, path: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an onedrive file and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+		"""Load folder.
+		
+		Purpose:
+			Executes the load_folder workflow for the OneDriveDocLoader wrapper while preserving
+			loader state for downstream Chonky stages.
+		
+		Args:
+			id: Runtime value used by the operation.
+			path: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'id', id )
 			self.drive_id = id
@@ -3683,26 +3573,26 @@ class OneDriveDocLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
 			exception.method = 'load( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Wikipedia search documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -3714,38 +3604,30 @@ class OneDriveDocLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'WikiLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
-			
+
 class GoogleLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Google Drive loading functionality
-		to parse contents into Document objects.
-
-		Attributes:
-		-----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str;
-		resolve_paths( self, pattern: str ) -> List[ str ];
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ];
-		load( path: str, mode: str ) -> List[ Document ];
-		split( ) -> List[ Document ];
-
-	'''
+	"""GoogleLoader document loader wrapper.
+	
+	Purpose:
+		Loads Google Drive content into LangChain Document objects for cloud-document ingestion.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		file_id: Runtime state used by the loader wrapper.
+		folder_id: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		is_recursive: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ GoogleDriveLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -3768,14 +3650,12 @@ class GoogleLoader( Loader ):
 		self.is_recursive = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+		         API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -3799,33 +3679,32 @@ class GoogleLoader( Loader ):
 	
 	@property
 	def file_options( self ):
-		'''
-
-			Returns:
-			-------
-			List[ str ] of file options
-
-		'''
+		"""File options.
+		
+		Purpose:
+			Exposes supported option values for Streamlit controls and documentation output.
+		"""
 		return [ 'document',
 		         'sheet',
 		         'pdf' ]
 	
-	def load_file( self, file_id: str, recursive: bool=False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an google drive file by id and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+	def load_file( self, file_id: str, recursive: bool = False ) -> List[ Document ] | None:
+		"""Load file.
+		
+		Purpose:
+			Executes the load_file workflow for the GoogleLoader wrapper while preserving loader
+			state for downstream Chonky stages.
+		
+		Args:
+			file_id: Runtime value used by the operation.
+			recursive: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'file_id', file_id )
 			throw_if( 'recursive', recursive )
@@ -3840,30 +3719,32 @@ class GoogleLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
 			exception.method = 'load_File( self, file_id: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def load_folder( self, folder_id: str, recursive: bool=False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load an google drive file and convert its contents into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the HTML (.html or .htm) file.
-
-			Returns:
-			--------
-			List[Document]: List of Document objects parsed from HTML content.
-
-		'''
+	def load_folder( self, folder_id: str, recursive: bool = False ) -> List[ Document ] | None:
+		"""Load folder.
+		
+		Purpose:
+			Executes the load_folder workflow for the GoogleLoader wrapper while preserving loader
+			state for downstream Chonky stages.
+		
+		Args:
+			folder_id: Runtime value used by the operation.
+			recursive: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'folder_id', folder_id )
 			self.folder_id = folder_id
 			self.is_recursive = recursive
-			self.loader = GoogleDriveLoader( folder_id=self.folder_id, recursive=self.is_recursive )
+			self.loader = GoogleDriveLoader( folder_id=self.folder_id,
+				recursive=self.is_recursive )
 			self.documents = self.loader.load( )
 			return self.documents
 		except Exception as e:
@@ -3871,25 +3752,26 @@ class GoogleLoader( Loader ):
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
 			exception.method = 'load_folder( self, path: str ) -> List[ Document ]'
+			Logger( ).write( exception )
 			raise exception
-			
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded google drive documents into manageable text chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Max characters per chunk.
-			chunk_overlap (int): Overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked list of LangChain Document objects.
-
-		'''
+	
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -3901,40 +3783,27 @@ class GoogleLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'GoogleDriveLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
-			
+
 class EmailLoader( Loader ):
-	'''
-
-
-		Purpose:
-		--------
-		Provides LangChain's UnstructuredEmailLoader functionality
-		to parse email documents (*.eml) into documents.
-
-		Attibutes:
-		----------
-		documents - List[ Document ]
-		file_path -  str
-		pattern -  str
-		expanded - List[ str ]
-		candidates - List[ str ]
-		resolved - List[ str ]
-		splitter - RecursiveCharacterTextSplitter
-		chunk_size - int
-		overlap_amount - int
-
-		Methods:
-		--------
-		verify_exists( self, path: str ) -> str,
-		resolve_paths( self, pattern: str ) -> List[ str ],
-		split_documents( self, docs: List[ Document ]  ) -> List[ Document ]
-		load( path: str, mode: str ) -> List[ Document ]
-		split( ) -> List[ Document ]
-
-
-	'''
+	"""EmailLoader document loader wrapper.
+	
+	Purpose:
+		Loads email message files into LangChain Document objects for message-text processing. The
+		class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		has_attachments: Runtime state used by the loader wrapper.
+		mode: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ UnstructuredEmailLoader ]
 	file_path: Optional[ str ]
 	documents: Optional[ List[ Document ] ]
@@ -3952,14 +3821,12 @@ class EmailLoader( Loader ):
 		self.mode = None
 	
 	def __dir__( self ):
-		'''
-
-			Returns:
-			--------
-			A list of all available members.
-
-
-		'''
+		"""  dir  .
+		
+		Purpose:
+			Returns the public member names exposed by the wrapper for introspection and generated
+		         API documentation.
+		"""
 		return [ 'loader',
 		         'documents',
 		         'splitter',
@@ -3978,26 +3845,25 @@ class EmailLoader( Loader ):
 		         'load',
 		         'split', ]
 	
-	def load( self, path: str, mode: str='single', attachments: bool=True ) -> List[ Document ]:
-		'''
-
-
-			Purpose:
-			--------
-			Load and convert Email data (*.eml) into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): File path to the Excel spreadsheet.
-			mode (str): Extraction mode, either 'elements' or 'paged'.
-			include_headers (bool): Whether to include column headers in parsing.
-
-			Returns:
-			--------
-			List[Document]: List of parsed Document objects from Email content.
-
-
-		'''
+	def load( self, path: str, mode: str = 'single', attachments: bool = True ) -> List[
+		Document ]:
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+			mode: Runtime value used by the operation.
+			attachments: Runtime value used by the operation.
+		
+		Returns:
+			List[Document]: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -4013,28 +3879,26 @@ class EmailLoader( Loader ):
 			exception.cause = 'EmailLoader'
 			exception.method = ('load( self, path: str, mode: str=elements, '
 			                    'include_headers: bool=True ) -> List[ Document ]')
+			Logger( ).write( exception )
 			raise exception
-			
 	
-	def split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None:
-		'''
-
-
-			Purpose:
-			--------
-			Split loaded Email documents into manageable chunks.
-
-			Parameters:
-			-----------
-			chunk_size (int): Maximum characters per chunk.
-			chunk_overlap (int): Characters overlapping between chunks.
-
-			Returns:
-			--------
-			List[Document]: Chunked and cleaned list of Document objects.
-
-
-		'''
+	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
@@ -4045,17 +3909,26 @@ class EmailLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'chonky'
 			exception.cause = 'EmailLoader'
-			exception.method = 'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ]'
+			exception.method = ('split( self, chunk: int=1000, overlap: int=200 ) -> List[ '
+			                    'Document ]')
+			Logger( ).write( exception )
 			raise exception
 
 class PubMedSearchLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides PubMed loading functionality for biomedical literature search results.
-
-	'''
+	"""PubMedSearchLoader document loader wrapper.
+	
+	Purpose:
+		Loads PubMed search results into LangChain Document objects for biomedical literature
+		workflows. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		query: Runtime state used by the loader wrapper.
+		max_docs: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ PubMedLoader ]
 	documents: Optional[ List[ Document ] ]
 	query: Optional[ str ]
@@ -4082,22 +3955,22 @@ class PubMedSearchLoader( Loader ):
 		]
 	
 	def load( self, query: str, max_docs: int = 5 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load PubMed search results into LangChain Document objects.
-
-			Parameters:
-			-----------
-			query (str): PubMed search query.
-			max_docs (int): Maximum number of records to load.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded PubMed documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			query: Runtime value used by the operation.
+			max_docs: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'query', query )
 			self.query = query
@@ -4112,6 +3985,7 @@ class PubMedSearchLoader( Loader ):
 			exception.method = (
 					'load( self, query: str, max_docs: int=5 ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4132,16 +4006,25 @@ class PubMedSearchLoader( Loader ):
 			exception.method = (
 					'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class OpenCityLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Open City Data loading functionality backed by Socrata.
-
-	'''
+	"""OpenCityLoader document loader wrapper.
+	
+	Purpose:
+		Loads open-city dataset content into LangChain Document objects for public-data workflows.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		city_id: Runtime state used by the loader wrapper.
+		dataset_id: Runtime state used by the loader wrapper.
+		limit: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ OpenCityDataLoader ]
 	documents: Optional[ List[ Document ] ]
 	city_id: Optional[ str ]
@@ -4171,23 +4054,23 @@ class OpenCityLoader( Loader ):
 		]
 	
 	def load( self, city_id: str, dataset_id: str, limit: int = 100 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load records from an Open City Data dataset into LangChain Document objects.
-
-			Parameters:
-			-----------
-			city_id (str): City domain identifier such as 'data.sfgov.org'.
-			dataset_id (str): Dataset identifier such as 'vw6y-z8j6'.
-			limit (int): Maximum number of records to load.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded city data records.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			city_id: Runtime value used by the operation.
+			dataset_id: Runtime value used by the operation.
+			limit: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'city_id', city_id )
 			throw_if( 'dataset_id', dataset_id )
@@ -4209,6 +4092,7 @@ class OpenCityLoader( Loader ):
 					'load( self, city_id: str, dataset_id: str, limit: int=100 ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4229,16 +4113,27 @@ class OpenCityLoader( Loader ):
 			exception.method = (
 					'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class JupyterNotebookLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Jupyter Notebook loading functionality for .ipynb files.
-
-	'''
+	"""JupyterNotebookLoader document loader wrapper.
+	
+	Purpose:
+		Loads Jupyter Notebook cells into LangChain Document objects for notebook-text processing.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		include_outputs: Runtime state used by the loader wrapper.
+		max_output_length: Runtime state used by the loader wrapper.
+		remove_newline: Runtime state used by the loader wrapper.
+		traceback: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ NotebookLoader ]
 	documents: Optional[ List[ Document ] ]
 	file_path: Optional[ str ]
@@ -4275,25 +4170,25 @@ class JupyterNotebookLoader( Loader ):
 	
 	def load( self, path: str, include_outputs: bool = False, max_output_length: int = 10,
 			remove_newline: bool = False, traceback: bool = False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a Jupyter notebook into LangChain Document objects.
-
-			Parameters:
-			-----------
-			path (str): Path to the .ipynb notebook file.
-			include_outputs (bool): Include cell outputs when True.
-			max_output_length (int): Maximum output characters to include.
-			remove_newline (bool): Remove newline characters when True.
-			traceback (bool): Include traceback output when True.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded notebook document(s).
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			path: Runtime value used by the operation.
+			include_outputs: Runtime value used by the operation.
+			max_output_length: Runtime value used by the operation.
+			remove_newline: Runtime value used by the operation.
+			traceback: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'path', path )
 			self.file_path = self.verify_exists( path )
@@ -4321,6 +4216,7 @@ class JupyterNotebookLoader( Loader ):
 					'max_output_length: int=10, remove_newline: bool=False, '
 					'traceback: bool=False ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4341,16 +4237,25 @@ class JupyterNotebookLoader( Loader ):
 			exception.method = (
 					'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class GoogleCloudFileLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Google Cloud Storage file loading functionality.
-
-	'''
+	"""GoogleCloudFileLoader document loader wrapper.
+	
+	Purpose:
+		Loads Google Cloud Storage files into LangChain Document objects for cloud-file ingestion.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		project_name: Runtime state used by the loader wrapper.
+		bucket: Runtime state used by the loader wrapper.
+		blob: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ GCSFileLoader ]
 	documents: Optional[ List[ Document ] ]
 	project_name: Optional[ str ]
@@ -4380,23 +4285,23 @@ class GoogleCloudFileLoader( Loader ):
 		]
 	
 	def load( self, project_name: str, bucket: str, blob: str ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a single Google Cloud Storage object into LangChain Document objects.
-
-			Parameters:
-			-----------
-			project_name (str): Google Cloud project name or ID.
-			bucket (str): GCS bucket name.
-			blob (str): GCS object name.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded document(s).
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			project_name: Runtime value used by the operation.
+			bucket: Runtime value used by the operation.
+			blob: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'project_name', project_name )
 			throw_if( 'bucket', bucket )
@@ -4416,6 +4321,7 @@ class GoogleCloudFileLoader( Loader ):
 					'load( self, project_name: str, bucket: str, blob: str ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4433,16 +4339,28 @@ class GoogleCloudFileLoader( Loader ):
 			exception.method = (
 					'split( self, chunk: int=1000, overlap: int=200 ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class AwsFileLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides AWS S3 file loading functionality.
-
-	'''
+	"""AwsFileLoader document loader wrapper.
+	
+	Purpose:
+		Loads AWS S3 files into LangChain Document objects for cloud-file ingestion. The class
+		stores loader configuration, loaded documents, splitting settings, and source metadata on
+		the instance so the Streamlit application can pass normalized content into processing,
+		embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		bucket: Runtime state used by the loader wrapper.
+		key: Runtime state used by the loader wrapper.
+		aws_access_key_id: Runtime state used by the loader wrapper.
+		aws_secret_access_key: Runtime state used by the loader wrapper.
+		aws_session_token: Runtime state used by the loader wrapper.
+		region_name: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ S3FileLoader ]
 	documents: Optional[ List[ Document ] ]
 	bucket: Optional[ str ]
@@ -4484,26 +4402,26 @@ class AwsFileLoader( Loader ):
 			aws_secret_access_key: Optional[ str ] = None, aws_session_token: Optional[
 				str ] = None,
 			region_name: Optional[ str ] = None ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load a single AWS S3 object into LangChain Document objects.
-
-			Parameters:
-			-----------
-			bucket (str): S3 bucket name.
-			key (str): S3 object key.
-			aws_access_key_id (Optional[str]): Optional AWS access key.
-			aws_secret_access_key (Optional[str]): Optional AWS secret key.
-			aws_session_token (Optional[str]): Optional AWS session token.
-			region_name (Optional[str]): Optional AWS region.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded document(s).
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			bucket: Runtime value used by the operation.
+			key: Runtime value used by the operation.
+			aws_access_key_id: Runtime value used by the operation.
+			aws_secret_access_key: Runtime value used by the operation.
+			aws_session_token: Runtime value used by the operation.
+			region_name: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'bucket', bucket )
 			throw_if( 'key', key )
@@ -4545,6 +4463,7 @@ class AwsFileLoader( Loader ):
 					'region_name: Optional[ str ]=None ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4566,16 +4485,25 @@ class AwsFileLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class GoogleSpeechToTextLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Google Speech-to-Text loading functionality for audio transcription.
-
-	'''
+	"""GoogleSpeechToTextLoader document loader wrapper.
+	
+	Purpose:
+		Loads speech-to-text output through Google-backed document loading workflows. The class
+		stores loader configuration, loaded documents, splitting settings, and source metadata on
+		the instance so the Streamlit application can pass normalized content into processing,
+		embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		project_id: Runtime state used by the loader wrapper.
+		file_path: Runtime state used by the loader wrapper.
+		config: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ SpeechToTextLoader ]
 	documents: Optional[ List[ Document ] ]
 	project_id: Optional[ str ]
@@ -4606,24 +4534,23 @@ class GoogleSpeechToTextLoader( Loader ):
 	
 	def load( self, project_id: str, file_path: str,
 			config: Optional[ Dict[ str, Any ] ] = None ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Transcribe audio with Google Cloud Speech-to-Text and load the transcript
-			into LangChain Document objects.
-
-			Parameters:
-			-----------
-			project_id (str): Google Cloud project ID.
-			file_path (str): Local path or gs:// URI for the audio file.
-			config (Optional[Dict[str, Any]]): Optional recognition config.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded transcript document(s).
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			project_id: Runtime value used by the operation.
+			file_path: Runtime value used by the operation.
+			config: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'project_id', project_id )
 			throw_if( 'file_path', file_path )
@@ -4633,16 +4560,11 @@ class GoogleSpeechToTextLoader( Loader ):
 			self.config = config
 			
 			if self.config:
-				self.loader = SpeechToTextLoader(
-					project_id=self.project_id,
-					file_path=self.file_path,
-					config=self.config
-				)
+				self.loader = SpeechToTextLoader( project_id=self.project_id, file_path=self.file_path,
+					config=self.config )
 			else:
-				self.loader = SpeechToTextLoader(
-					project_id=self.project_id,
-					file_path=self.file_path
-				)
+				self.loader = SpeechToTextLoader( project_id=self.project_id,
+					file_path=self.file_path )
 			
 			self.documents = self.loader.load( )
 			return self.documents
@@ -4651,10 +4573,8 @@ class GoogleSpeechToTextLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'loaders'
 			exception.cause = 'GoogleSpeechToTextAudioLoader'
-			exception.method = (
-					'load( self, project_id: str, file_path: str, '
-					'config: Optional[ Dict[ str, Any ] ]=None ) -> List[ Document ] | None'
-			)
+			exception.method = 'load( self, *args ) -> List[ Document ] | None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
@@ -4662,31 +4582,34 @@ class GoogleSpeechToTextLoader( Loader ):
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
 			self.overlap_amount = overlap
-			self.documents = self.split_documents(
-				self.documents,
-				chunk=self.chunk_size,
-				overlap=self.overlap_amount
-			)
+			self.documents = self.split_documents( self.documents, chunk=self.chunk_size,
+				overlap=self.overlap_amount )
 			return self.documents
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'loaders'
 			exception.cause = 'GoogleSpeechToTextAudioLoader'
-			exception.method = (
-					'split( self, chunk: int=1000, overlap: int=200 ) '
-					'-> List[ Document ] | None'
-			)
+			exception.method = 'split( self, *args ) -> List[ Document ] | None'
+			Logger( ).write( exception )
 			raise exception
 
 class GoogleBucketLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides Google Cloud Storage bucket loading functionality using
-		LangChain's GCSDirectoryLoader.
-
-	'''
+	"""GoogleBucketLoader document loader wrapper.
+	
+	Purpose:
+		Loads Google Cloud Storage bucket contents into LangChain Document objects for batch cloud
+		ingestion. The class stores loader configuration, loaded documents, splitting settings,
+		and source metadata on the instance so the Streamlit application can pass normalized
+		content into processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		project_name: Runtime state used by the loader wrapper.
+		bucket: Runtime state used by the loader wrapper.
+		prefix: Runtime state used by the loader wrapper.
+		continue_on_failure: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ GCSDirectoryLoader ]
 	documents: Optional[ List[ Document ] ]
 	project_name: Optional[ str ]
@@ -4720,33 +4643,24 @@ class GoogleBucketLoader( Loader ):
 	
 	def load( self, project_name: str, bucket: str, prefix: Optional[ str ] = None,
 			continue_on_failure: bool = False ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load supported objects from a Google Cloud Storage bucket into
-			LangChain Document objects.
-
-			Parameters:
-			-----------
-			project_name (str):
-				Google Cloud project name or project ID.
-
-			bucket (str):
-				Google Cloud Storage bucket name.
-
-			prefix (Optional[str]):
-				Optional object prefix / folder filter.
-
-			continue_on_failure (bool):
-				Continue when a single object fails to load.
-
-			Returns:
-			--------
-			List[Document] | None:
-				Loaded bucket documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			project_name: Runtime value used by the operation.
+			bucket: Runtime value used by the operation.
+			prefix: Runtime value used by the operation.
+			continue_on_failure: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'project_name', project_name )
 			throw_if( 'bucket', bucket )
@@ -4771,35 +4685,27 @@ class GoogleBucketLoader( Loader ):
 			exception = Error( e )
 			exception.module = 'loaders'
 			exception.cause = 'GoogleBucketLoader'
-			exception.method = (
-					'load( self, project_name: str, bucket: str, '
-					'prefix: Optional[ str ]=None, continue_on_failure: bool=False ) '
-					'-> List[ Document ] | None'
-			)
+			exception.method = 'load( self, *args ) -> List[ Document ] | None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded Google Cloud Storage bucket documents into smaller
-			chunks for downstream processing.
-
-			Parameters:
-			-----------
-			chunk (int):
-				Maximum number of characters per chunk.
-
-			overlap (int):
-				Number of overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None:
-				Chunked Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -4818,17 +4724,29 @@ class GoogleBucketLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 
 class AwsBucketLoader( Loader ):
-	'''
-
-		Purpose:
-		--------
-		Provides AWS S3 bucket/directory loading functionality using
-		LangChain's S3DirectoryLoader.
-
-	'''
+	"""AwsBucketLoader document loader wrapper.
+	
+	Purpose:
+		Loads AWS S3 bucket contents into LangChain Document objects for batch cloud ingestion.
+		The class stores loader configuration, loaded documents, splitting settings, and source
+		metadata on the instance so the Streamlit application can pass normalized content into
+		processing, embedding, and retrieval stages.
+	
+	Attributes:
+		loader: Runtime state used by the loader wrapper.
+		documents: Runtime state used by the loader wrapper.
+		bucket: Runtime state used by the loader wrapper.
+		prefix: Runtime state used by the loader wrapper.
+		aws_access_key_id: Runtime state used by the loader wrapper.
+		aws_secret_access_key: Runtime state used by the loader wrapper.
+		aws_session_token: Runtime state used by the loader wrapper.
+		region_name: Runtime state used by the loader wrapper.
+		endpoint_url: Runtime state used by the loader wrapper.
+	"""
 	loader: Optional[ S3DirectoryLoader ]
 	documents: Optional[ List[ Document ] ]
 	bucket: Optional[ str ]
@@ -4878,29 +4796,27 @@ class AwsBucketLoader( Loader ):
 			aws_session_token: Optional[ str ] = None,
 			region_name: Optional[ str ] = None,
 			endpoint_url: Optional[ str ] = None ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Load all supported objects from an AWS S3 bucket or bucket prefix
-			into LangChain Document objects.
-
-			Parameters:
-			-----------
-			bucket (str): AWS S3 bucket name.
-			prefix (Optional[str]): Optional key prefix used to restrict loaded
-				objects to a virtual folder or subtree.
-			aws_access_key_id (Optional[str]): Optional AWS access key ID.
-			aws_secret_access_key (Optional[str]): Optional AWS secret access key.
-			aws_session_token (Optional[str]): Optional AWS session token.
-			region_name (Optional[str]): Optional AWS region name.
-			endpoint_url (Optional[str]): Optional custom S3-compatible endpoint.
-
-			Returns:
-			--------
-			List[Document] | None: Loaded bucket documents.
-
-		'''
+		"""Load.
+		
+		Purpose:
+			Loads source content into LangChain Document objects and stores the active loader
+			response on the instance.
+		
+		Args:
+			bucket: Runtime value used by the operation.
+			prefix: Runtime value used by the operation.
+			aws_access_key_id: Runtime value used by the operation.
+			aws_secret_access_key: Runtime value used by the operation.
+			aws_session_token: Runtime value used by the operation.
+			region_name: Runtime value used by the operation.
+			endpoint_url: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'bucket', bucket )
 			self.bucket = bucket
@@ -4943,26 +4859,26 @@ class AwsBucketLoader( Loader ):
 					'region_name: Optional[ str ]=None, '
 					'endpoint_url: Optional[ str ]=None ) -> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
 	
 	def split( self, chunk: int = 1000, overlap: int = 200 ) -> List[ Document ] | None:
-		'''
-
-			Purpose:
-			--------
-			Split loaded AWS S3 bucket documents into smaller chunks for
-			downstream processing.
-
-			Parameters:
-			-----------
-			chunk (int): Maximum number of characters per chunk.
-			overlap (int): Number of overlapping characters between chunks.
-
-			Returns:
-			--------
-			List[Document] | None: Chunked Document objects.
-
-		'''
+		"""Split.
+		
+		Purpose:
+			Splits loaded Document objects into smaller chunks and stores chunk settings on the
+			instance.
+		
+		Args:
+			chunk: Runtime value used by the operation.
+			overlap: Runtime value used by the operation.
+		
+		Returns:
+			List[Document] | None: Result produced by the operation.
+		
+		Raises:
+			Error: Raised when validation, loading, parsing, or document splitting fails.
+		"""
 		try:
 			throw_if( 'documents', self.documents )
 			self.chunk_size = chunk
@@ -4981,5 +4897,5 @@ class AwsBucketLoader( Loader ):
 					'split( self, chunk: int=1000, overlap: int=200 ) '
 					'-> List[ Document ] | None'
 			)
+			Logger( ).write( exception )
 			raise exception
-		

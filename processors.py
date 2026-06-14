@@ -38,7 +38,15 @@
 
   </copyright>
   <summary>
-	processors.py
+    Provides text-processing, parsing, tokenization, NLP, and PDF cleanup utilities for Chonky.
+
+    Purpose:
+        Defines the processing classes used after document ingestion and before embedding or
+        vector persistence. The module supports text normalization, formatting cleanup,
+        tokenization, lemmatization, stemming, vocabulary construction, frequency analysis,
+        Word document parsing, and geometry-aware PDF text reconstruction. Existing wrapped
+        exception handlers record validation and processing failures through the application
+        logger before re-raising the project Error wrapper.
   </summary>
   ******************************************************************************************
   '''
@@ -48,7 +56,7 @@ import string
 import docx
 from pymupdf import Page, Document
 from sklearn.feature_extraction.text import TfidfVectorizer
-from boogr import Error
+from boogr import Error, Logger
 from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
@@ -149,12 +157,40 @@ def throw_if( name: str, value: object ):
 		raise Exception( f'Argument "{name}" cannot be empty!' )
 
 class Processor( ):
-	'''
-		
-		Purpose:
-		Base class for processing classes
-		
-	'''
+	"""Processor processing component.
+	
+	Purpose:
+		Initializes shared state used by Chonky text, Word, NLTK, and PDF parser subclasses, including token caches, line/page buffers, vocabulary stores, NLP helpers, and cleaned-text fields used across the processing workflow.
+	
+	Attributes:
+		lemmatizer: Runtime state used by ``Processor`` during Chonky processing operations.
+		stemmer: Runtime state used by ``Processor`` during Chonky processing operations.
+		file_path: Runtime state used by ``Processor`` during Chonky processing operations.
+		normalized: Runtime state used by ``Processor`` during Chonky processing operations.
+		lemmatized: Runtime state used by ``Processor`` during Chonky processing operations.
+		tokenized: Runtime state used by ``Processor`` during Chonky processing operations.
+		encoding: Runtime state used by ``Processor`` during Chonky processing operations.
+		nlp: Runtime state used by ``Processor`` during Chonky processing operations.
+		parts_of_speech: Runtime state used by ``Processor`` during Chonky processing operations.
+		embedddings: Runtime state used by ``Processor`` during Chonky processing operations.
+		chunk_size: Runtime state used by ``Processor`` during Chonky processing operations.
+		corrected: Runtime state used by ``Processor`` during Chonky processing operations.
+		raw_input: Runtime state used by ``Processor`` during Chonky processing operations.
+		raw_html: Runtime state used by ``Processor`` during Chonky processing operations.
+		raw_pages: Runtime state used by ``Processor`` during Chonky processing operations.
+		lines: Runtime state used by ``Processor`` during Chonky processing operations.
+		tokens: Runtime state used by ``Processor`` during Chonky processing operations.
+		lines: Runtime state used by ``Processor`` during Chonky processing operations.
+		files: Runtime state used by ``Processor`` during Chonky processing operations.
+		pages: Runtime state used by ``Processor`` during Chonky processing operations.
+		paragraphs: Runtime state used by ``Processor`` during Chonky processing operations.
+		ids: Runtime state used by ``Processor`` during Chonky processing operations.
+		stop_words: Runtime state used by ``Processor`` during Chonky processing operations.
+		vocabulary: Runtime state used by ``Processor`` during Chonky processing operations.
+		corpus: Runtime state used by ``Processor`` during Chonky processing operations.
+		removed: Runtime state used by ``Processor`` during Chonky processing operations.
+		frequency_distribution: Runtime state used by ``Processor`` during Chonky processing operations.
+	"""
 	lemmatizer: Optional[ WordNetLemmatizer ]
 	stemmer: Optional[ PorterStemmer ]
 	file_path: Optional[ str ]
@@ -212,42 +248,26 @@ class Processor( ):
 		self.cleaned_text = ''
 
 class TextParser( Processor ):
-	'''
-
-		Purpose:
-		---------
-		Class providing path preprocessing functionality
-
-		Methods:
-		--------
-		split_lines( self, path: str ) -> list
-		split_pages( self, path: str, delimit: str ) -> list
-		collapse_whitespace( self, path: str ) -> str
-		remove_punctuation( self, path: str ) -> str:
-		remove_special( self, path: str, keep_spaces: bool ) -> str:
-		remove_html( self, path: str ) -> str
-		remove_errors( self, path: str ) -> str
-		remove_markdown( self, path: str ) -> str
-		remove_stopwords( self, path: str ) -> str
-		remove_headers( self, pages, min: int=3 ) -> str
-		normalize_text( path: str ) -> str
-		lemmatize_tokens( words: List[ str ] ) -> str
-		tokenize_text( path: str ) -> str
-		tokenize_words( path: str ) -> List[ str ]
-		tokenize_sentences( path: str ) -> str
-		chunk_text( self, path: str, max: int=800 ) -> List[ str ]
-		chunk_words( self, path: str, max: int=800, over: int=50 ) -> List[ str ]
-		split_paragraphs( self, path: str ) -> List[ str ]
-		compute_frequency_distribution( self, words: List[ str ], proc: bool=True ) -> List[ str ]
-		compute_conditional_distribution( self, words: List[ str ], condition: str=None,
-		proc: bool=True ) -> List[ str ]
-		create_vocabulary( self, frequency, min: int=1 ) -> List[ str ]
-		create_wordbag( words: List[ str ] ) -> dict
-		create_word2vec( sentences: List[ str ], vector_size=100, window=5, min_count=1 ) ->
-		Word2Vec
-		create_tfidf( words: List[ str ], max_features=1000, prep=True ) -> tuple
-
-	'''
+	"""TextParser processing component.
+	
+	Purpose:
+		Provides text cleanup, normalization, tokenization, chunking, vocabulary, frequency-distribution, and semantic-preparation utilities used by the Text Processing, Analysis, and Tokenization tabs.
+	
+	Attributes:
+		lowercase: Runtime state used by ``TextParser`` during Chonky processing operations.
+		cleaned_text: Runtime state used by ``TextParser`` during Chonky processing operations.
+		cleaned_lines: Runtime state used by ``TextParser`` during Chonky processing operations.
+		cleaned_tokens: Runtime state used by ``TextParser`` during Chonky processing operations.
+		cleaned_pages: Runtime state used by ``TextParser`` during Chonky processing operations.
+		cleaned_html: Runtime state used by ``TextParser`` during Chonky processing operations.
+		conditional_distribution: Runtime state used by ``TextParser`` during Chonky processing operations.
+		PUNCTUATION: Runtime state used by ``TextParser`` during Chonky processing operations.
+		CONTROL_CHARACTERS: Runtime state used by ``TextParser`` during Chonky processing operations.
+		DELIMITERS: Runtime state used by ``TextParser`` during Chonky processing operations.
+		DIGITS: Runtime state used by ``TextParser`` during Chonky processing operations.
+		SYMBOLS: Runtime state used by ``TextParser`` during Chonky processing operations.
+		NUMERALS: Runtime state used by ``TextParser`` during Chonky processing operations.
+	"""
 	lowercase: Optional[ str ]
 	cleaned_text: Optional[ str ]
 	cleaned_lines: Optional[ List[ str ] ]
@@ -263,13 +283,11 @@ class TextParser( Processor ):
 	NUMERALS: Optional[ str ]
 	
 	def __init__( self ):
-		'''
-
-			Purpose:
-			---------
-			Constructor for 'Text' objects
-
-		'''
+		"""Initialize the TextParser instance.
+		
+		Purpose:
+			Initializes parser state, reusable helper objects, and runtime caches used by later processing methods.
+		"""
 		super( ).__init__( )
 		self.PUNCTUATION = PUNCTUATION
 		self.CONTROL_CHARACTERS = ({ chr( i ) for i in range( 0x00, 0x20 ) } | { chr( 0x7F ) })
@@ -305,22 +323,14 @@ class TextParser( Processor ):
 		self.vectorizer = None
 	
 	def __dir__( self ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Provides a list of strings representing class members.
-
-
-			Parameters:
-			-----------
-			- self
-
-			Returns:
-			--------
-			- List[ str ] | None
-
-		'''
+		"""Dir.
+		
+		Purpose:
+			Returns the public member names exposed by the parser for introspection, diagnostics, and MkDocs API documentation.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		"""
 		return [  # Attributes
 				'file_path',
 				'raw_input',
@@ -383,17 +393,19 @@ class TextParser( Processor ):
 				'semantic_search' ]
 	
 	def load_text( self, filepath: str ) -> str | None:
-		"""
-	`
-			Purpose:
-				Loads raw text from a file.
-				
-			Parameters:
-				file_path (str): Path to the .txt file.
-				
-			Returns:
-				str: Raw file content as string.`
-			
+		"""Load text.
+		
+		Purpose:
+			Executes the ``load text`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -408,26 +420,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'load_text( self, file_path: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def collapse_whitespace( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Removes extra lines from the string 'text'.
-
-			Parameters:
-			-----------
-			- text : str
-
-			Returns:
-			--------
-			A string with:
-				- Consecutive whitespace reduced to a single space
-				- Leading/trailing spaces removed
-				- Blank words removed
-
+		"""Collapse whitespace.
+		
+		Purpose:
+			Executes the ``collapse whitespace`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -438,27 +447,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'collapse_whitespace( self, path: str ) -> str:'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_punctuation( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Removes punctuation characters from text while preserving sentence
-			delimiters used by sentence tokenization.
-
-			Parameters:
-			----------
-			text : str
-				The raw input text from which punctuation should be removed.
-
-			Returns:
-			-------
-			str
-				Cleaned text with non-delimiter punctuation removed and sentence
-				delimiters preserved.
-
+		"""Remove punctuation.
+		
+		Purpose:
+			Executes the ``remove punctuation`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -484,28 +489,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_punctuation( self, text: str ) -> str:'
+			Logger( ).write( exception )
 			raise exception
-		
+	
 	def reduce_repeats( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Reduces two or more contiguous punctuation or symbol characters to the
-			left-most character, then ensures the retained delimiter is followed by a
-			single space when another non-space character follows it.
-
-			Parameters:
-			-----------
-			text : str
-				The raw input text containing repeated punctuation or symbol sequences.
-
-			Returns:
-			--------
-			str
-				Text with contiguous punctuation and symbol sequences reduced to the
-				left-most character and followed by delimiter spacing where needed.
-
+		"""Reduce repeats.
+		
+		Purpose:
+			Executes the ``reduce repeats`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -517,29 +517,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'reduce_repeats( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
-		
+	
 	def normalize_text( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Converts the input 'text' to lower case
-
-			This function:
-			  - Converts the input 'text' to lower case
-
-			Parameters:
-			-----------
-			- text : str
-				The raw text
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines path containing
-				only letters, numbers, and spaces.
-
+		"""Normalize text.
+		
+		Purpose:
+			Executes the ``normalize text`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -549,27 +543,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'normalize_text( self, text: str ) -> str:'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_errors( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			----------
-			Removes tokens that are not recognized as valid English words while
-			preserving sentence delimiters used by sentence tokenization.
-
-			Parameters:
-			----------
-			text : str
-				The raw input text.
-
-			Returns:
-			-------
-			str
-				Text with out-of-vocabulary word tokens removed and sentence
-				delimiters preserved.
-
+		"""Remove errors.
+		
+		Purpose:
+			Executes the ``remove errors`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -595,28 +585,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_errors( self, text: str  ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_fragments( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Removes strings less that 4 chars in length
-
-
-			Parameters:
-			-----------
-			- pages : str
-				The raw path path path potentially
-				containing special characters.
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines path containing
-				only letters, numbers, and spaces.
-
+		"""Remove fragments.
+		
+		Purpose:
+			Executes the ``remove fragments`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -632,26 +617,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_fragments( self, text: str ) -> str:'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_symbols( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			-----------
-			Removes configured symbol characters from text while preserving sentence
-			delimiters used by sentence tokenization.
-
-			Parameters:
-			-----------
-			text : str
-				The raw text potentially containing special symbol characters.
-
-			Returns:
-			--------
-			str | None
-				Cleaned text with symbols removed and sentence delimiters preserved.
-
+		"""Remove symbols.
+		
+		Purpose:
+			Executes the ``remove symbols`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -664,29 +646,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_symbols( self, text: str ) -> str:'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_html( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			--------
-			Removes HTML tags from the path.
-
-			This function:
-			  - Parses the path as HTML
-			  - Extracts and returns only the visible content without tags
-
-			Parameters:
-			-----------
-			- pages : str
-				The path path containing HTML tags.
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines path with all HTML tags removed.
-
+		"""Remove html.
+		
+		Purpose:
+			Executes the ``remove html`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -698,35 +674,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_html( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_xml( self, text: str ) -> str:
-		"""
+		"""Remove xml.
 		
-			Purpose:
-			--------
-			Remove XML tags from a string while preserving inner text content using
-			lxml for robust, fast, and XPath-capable parsing.
-	
-			This function safely parses XML fragments by wrapping them in a synthetic
-			root element, then extracts all textual content (element text and tails)
-			while discarding tags and attributes.
-	
-			Parameters:
-			-----------
-			text : str
-				Input text containing XML markup.
-	
-			Returns:
-			--------
-			str
-				Text with XML tags removed and inner text preserved.
-	
-			Raises:
-			-------
-			RuntimeError
-				Raised when XML parsing fails.
-			
+		Purpose:
+			Executes the ``remove xml`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		throw_if( 'text', text )
 		try:
@@ -749,26 +713,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_xml( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_markdown( self, text: str ) -> str | None:
-		"""
-
-
-			Purpose:
-			-----------
-			Removes Markdown syntax (e.g., *, #, [], etc.)
-
-			Parameters:
-			-----------
-			- pages : str
-				The formatted path pages.
-
-			Returns:
-			--------
-			- str
-				A cleaned_lines version of the pages with formatting removed.
-
+		"""Remove markdown.
+		
+		Purpose:
+			Executes the ``remove markdown`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -782,26 +743,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_markdown( self, path: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_stopwords( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Removes English stop words while preserving sentence delimiters used by
-			sentence tokenization.
-
-			Parameters:
-			-----------
-			text : str
-				The raw input text from which stop words should be removed.
-
-			Returns:
-			--------
-			str
-				Text with stop words removed and sentence delimiters preserved.
-
+		"""Remove stopwords.
+		
+		Purpose:
+			Executes the ``remove stopwords`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -827,26 +785,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_stopwords( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_encodings( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			---------
-			Cleans text of encoding artifacts by resolving HTML entities,
-			Unicode escape sequences, and over-encoded byte strings.
-
-			Parameters
-			----------
-			text : str
-			Input string potentially containing encoded characters.
-
-			Returns
-			-------
-			str
-			Cleaned Unicode-normalized text.
-
+		"""Remove encodings.
+		
+		Purpose:
+			Executes the ``remove encodings`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -867,33 +822,27 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_headers( self, filepath: str, lines: int = 50, headers: int = 3,
 			footers: int = 3 ) -> str | None:
-		"""
+		"""Remove headers.
 		
-			Purpose:
-			--------
-			Remove repetitive headers and footers from a text document by identifying recurring
-			line blocks at page boundaries and stripping the most frequent candidates.
-	
-			Parameters:
-			-----------
-			filepath (str):
-			Path to the plain-text document to clean.
-			lines_per_page (int, optional):
-			Approximate number of lines per page. Defaults to 50. Tune for your source.
-			header_lines (int, optional):
-			Number of top lines per page to consider a header candidate. Defaults to 3.
-			footer_lines (int, optional):
-			Number of bottom lines per page to consider a footer candidate. Defaults to 3.
-	
-			Returns:
-			--------
-			str:
-			Cleaned document text with repetitive headers and footers removed.
-			
+		Purpose:
+			Executes the ``remove headers`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+			lines: Lines value used by the processing operation. Expected type: ``int``. Defaults to ``50``.
+			headers: Headers value used by the processing operation. Expected type: ``int``. Defaults to ``3``.
+			footers: Footers value used by the processing operation. Expected type: ``int``. Defaults to ``3``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -961,25 +910,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_headers( self, filepath: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_numbers( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			---------
-			Removes the numbers 0 through 9 from the input text.
-
-			Parameters
-			----------
-			text : str
-			Input string potentially containing encoded characters.
-
-			Returns
-			-------
-			str
-			Cleaned Unicode-normalized text.
-
+		"""Remove numbers.
+		
+		Purpose:
+			Executes the ``remove numbers`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -990,25 +937,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_encodings( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_numerals( self, text: str ) -> str | None:
-		"""
-
-			Purpose:
-			---------
-			Removes the numbers 0 through 9 from the input text.
-
-			Parameters
-			----------
-			text : str
-			Input string potentially containing encoded characters.
-
-			Returns
-			-------
-			str
-			Cleaned Unicode-normalized text.
-
+		"""Remove numerals.
+		
+		Purpose:
+			Executes the ``remove numerals`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -1020,29 +965,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'remove_numerals( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_images( self, text: str ) -> str:
-		"""
-			Purpose:
-			--------
-			Remove image references from text, including Markdown images, HTML <img> tags,
-			and standalone image URLs.
-	
-			Parameters:
-			-----------
-			text : str
-				Input text.
-	
-			Returns:
-			--------
-			str
-				Text with image references removed.
-	
-			Raises:
-			-------
-			RuntimeError
-				Raised when processing fails.
+		"""Remove images.
+		
+		Purpose:
+			Executes the ``remove images`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		throw_if( "text", text )
 		
@@ -1078,33 +1017,24 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = ('remove_formatting( self, text: str ) -> str')
+			Logger( ).write( exception )
 			raise exception
 	
 	def tiktokenize( self, text: str, encoding: str = 'cl100k_base' ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			---------
-			Tokenizes text text into subword words using OpenAI's tiktoken tokenizer.
-			This function leverages the tiktoken library, which provides byte-pair encoding (BPE)
-			tokenization used in models such as GPT-3.5 and GPT-4. Unlike standard word
-			tokenization,
-			this function splits text into model-specific subword units.
-
-			Parameters
-			----------
-			- text : str
-				The text string to be tokenized.
-
-			- model : str, optional
-				The tokenizer model to use. Examples include 'cl100k_base' (default),
-				'gpt-3.5-turbo', or 'gpt-4'. Ensure the model is supported by tiktoken.
-
-			Returns
-			-------
-			- List[str]
-				A list of string words representing BPE subword units.
-
+		"""Tiktokenize.
+		
+		Purpose:
+			Executes the ``tiktokenize`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+			encoding: Encoding value used by the processing operation. Expected type: ``str``. Defaults to ``'cl100k_base'``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -1118,29 +1048,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = ('tiktokenize( self, text, encoding) -> List[ int ]')
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_sentences( self, text: str ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			________
-			Splits the text string into a list of strings using NLTK's Punkt sentence tokenizer.
-			This function is useful for preparing text for further processing,
-			such as tokenization, parsing, or named entity recognition.
-
-			Parameters
-			----------
-			- text : str
-			The raw text string to be segmented into sentences.
-			
-			- size : int
-			THe chunk size
-
-			Returns
-			-------
-			- List of strings
-
+		"""Split sentences.
+		
+		Purpose:
+			Executes the ``split sentences`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -1152,26 +1076,24 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'split_sentences( self, text: str ) -> DataFrame'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_pages( self, filepath: str, num: int = 50 ) -> List[ str ] | None:
-		"""
-		    
-		    Purpose:
-		    ---------
-	        Splits a plain-text document into a list of pages using either form-feed characters
-	        or fixed line count windows when form-feeds are absent.
+		"""Split pages.
 		
-		    Parameters:
-		    -----------
-	        file_path (str): Path to the text document.
-	        lines_per_page (int): Approximate number of lines per page (default: 55).
+		Purpose:
+			Executes the ``split pages`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
 		
-		    Returns:
-		    ---------
-	        List[str]: List of page-level string segments.
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+			num: Num value used by the processing operation. Expected type: ``int``. Defaults to ``50``.
 		
-
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -1198,24 +1120,20 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'split_pages( file_path )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_paragraphs( self, filepath: str ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			---------
-			Reads  a file and splits it into paragraphs. A paragraph is defined as a block
-			of text separated by one or more empty lines (eg, '\n\n').
-
-			Parameters:
-			-----------
-			- path (str): Path to the path file.
-
-			Returns:
-			---------
-			- list of str: List of paragraph strings.
-
+		"""Split paragraphs.
+		
+		Purpose:
+			Executes the ``split paragraphs`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -1236,19 +1154,19 @@ class TextParser( Processor ):
 				return _data
 	
 	def create_frequency_distribution( self, tokens: List[ str ] ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			--------
-			Creates a word frequency freq_dist from a list of tokens.
-
-			Parameters:
-			-----------
-			- tokens: List[ str ]
-
-			Returns:
-			- dict: Dictionary of words and their corresponding frequencies.
-
+		"""Create frequency distribution.
+		
+		Purpose:
+			Executes the ``create frequency distribution`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tokens', tokens )
@@ -1263,28 +1181,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'create_frequency_distribution(self, tokens: List[ str ])->DataFrame'
+			Logger( ).write( exception )
 			raise exception
 	
 	def create_vocabulary( self, tokens: List[ str ] ) -> Series | None:
-		"""
-
-			Purpose:
-			---------
-			Builds a vocabulary list from a frequency
-			distribution by applying a minimum frequency threshold.
-
-			Parameters:
-			-----------
-			- freq_dist (dict):
-				A dictionary mapping words to their frequencies.
-
-			- min (int): Minimum num
-				of occurrences required for a word to be included.
-
-			Returns:
-			--------
-			- list: Sorted list of unique vocabulary words.
-
+		"""Create vocabulary.
+		
+		Purpose:
+			Executes the ``create vocabulary`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
+		
+		Returns:
+			Series | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tokens', tokens )
@@ -1299,23 +1212,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = ('create_vocabulary(self, freq_dist: dict, min: int=1)->List[str]')
+			Logger( ).write( exception )
 			raise exception
 	
 	def create_wordbag( self, tokens: List[ str ] ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			--------
-			Construct a Bag-of-Words (BoW) frequency dictionary from a list of strings.
-
-			Parameters:
-			-----------
-			- words (list): List of words from a document.
-
-			Returns:
-			--------
-			- dict: Word frequency dictionary.
-
+		"""Create wordbag.
+		
+		Purpose:
+			Executes the ``create wordbag`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tokens', tokens )
@@ -1329,35 +1242,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'create_wordbag( self, words: List[ str ] ) -> dict'
+			Logger( ).write( exception )
 			raise exception
 	
 	def create_vectors( self, tokens: List[ str ] ) -> DataFrame | None:
-		"""
+		"""Create vectors.
 		
-			Purpose:
-			----------
-			Generates word embeddings using TF-IDF vectors from a list of tokens.
-			This function treats each token as its own "document" to simulate a corpus
-			and calculates a TF-IDF vector for each word based on term statistics.
+		Purpose:
+			Executes the ``create vectors`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
 		
-			Parameters
-			----------
-			tokens : List[str]
-				A list of individual word tokens to be embedded.
+		Args:
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
 		
-			Returns
-			-------
-			Dict[str, np.ndarray]
-				A dictionary mapping each word to its corresponding TF-IDF vector.
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
 		
-			Example
-			-------
-			create_tfidf_word_embeddings(["nlp", "text", "nlp", "model"])
-			{
-				'nlp': array([0.7071, 0.0, 0.7071]),
-				'text': array([0.0, 1.0, 0.0]),
-				'model': array([0.0, 0.0, 1.0])
-			}
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			fake_docs = [ [ word ] for word in tokens ]
@@ -1377,23 +1278,23 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'create_vectors( self, tokens: List[str]) -> Dict[str, np.ndarray]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def clean_file( self, filepath: str ) -> str | None:
-		"""
-
-			Purpose:
-			________
-			Cleans text files given a source directory (src) and destination directory (dest)
-
-			Parameters:
-			----------
-			- src (str): Source directory
-
-			Returns:
-			--------
-			- None
-
+		"""Clean file.
+		
+		Purpose:
+			Executes the ``clean file`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -1417,24 +1318,24 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'clean_file( self, src: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def clean_files( self, source: str, destination: str ) -> None:
-		"""
-
-			Purpose:
-			________
-			Cleans text files given a source directory (src) and destination directory (dest)
-
-			Parameters:
-			----------
-			- src (str): Source directory
-			- dest (str): Destination directory
-
-			Returns:
-			--------
-			- None
-
+		"""Clean files.
+		
+		Purpose:
+			Executes the ``clean files`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			source: Source value used by the processing operation. Expected type: ``str``.
+			destination: Destination value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'src', source )
@@ -1471,24 +1372,24 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'clean_files( self, src: str, dest: str )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def chunk_files( self, source: str, destination: str ) -> None:
-		"""
-
-			Purpose:
-			________
-			Chunks cleaned text files given a _source directory and destination directory
-
-			Parameters:
-			----------
-			- src (str): Source directory
-			- dest (str): Destination directory
-
-			Returns:
-			--------
-			- None
-
+		"""Chunk files.
+		
+		Purpose:
+			Executes the ``chunk files`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			source: Source value used by the processing operation. Expected type: ``str``.
+			destination: Destination value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'src', source )
@@ -1524,23 +1425,24 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_files( self, src: str, dest: str )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def chunk_data( self, filepath: str, size: int = 10 ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			________
-			Chunks cleaned text files given a source directory and destination directory
-
-			Parameters:
-			----------
-			- src (str): Source directory
-
-			Returns:
-			--------
-			- DataFrame
-
+		"""Chunk data.
+		
+		Purpose:
+			Executes the ``chunk data`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``10``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', filepath )
@@ -1569,23 +1471,25 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=512  ) -> DataFrame'
+			Logger( ).write( exception )
 			raise exception
 	
 	def chunk_datasets( self, source: str, destination: str, size: int = 10 ) -> DataFrame:
-		"""
-
-			Purpose:
-			________
-			Chunks cleaned text files given a source directory and destination directory
-
-			Parameters:
-			----------
-			- src (str): Source directory
-
-			Returns:
-			--------
-			- DataFrame
-
+		"""Chunk datasets.
+		
+		Purpose:
+			Executes the ``chunk datasets`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			source: Source value used by the processing operation. Expected type: ``str``.
+			destination: Destination value used by the processing operation. Expected type: ``str``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``10``.
+		
+		Returns:
+			DataFrame: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'filepath', source )
@@ -1633,25 +1537,25 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_data( self, filepath: str, size: int=15  ) -> DataFrame'
+			Logger( ).write( exception )
 			raise exception
 	
 	def convert_jsonl( self, source: str, destination: str, size: int = 10 ) -> None:
-		"""
-
-			Purpose:
-			________
-			Coverts text files to JSONL format given a source directory (Source)
-			 and destination directory (destination)
-
-			Parameters:
-			--------
-			- source (str): Source directory
-			- destination (str): Destination directory
-
-			Returns:
-			--------
-			- None
-
+		"""Convert jsonl.
+		
+		Purpose:
+			Executes the ``convert jsonl`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			source: Source value used by the processing operation. Expected type: ``str``.
+			destination: Destination value used by the processing operation. Expected type: ``str``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``10``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'source', source )
@@ -1689,22 +1593,25 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'convert_jsonl( self, source: str, desination: str )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def encode_sentences( self, tokens: List[ str ], model: str = 'all-MiniLM-L6-v2' ) -> \
 			Tuple[ List[ str ], np.ndarray ]:
-		"""
+		"""Encode sentences.
 		
-			Purpose:
-			Generate contextual sentence embeddings using SentenceTransformer.
-			
-			Parameters:
-			sentences (list[str]): List of raw sentence strings.
-			model_name (str): Model to use for encoding.
-			
-			Returns:
-			tuple: (Cleaned sentences, Embeddings as np.ndarray)
-			
+		Purpose:
+			Executes the ``encode sentences`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
+			model: Model value used by the processing operation. Expected type: ``str``. Defaults to ``'all-MiniLM-L6-v2'``.
+		
+		Returns:
+			Tuple[ List[ str ], np.ndarray ]: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tokens', tokens )
@@ -1718,23 +1625,28 @@ class TextParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'encode_sentences( self, sentences: List[ str ], model_name ) -> ( )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def semantic_search( self, query: str, tokens: List[ str ], embeddings: np.ndarray,
 			model: SentenceTransformer, top: int = 5 ) -> List[ tuple[ str, float ] ]:
-		"""
-			Purpose:
-				Perform semantic search over embedded corpus using query.
-				
-			Parameters:
-				query (str): Natural language input.
-				tokens (list[str]): Corpus sentences.
-				embeddings (np.ndarray): Sentence embeddings.
-				model (SentenceTransformer): Same model used for encoding.
-				top (int): Number of matches to return.
-				
-			Returns:
-				list[tuple[str, float]]: Top-k (sentence, similarity) pairs.
+		"""Semantic search.
+		
+		Purpose:
+			Executes the ``semantic search`` operation for the ``TextParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			query: Query value used by the processing operation. Expected type: ``str``.
+			tokens: Tokens value used by the processing operation. Expected type: ``List[ str ]``.
+			embeddings: Embeddings value used by the processing operation. Expected type: ``np.ndarray``.
+			model: Model value used by the processing operation. Expected type: ``SentenceTransformer``.
+			top: Top value used by the processing operation. Expected type: ``int``. Defaults to ``5``.
+		
+		Returns:
+			List[ tuple[ str, float ] ]: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'query', query )
@@ -1752,26 +1664,23 @@ class TextParser( Processor ):
 			exception.method = ('semantic_search( self, query: str, tokens: List[ str ], '
 			                    'embeddings: np.ndarray, model: SentenceTransformer,  '
 			                    'top_k: int=5 ) -> List[ tuple[ str, float ] ]')
+			Logger( ).write( exception )
 			raise exception
 
 class NltkParser( Processor ):
-	'''
-
-		Purpose:
-		---------
-		Class providing NLTK-based natural language processing functionality for text that
-		has already been cleaned and normalized by the Text Processing expander.
-
-		Methods:
-		--------
-		word_tokenizer( self, text: str ) -> List [ str ]
-		sentence_tokenizer( self, text: str ) -> List [ str ]
-		word_stemmer( self, text: str ) -> List [ str ]
-		word_lemmatizer( self, text: str ) -> List [ str ]
-		pos_tagger( self, text: str ) -> List[ Tuple[ str, str ] ]
-		named_entity_recognition( self, text: str ) -> List[ Tuple[ str, str ] ]
-
-	'''
+	"""NltkParser processing component.
+	
+	Purpose:
+		Provides NLTK-backed parsing utilities for corpus tokenization, stemming, lemmatization, part-of-speech tagging, named-entity handling, and lexical diagnostics used by Chonky analysis workflows.
+	
+	Attributes:
+		word_tokens: Runtime state used by ``NltkParser`` during Chonky processing operations.
+		sentence_tokens: Runtime state used by ``NltkParser`` during Chonky processing operations.
+		stemmed_tokens: Runtime state used by ``NltkParser`` during Chonky processing operations.
+		lemmatized_tokens: Runtime state used by ``NltkParser`` during Chonky processing operations.
+		tagged_tokens: Runtime state used by ``NltkParser`` during Chonky processing operations.
+		named_entities: Runtime state used by ``NltkParser`` during Chonky processing operations.
+	"""
 	word_tokens: Optional[ List[ str ] ]
 	sentence_tokens: Optional[ List[ str ] ]
 	stemmed_tokens: Optional[ List[ str ] ]
@@ -1780,22 +1689,11 @@ class NltkParser( Processor ):
 	named_entities: Optional[ List[ Tuple[ str, str ] ] ]
 	
 	def __init__( self ) -> None:
-		'''
-
-			Purpose:
-			---------
-			Initializes the NltkParser and prepares internal containers used by the
-			NLTK processing methods.
-
-			Parameters:
-			-----------
-			- self
-
-			Returns:
-			--------
-			- None
-
-		'''
+		"""Initialize the NltkParser instance.
+		
+		Purpose:
+			Initializes parser state, reusable helper objects, and runtime caches used by later processing methods.
+		"""
 		super( ).__init__( )
 		self.initialize_resources( )
 		self.word_tokens = [ ]
@@ -1806,43 +1704,31 @@ class NltkParser( Processor ):
 		self.named_entities = [ ]
 	
 	def __dir__( self ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Provides a list of strings representing class members.
-
-			Parameters:
-			-----------
-			- self
-
-			Returns:
-			--------
-			- List[ str ] | None
-
-		'''
+		"""Dir.
+		
+		Purpose:
+			Returns the public member names exposed by the parser for introspection, diagnostics, and MkDocs API documentation.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		"""
 		return [ 'initialize_resources', 'word_tokenizer', 'sentence_tokenizer', 'word_stemmer',
 		         'word_lemmatizer', 'pos_tagger', 'named_entity_recognition', 'word_tokens',
 		         'sentence_tokens', 'stemmed_tokens', 'lemmatized_tokens', 'tagged_tokens',
 		         'named_entities' ]
 	
 	def initialize_resources( self ) -> None:
-		'''
-
-			Purpose:
-			---------
-			Ensures the NLTK tokenizers, taggers, and corpora required by this class
-			are available before processing begins.
-
-			Parameters:
-			-----------
-			- self
-
-			Returns:
-			--------
-			- None
-
-		'''
+		"""Initialize resources.
+		
+		Purpose:
+			Executes the ``initialize resources`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			required_resources: List[ Tuple[ str, str ] ] = [
 					('tokenizers/punkt', 'punkt'),
@@ -1865,26 +1751,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'NltkParser._ensure_nltk_resources( self ) -> None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def word_tokenizer( self, text: str ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Tokenizes the input text into word tokens and returns a display-ready
-			string with one token per line.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to tokenize into words.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Word tokenizer.
+		
+		Purpose:
+			Executes the ``word tokenizer`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -1896,26 +1780,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'word_tokenizer( self, text: str ) -> List[ str ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def sentence_tokenizer( self, text: str ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Tokenizes the input text into sentences and returns a display-ready
-			numbered string.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to tokenize into sentences.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Sentence tokenizer.
+		
+		Purpose:
+			Executes the ``sentence tokenizer`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -1926,26 +1808,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'tokenize_sentences( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def word_stemmer( self, text: str ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Applies stemming to the input text and returns a whitespace-joined
-			display-ready string of stemmed tokens.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to stem.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Word stemmer.
+		
+		Purpose:
+			Executes the ``word stemmer`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -1959,26 +1839,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'stemmer( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def word_lemmatizer( self, text: str ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Applies WordNet lemmatization to the input text and returns a
-			whitespace-joined display-ready string of lemmatized tokens.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to lemmatize.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Word lemmatizer.
+		
+		Purpose:
+			Executes the ``word lemmatizer`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -1992,26 +1870,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'lemmatizer( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def pos_tagger( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
-		'''
-
-			Purpose:
-			---------
-			Applies part-of-speech tagging to the input text and returns a
-			display-ready string containing one token-tag pair per line.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to tag.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Pos tagger.
+		
+		Purpose:
+			Executes the ``pos tagger`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ Tuple[ str, str ] ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -2023,26 +1899,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'pos_tagger( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def named_entity_recognition( self, text: str ) -> List[ Tuple[ str, str ] ] | None:
-		'''
-
-			Purpose:
-			---------
-			Applies named entity recognition to the input text and returns a
-			display-ready string containing one extracted entity per line.
-
-			Parameters:
-			-----------
-			- text: str
-				The cleaned text to analyze for named entities.
-
-			Returns:
-			--------
-			- str
-
-		'''
+		"""Named entity recognition.
+		
+		Purpose:
+			Executes the ``named entity recognition`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			List[ Tuple[ str, str ] ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
+		"""
 		try:
 			throw_if( 'text', text )
 			_text = text.lower( )
@@ -2065,35 +1939,24 @@ class NltkParser( Processor ):
 			exception.module = 'processing'
 			exception.cause = 'NltkParser'
 			exception.method = 'named_entity_recogniztion( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def chunk_words( self, text: str, size: int = 5 ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			-----------
-			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
-			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's word_tokenize
-			  - Breaks words into chunks of a specified size
-			  - Optionally joins words into strings (for transformer models)
-
-			Parameters:
-			-----------
-			- pages : str
-				The cleaned_lines path pages to be tokenized and chunked.
-
-			- size : int, optional (default=50)
-				Number of words per chunk_words.
-
-			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of
-				words.
-
-			Returns:
-			--------
-			- a list
-
+		"""Chunk words.
+		
+		Purpose:
+			Executes the ``chunk words`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``5``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -2112,35 +1975,24 @@ class NltkParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'TextParser'
 			exception.method = 'chunk_sentences( self, text: str, max: int=10 ) -> DataFrame'
+			Logger( ).write( exception )
 			raise exception
 	
 	def chunk_sentences( self, text: str, size: int = 15 ) -> DataFrame | None:
-		"""
-
-			Purpose:
-			-----------
-			Tokenizes cleaned_lines pages and breaks it into chunks for downstream vectors.
-			  - Converts pages to lowercase
-			  - Tokenizes pages using NLTK's sent_tokenize
-			  - Breaks words into chunks of a specified size
-			  - Optionally joins words into strings (for transformer models)
-
-			Parameters:
-			-----------
-			- pages : str
-				The cleaned_lines path pages to be tokenized and chunked.
-
-			- size : int, optional (default=50)
-				Number of words per chunk_words.
-
-			- return_as_string : bool, optional (default=True)
-				If True, returns each chunk_words as a path; otherwise, returns a get_list of
-				words.
-
-			Returns:
-			--------
-			- a list
-
+		"""Chunk sentences.
+		
+		Purpose:
+			Executes the ``chunk sentences`` operation for the ``NltkParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``15``.
+		
+		Returns:
+			DataFrame | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -2159,23 +2011,24 @@ class NltkParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'NltkParser'
 			exception.method = 'chunk_sentences( self, text: str, max: int=512 ) -> DataFrame'
+			Logger( ).write( exception )
 			raise exception
 
 class WordParser( Processor ):
-	"""
-
-		Purpose:
-		--------
-		A class to extract, clean, and analyze text from Microsoft Word documents.
-
-		Methods:
-		--------
-		split_sentences( self ) -> None
-		clean_sentences( self ) -> None
-		create_vocabulary( self ) -> None
-		compute_frequency_distribution( self ) -> None
-		summarize( self ) -> None:
-
+	"""WordParser processing component.
+	
+	Purpose:
+		Provides Microsoft Word document parsing utilities that extract paragraphs, tables, metadata, and cleaned text for downstream Chonky processing and analysis.
+	
+	Attributes:
+		sentences: Runtime state used by ``WordParser`` during Chonky processing operations.
+		cleaned_sentences: Runtime state used by ``WordParser`` during Chonky processing operations.
+		document: Runtime state used by ``WordParser`` during Chonky processing operations.
+		raw_text: Runtime state used by ``WordParser`` during Chonky processing operations.
+		paragraphs: Runtime state used by ``WordParser`` during Chonky processing operations.
+		file_path: Runtime state used by ``WordParser`` during Chonky processing operations.
+		vocabulary: Runtime state used by ``WordParser`` during Chonky processing operations.
+		document: Runtime state used by ``WordParser`` during Chonky processing operations.
 	"""
 	sentences: Optional[ List[ str ] ]
 	cleaned_sentences: Optional[ List[ str ] ]
@@ -2187,16 +2040,13 @@ class WordParser( Processor ):
 	document: Optional[ Document ]
 	
 	def __init__( self, filepath: str ) -> None:
-		"""
-
-			Purpose:
-			--------
-			Initializes the WordTextProcessor with the path to the .docx file.
-
-			Parameters:
-			----------
-			:param filepath: Path to the Microsoft Word document (.docx)
-
+		"""Initialize the WordParser instance.
+		
+		Purpose:
+			Initializes parser state, reusable helper objects, and runtime caches used by later processing methods.
+		
+		Args:
+			filepath: Filepath value used by the processing operation. Expected type: ``str``.
 		"""
 		super( ).__init__( )
 		self.file_path = filepath
@@ -2208,22 +2058,14 @@ class WordParser( Processor ):
 		self.vocabulary = set( )
 	
 	def __dir__( self ) -> List[ str ] | None:
-		'''
-
-			Purpose:
-			---------
-			Provides a list of strings representing class members.
-
-
-			Parameters:
-			-----------
-			- self
-
-			Returns:
-			--------
-			- List[ str ] | None
-
-		'''
+		"""Dir.
+		
+		Purpose:
+			Returns the public member names exposed by the parser for introspection, diagnostics, and MkDocs API documentation.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		"""
 		return [ 'extract_text',
 		         'split_sentences',
 		         'clean_sentences',
@@ -2239,12 +2081,19 @@ class WordParser( Processor ):
 		         'freq_dist' ]
 	
 	def extract_text( self, num: int = 1 ) -> str | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts raw text and paragraphs from the .docx file.
-
+		"""Extract text.
+		
+		Purpose:
+			Executes the ``extract text`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			num: Num value used by the processing operation. Expected type: ``int``. Defaults to ``1``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			self.page_text = self.document.get_page_text( pno=num )
@@ -2254,15 +2103,20 @@ class WordParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'extract_text( self, num: int ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def split_sentences( self ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			--------
-			Splits the raw text into sentences.
-
+		"""Split sentences.
+		
+		Purpose:
+			Executes the ``split sentences`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			_text = self.page_text.lower( )
@@ -2273,15 +2127,20 @@ class WordParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'split_sentences( self ) -> List[ str ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def clean_sentences( self ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			-------
-			Cleans each _sentence: removes extra whitespace, punctuation, and lowers the text.
-
+		"""Clean sentences.
+		
+		Purpose:
+			Executes the ``clean sentences`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			for _sent in self.sentences:
@@ -2295,15 +2154,20 @@ class WordParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'clean_sentences( self ) -> List[ str ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def create_vocabulary( self ) -> set | None:
-		"""
-
-			Purpose:
-			--------
-			Computes vocabulary terms from cleaned sentences.
-
+		"""Create vocabulary.
+		
+		Purpose:
+			Executes the ``create vocabulary`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			set | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			all_words = [ ]
@@ -2320,15 +2184,20 @@ class WordParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'create_vocabulary( self ) -> List[ str ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def compute_frequency_distribution( self ) -> Dict[ str, int ] | None:
-		"""
-
-			Purpose:
-			-------
-			Computes frequency distribution of the vocabulary.
-
+		"""Compute frequency distribution.
+		
+		Purpose:
+			Executes the ``compute frequency distribution`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			Dict[ str, int ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			words = [ ]
@@ -2343,15 +2212,17 @@ class WordParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'Word'
 			exception.method = 'compute_frequency_distribution( self ) -> Dict[ str, int ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def summarize( self ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			-------
-			Prints a summary of extracted and processed text.
-
+		"""Summarize.
+		
+		Purpose:
+			Executes the ``summarize`` operation for the ``WordParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
 		"""
 		print( f'Document: {self.file_path}' )
 		print( f'Paragraphs: {len( self.paragraphs )}' )
@@ -2361,63 +2232,18 @@ class WordParser( Processor ):
 			f'Top 10 Frequent Words: {Counter( self.frequency_distribution ).most_common( 10 )}' )
 
 class PdfParser( Processor ):
-	"""
-
-		Purpose:
-		--------
-		Provides general-purpose PDF extraction and PDF text-cleanup utilities. The
-		class separates extraction from processing: geometry methods extract page and
-		block content, while cleanup methods are invoked explicitly by the Processing
-		tab.
-
-		Attributes:
-		-----------
-		strip_headers : Optional[ bool ]
-			Legacy extraction flag retained for compatibility.
-		minimum_length : Optional[ int ]
-			Minimum line length retained by line extraction helpers.
-		extract_tables_enabled : Optional[ bool ]
-			Indicates whether table extraction should be attempted where supported.
-		pages : Optional[ List ]
-			Page-level geometry records.
-		lines : Optional[ List ]
-			Line-level extraction records.
-		blocks : Optional[ List ]
-			Block-level extraction records.
-		clean_lines : Optional[ List ]
-			Cleaned line records.
-		extracted_lines : Optional[ List ]
-			Extracted PDF lines.
-		extracted_tables : Optional[ List ]
-			Extracted PDF tables.
-		extracted_pages : Optional[ List ]
-			Extracted PDF page records.
-		file_path : Optional[ str ]
-			Active PDF file path.
-		page : Optional[ str ]
-			Current page text.
-
-		Methods:
-		--------
-		geometric_extract( self, path: str, count: Optional[ int ]=None,
-			header_ratio: float=0.08, footer_ratio: float=0.08,
-			preserve_page_breaks: bool=False ) -> str | None
-		extract_pages( self, path: str, count: Optional[ int ]=None,
-			header_ratio: float=0.08, footer_ratio: float=0.08 ) -> List[ dict ] | None
-		remove_repeats( self, pages: List[ dict ], minimum_repeats: int=3 )
-			-> List[ dict ] | None
-		clean_artifacts( self, text: str ) -> str
-		repair_spacing( self, text: str ) -> str
-		rejoin_hyphenation( self, text: str, repair_embedded: bool=True ) -> str
-		rebuild_pages( self, pages: List[ dict ], preserve_page_breaks: bool=False ) -> str
-		extract_lines( self, path: str, count: Optional[ int ]=None ) -> List[ str ] | None
-		extract_text( self, path: str, count: Optional[ int ]=None ) -> str | None
-		extract_tables( self, path: str, count: Optional[ int ]=None )
-			-> List[ pd.DataFrame ] | None
-		export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None
-		export_text( self, lines: List[ str ], path: str ) -> None
-		export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None
-
+	"""PdfParser processing component.
+	
+	Purpose:
+		Provides geometry-aware PDF parsing and cleanup utilities that extract page blocks, remove repeating headers and footers, repair line spacing, normalize artifacts, and rebuild PDF text for downstream processing.
+	
+	Attributes:
+		strip_headers: Runtime state used by ``PdfParser`` during Chonky processing operations.
+		minimum_length: Runtime state used by ``PdfParser`` during Chonky processing operations.
+		extract_tables_enabled: Runtime state used by ``PdfParser`` during Chonky processing operations.
+		extracted_lines: Runtime state used by ``PdfParser`` during Chonky processing operations.
+		extracted_tables: Runtime state used by ``PdfParser`` during Chonky processing operations.
+		extracted_pages: Runtime state used by ``PdfParser`` during Chonky processing operations.
 	"""
 	strip_headers: Optional[ bool ]
 	minimum_length: Optional[ int ]
@@ -2427,25 +2253,15 @@ class PdfParser( Processor ):
 	extracted_pages: Optional[ List ]
 	
 	def __init__( self, headers: bool = False, size: int = 10, tables: bool = True ) -> None:
-		"""
-
-			Purpose:
-			--------
-			Initializes the PDF parser.
-
-			Parameters:
-			-----------
-			headers : bool
-				Legacy header flag retained for compatibility.
-			size : int
-				Minimum line length retained by line-oriented helpers.
-			tables : bool
-				Indicates whether table extraction should be attempted where supported.
-
-			Returns:
-			--------
-			None
-
+		"""Initialize the PdfParser instance.
+		
+		Purpose:
+			Initializes parser state, reusable helper objects, and runtime caches used by later processing methods.
+		
+		Args:
+			headers: Headers value used by the processing operation. Expected type: ``bool``. Defaults to ``False``.
+			size: Size value used by the processing operation. Expected type: ``int``. Defaults to ``10``.
+			tables: Tables value used by the processing operation. Expected type: ``bool``. Defaults to ``True``.
 		"""
 		super( ).__init__( )
 		self.strip_headers = headers
@@ -2463,21 +2279,13 @@ class PdfParser( Processor ):
 		self.page = ''
 	
 	def __dir__( self ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			--------
-			Provides a list of public attributes and methods.
-
-			Parameters:
-			-----------
-			None
-
-			Returns:
-			--------
-			List[ str ] | None
-				Class attributes and methods exposed by the parser.
-
+		"""Dir.
+		
+		Purpose:
+			Returns the public member names exposed by the parser for introspection, diagnostics, and MkDocs API documentation.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
 		"""
 		return [
 				'strip_headers',
@@ -2510,32 +2318,23 @@ class PdfParser( Processor ):
 	def geometric_extract( self, path: str, count: Optional[ int ] = None,
 			header_ratio: float = 0.08, footer_ratio: float = 0.08,
 			preserve_page_breaks: bool = False ) -> str | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts PDF text using PyMuPDF page geometry. This method performs
-			extraction only. It does not remove repeated marginalia, clean artifacts,
-			repair spacing, or rejoin hyphenation.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-			header_ratio : float
-				Top-of-page height ratio used only to classify candidate header blocks.
-			footer_ratio : float
-				Bottom-of-page height ratio used only to classify candidate footer blocks.
-			preserve_page_breaks : bool
-				If true, inserts explicit page-break markers between extracted pages.
-
-			Returns:
-			--------
-			str | None
-				Geometry-extracted PDF text.
-
+		"""Geometric extract.
+		
+		Purpose:
+			Executes the ``geometric extract`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			path: Path value used by the processing operation. Expected type: ``str``.
+			count: Count value used by the processing operation. Expected type: ``Optional[ int ]``. Defaults to ``None``.
+			header_ratio: Header ratio value used by the processing operation. Expected type: ``float``. Defaults to ``0.08``.
+			footer_ratio: Footer ratio value used by the processing operation. Expected type: ``float``. Defaults to ``0.08``.
+			preserve_page_breaks: Preserve page breaks value used by the processing operation. Expected type: ``bool``. Defaults to ``False``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'path', path )
@@ -2549,33 +2348,27 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'geometric_extract( self, path: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def extract_pages( self, path: str, count: Optional[ int ] = None,
 			header_ratio: float = 0.08, footer_ratio: float = 0.08 ) -> List[ dict ] | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts page-level text blocks with PyMuPDF geometry and classifies each
-			block as header-band, body-band, or footer-band without removing content.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-			header_ratio : float
-				Top-of-page height ratio used to classify candidate header blocks.
-			footer_ratio : float
-				Bottom-of-page height ratio used to classify candidate footer blocks.
-
-			Returns:
-			--------
-			List[ dict ] | None
-				Page dictionaries containing ordered block dictionaries.
-
+		"""Extract pages.
+		
+		Purpose:
+			Executes the ``extract pages`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			path: Path value used by the processing operation. Expected type: ``str``.
+			count: Count value used by the processing operation. Expected type: ``Optional[ int ]``. Defaults to ``None``.
+			header_ratio: Header ratio value used by the processing operation. Expected type: ``float``. Defaults to ``0.08``.
+			footer_ratio: Footer ratio value used by the processing operation. Expected type: ``float``. Defaults to ``0.08``.
+		
+		Returns:
+			List[ dict ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'path', path )
@@ -2657,30 +2450,26 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'extract_pages( self, path: str ) -> List[ dict ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def remove_repeats( self, pages: List[ dict ], minimum_repeats: int = 3 ) -> List[
 		                                                                             dict ] | None:
-		"""
-
-			Purpose:
-			--------
-			Marks repeated candidate marginalia for removal using page-band location and
-			normalized recurrence. This method does not use document titles, agencies,
-			legal labels, or document-family vocabulary.
-
-			Parameters:
-			-----------
-			pages : List[ dict ]
-				Page dictionaries produced by extract_pages.
-			minimum_repeats : int
-				Minimum occurrences required before a marginal block is removed.
-
-			Returns:
-			--------
-			List[ dict ] | None
-				Page dictionaries with repeated marginal blocks marked for removal.
-
+		"""Remove repeats.
+		
+		Purpose:
+			Executes the ``remove repeats`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			pages: Pages value used by the processing operation. Expected type: ``List[ dict ]``.
+			minimum_repeats: Minimum repeats value used by the processing operation. Expected type: ``int``. Defaults to ``3``.
+		
+		Returns:
+			List[
+				                                                                             dict ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'pages', pages )
@@ -2755,26 +2544,23 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'remove_repeats( self, pages: List[ dict ] )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def clean_artifacts( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Removes generic parser and PDF extraction artifacts without using document
-			family, agency, legal, regulatory, or document-title vocabulary.
-
-			Parameters:
-			-----------
-			text : str
-				Extracted PDF text.
-
-			Returns:
-			--------
-			str
-				Text with generic parser artifacts removed.
-
+		"""Clean artifacts.
+		
+		Purpose:
+			Executes the ``clean artifacts`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -2842,27 +2628,23 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'clean_artifacts( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def repair_spacing( self, text: str ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Repairs generic spacing defects introduced by PDF extraction without using
-			document-family-specific terms, titles, headings, agencies, legal labels, or
-			regulatory vocabulary.
-
-			Parameters:
-			-----------
-			text : str
-				Extracted PDF text.
-
-			Returns:
-			--------
-			str
-				Text with generic spacing normalized.
-
+		"""Repair spacing.
+		
+		Purpose:
+			Executes the ``repair spacing`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -2909,29 +2691,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'repair_spacing( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def rejoin_hyphenation( self, text: str, repair_embedded: bool = True ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Repairs line-break hyphenation, soft-hyphen artifacts, and conservative
-			embedded PDF extraction splits without document-specific vocabulary.
-
-			Parameters:
-			-----------
-			text : str
-				Extracted PDF text.
-			repair_embedded : bool
-				If true, repairs embedded alphabetic splits only when morphology,
-				dictionary lookup, or token-shape evidence supports rejoining.
-
-			Returns:
-			--------
-			str
-				Text with broken PDF hyphenation repaired.
-
+		"""Rejoin hyphenation.
+		
+		Purpose:
+			Executes the ``rejoin hyphenation`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			text: Text value used by the processing operation. Expected type: ``str``.
+			repair_embedded: Repair embedded value used by the processing operation. Expected type: ``bool``. Defaults to ``True``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -3033,28 +2810,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'rejoin_hyphenation( self, text: str ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def rebuild_pages( self, pages: List[ dict ], preserve_page_breaks: bool = False ) -> str:
-		"""
-
-			Purpose:
-			--------
-			Rebuilds text from page/block geometry. Blocks marked with drop=True are
-			excluded; all other blocks are preserved in y/x reading order.
-
-			Parameters:
-			-----------
-			pages : List[ dict ]
-				Page dictionaries produced by extract_pages or remove_repeats.
-			preserve_page_breaks : bool
-				If true, inserts explicit page-break markers between pages.
-
-			Returns:
-			--------
-			str
-				Rebuilt PDF text.
-
+		"""Rebuild pages.
+		
+		Purpose:
+			Executes the ``rebuild pages`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			pages: Pages value used by the processing operation. Expected type: ``List[ dict ]``.
+			preserve_page_breaks: Preserve page breaks value used by the processing operation. Expected type: ``bool``. Defaults to ``False``.
+		
+		Returns:
+			str: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'pages', pages )
@@ -3103,27 +2876,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'rebuild_pages( self, pages: List[ dict ] ) -> str'
+			Logger( ).write( exception )
 			raise exception
 	
 	def extract_lines( self, path: str, count: Optional[ int ] = None ) -> List[ str ] | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts non-empty text lines from a PDF using geometry extraction only.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-
-			Returns:
-			--------
-			List[ str ] | None
-				List of extracted non-empty lines.
-
+		"""Extract lines.
+		
+		Purpose:
+			Executes the ``extract lines`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			path: Path value used by the processing operation. Expected type: ``str``.
+			count: Count value used by the processing operation. Expected type: ``Optional[ int ]``. Defaults to ``None``.
+		
+		Returns:
+			List[ str ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'path', path )
@@ -3139,27 +2909,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'extract_lines( self, path: str, count: Optional[ int ]=None )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def extract_text( self, path: str, count: Optional[ int ] = None ) -> str | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts full PDF text using geometry extraction only.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-
-			Returns:
-			--------
-			str | None
-				Extracted PDF text.
-
+		"""Extract text.
+		
+		Purpose:
+			Executes the ``extract text`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			path: Path value used by the processing operation. Expected type: ``str``.
+			count: Count value used by the processing operation. Expected type: ``Optional[ int ]``. Defaults to ``None``.
+		
+		Returns:
+			str | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'path', path )
@@ -3169,28 +2936,26 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'extract_text( self, path: str, count: Optional[ int ]=None )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def extract_tables( self, path: str, count: Optional[ int ] = None ) -> List[
 		                                                                        pd.DataFrame ] | None:
-		"""
-
-			Purpose:
-			--------
-			Extracts tables from a PDF and returns them as DataFrames.
-
-			Parameters:
-			-----------
-			path : str
-				Path to the PDF file.
-			count : Optional[ int ]
-				Maximum number of pages to process. None processes all pages.
-
-			Returns:
-			--------
-			List[ pd.DataFrame ] | None
-				Extracted table DataFrames.
-
+		"""Extract tables.
+		
+		Purpose:
+			Executes the ``extract tables`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			path: Path value used by the processing operation. Expected type: ``str``.
+			count: Count value used by the processing operation. Expected type: ``Optional[ int ]``. Defaults to ``None``.
+		
+		Returns:
+			List[
+				                                                                        pd.DataFrame ] | None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'path', path )
@@ -3213,26 +2978,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'extract_tables( self, path: str, count: Optional[ int ]=None )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def export_csv( self, tables: List[ pd.DataFrame ], filename: str ) -> None:
-		"""
-
-			Purpose:
-			--------
-			Exports a list of DataFrames to individual CSV files.
-
-			Parameters:
-			-----------
-			tables : List[ pd.DataFrame ]
-				List of tables to export.
-			filename : str
-				Output filename prefix.
-
-			Returns:
-			--------
-			None
-
+		"""Export csv.
+		
+		Purpose:
+			Executes the ``export csv`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tables: Tables value used by the processing operation. Expected type: ``List[ pd.DataFrame ]``.
+			filename: Filename value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tables', tables )
@@ -3246,26 +3009,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'export_csv( self, tables: List[ pd.DataFrame ], filename: str )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def export_text( self, lines: List[ str ], path: str ) -> None:
-		"""
-
-			Purpose:
-			--------
-			Exports extracted lines to a plain text file.
-
-			Parameters:
-			-----------
-			lines : List[ str ]
-				Lines to export.
-			path : str
-				Output text file path.
-
-			Returns:
-			--------
-			None
-
+		"""Export text.
+		
+		Purpose:
+			Executes the ``export text`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			lines: Lines value used by the processing operation. Expected type: ``List[ str ]``.
+			path: Path value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'lines', lines )
@@ -3281,26 +3042,24 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'export_text( self, lines: List[ str ], path: str )'
+			Logger( ).write( exception )
 			raise exception
 	
 	def export_excel( self, tables: List[ pd.DataFrame ], path: str ) -> None:
-		"""
-
-			Purpose:
-			--------
-			Exports all extracted tables into a single Excel workbook.
-
-			Parameters:
-			-----------
-			tables : List[ pd.DataFrame ]
-				List of tables to export.
-			path : str
-				Output Excel workbook path.
-
-			Returns:
-			--------
-			None
-
+		"""Export excel.
+		
+		Purpose:
+			Executes the ``export excel`` operation for the ``PdfParser`` workflow, updating instance state where required and returning the processed result used by downstream Chonky loading, processing, analysis, tokenization, or embedding steps.
+		
+		Args:
+			tables: Tables value used by the processing operation. Expected type: ``List[ pd.DataFrame ]``.
+			path: Path value used by the processing operation. Expected type: ``str``.
+		
+		Returns:
+			None: Result produced by the processing operation.
+		
+		Raises:
+			Error: Raised when validation or processing fails.
 		"""
 		try:
 			throw_if( 'tables', tables )
@@ -3317,6 +3076,7 @@ class PdfParser( Processor ):
 			exception.module = 'processors'
 			exception.cause = 'PdfParser'
 			exception.method = 'export_excel( self, tables: List[ pd.DataFrame ], path: str )'
+			Logger( ).write( exception )
 			raise exception
 			
 

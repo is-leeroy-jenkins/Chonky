@@ -37,7 +37,15 @@
 
   </copyright>
   <summary>
-    loca.py
+    Provides local GGUF embedding wrappers for the Chonky embedding workflow.
+
+    Purpose:
+        Defines a llama-cpp-python backed embedding base class and concrete local model
+        wrappers used to create single-text and batch embeddings without a hosted provider.
+        The module validates configured model names and GGUF model paths, lazily loads local
+        embedding clients, stores raw embedding responses for diagnostics, returns list-based
+        embedding vectors for downstream vector persistence, and records wrapped failures
+        through the application logger.
   </summary>
   ******************************************************************************************
 '''
@@ -47,26 +55,40 @@ from llama_cpp import Llama
 from boogr import Error, Logger
 
 def throw_if( name: str, value: object ):
+	"""Validate a required runtime value.
+
+	Purpose:
+		Provides a lightweight guard for local embedding wrapper methods that require model
+		configuration, model paths, or text input before creating llama-cpp embedding requests.
+
+	Args:
+		name: Name of the argument or instance value being validated.
+		value: Runtime value to validate.
+
+	Raises:
+		ValueError: Raised when ``value`` is ``None``.
+	"""
 	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 class Loca( ):
-	'''
+	"""Base wrapper for local GGUF embedding models.
+
+	Purpose:
+		Loads local GGUF embedding models through llama-cpp-python and exposes a provider-like
+		contract for Chonky's embedding and vector-database workflows. The class stores the
+		logical model name, GGUF model path, loaded llama.cpp client, raw response, and returned
+		embedding vectors on the instance for diagnostics and downstream processing.
+
+	Attributes:
+		model: Logical model name used to identify the local embedding wrapper.
+		model_path: Filesystem path to the GGUF model file.
+		client: Loaded llama-cpp-python client configured for embedding generation.
+		response: Raw embedding response from the last llama.cpp request.
+		embedding: Single embedding vector returned by the last single-text request.
+		embeddings: Batch embedding vectors returned by the last batch request.
+	"""
 	
-		Purpose:
-		--------
-		Base class for local GGUF embedding models loaded through llama-cpp-python.
-	
-		Attributes:
-		-----------
-		model             : str - Logical model name
-		model_path        : str - GGUF file path
-		client            : Llama - llama.cpp wrapper
-		response          : Any - Raw embedding response
-		embedding         : List[ float ] - Single embedding vector
-		embeddings        : List[ List[ float ] ] - Batch embedding vectors
-	
-	'''
 	model: Optional[ str ]
 	model_path: Optional[ str ]
 	client: Optional[ Llama ]
@@ -75,6 +97,17 @@ class Loca( ):
 	embeddings: Optional[ List[ List[ float ] ] ]
 	
 	def __init__( self, model: Optional[ str ] = None, model_path: Optional[ str ] = None ):
+		"""Initialize the local embedding wrapper.
+
+		Purpose:
+			Stores the logical model name and GGUF path supplied by concrete wrapper classes,
+			then initializes client, response, and vector state used by lazy model loading and
+			embedding generation.
+
+		Args:
+			model: Logical name assigned to the local embedding model.
+			model_path: Filesystem path to the local GGUF embedding model.
+		"""
 		super( ).__init__( )
 		self.model = model
 		self.model_path = model_path
@@ -84,20 +117,15 @@ class Loca( ):
 		self.embeddings = None
 	
 	def load( self ) -> None:
-		"""
-		
-			Purpose:
-			--------
-			Load the configured local GGUF embedding model.
-		
-			Parameters:
-			-----------
-			None
-		
-			Returns:
-			--------
-			None
-			
+		"""Load the configured local GGUF embedding model.
+
+		Purpose:
+			Validates the logical model name and GGUF model path, verifies the model file exists,
+			and lazily initializes a llama-cpp-python client configured for embedding generation.
+			If the client is already loaded, the method returns without reloading the model.
+
+		Raises:
+			Error: Raised when model configuration, file validation, or llama.cpp loading fails.
 		"""
 		try:
 			throw_if( 'model', self.model )
@@ -119,23 +147,25 @@ class Loca( ):
 			exception.module = 'embedders'
 			exception.cause = 'Loca'
 			exception.method = 'load( self ) -> None'
+			Logger( ).write( exception )
 			raise exception
 	
 	def create( self, text: str ) -> List[ float ]:
-		"""
-		
-			Purpose:
-			--------
-			Create a single embedding using the configured local GGUF model.
-		
-			Parameters:
-			-----------
-			text: str - Input text.
-		
-			Returns:
-			--------
-			List[ float ] - Embedding vector.
-			
+		"""Create a single local embedding vector.
+
+		Purpose:
+			Validates and normalizes a single text value, lazily loads the configured GGUF model,
+			calls llama.cpp embedding generation, stores the raw response, and returns the first
+			resolved embedding vector for downstream Chonky vector workflows.
+
+		Args:
+			text: Text value to embed.
+
+		Returns:
+			List[float]: Embedding vector for the supplied text, or an empty list for blank text.
+
+		Raises:
+			Error: Raised when validation, model loading, or local embedding generation fails.
 		"""
 		try:
 			throw_if( 'text', text )
@@ -160,24 +190,27 @@ class Loca( ):
 			exception = Error( e )
 			exception.module = 'embedders'
 			exception.cause = 'Loca'
-			exception.method = 'create( self, text ) -> List[ float ]'
+			exception.method = 'create( self, text: str ) -> List[ float ]'
+			Logger( ).write( exception )
 			raise exception
 	
 	def embed( self, texts: List[ str ] ) -> List[ List[ float ] ]:
-		"""
-		
-			Purpose:
-			--------
-			Create embeddings for a batch of strings using the configured local GGUF model.
-		
-			Parameters:
-			-----------
-			texts: List[str] - Input texts.
-		
-			Returns:
-			--------
-			List[List[float]] - Embedding vectors.
-			
+		"""Create batch local embedding vectors.
+
+		Purpose:
+			Validates a list of text inputs, removes blank values, lazily loads the configured
+			GGUF model, calls llama.cpp batch embedding generation, stores the raw response, and
+			returns embedding vectors for Chonky diagnostics and vector persistence.
+
+		Args:
+			texts: Text values to embed.
+
+		Returns:
+			List[List[float]]: Embedding vectors for cleaned text inputs, or an empty list when
+			no non-empty text values are supplied.
+
+		Raises:
+			Error: Raised when validation, model loading, or batch embedding generation fails.
 		"""
 		try:
 			throw_if( 'texts', texts )
@@ -208,45 +241,64 @@ class Loca( ):
 			exception = Error( e )
 			exception.module = 'embedders'
 			exception.cause = 'Loca'
-			exception.method = 'embed( self, texts ) -> List[ List[ float ] ]'
+			exception.method = 'embed( self, texts: List[ str ] ) -> List[ List[ float ] ]'
+			Logger( ).write( exception )
 			raise exception
 
 class Booger( Loca ):
-	'''
-	
-		Purpose:
-		--------
-		Local BGE small English GGUF embedder.
-	
-	'''
+	"""Local BGE small English embedding wrapper.
+
+	Purpose:
+		Configures the shared local embedding base class for the local BGE small English GGUF
+		model stored under Chonky's ``models/boogr`` directory. The wrapper supplies the logical
+		model name and model path while inheriting loading and embedding behavior from ``Loca``.
+	"""
 	
 	def __init__( self ):
+		"""Initialize the Booger local embedding model wrapper.
+
+		Purpose:
+			Assigns the local BGE small English model name and GGUF path used by the inherited
+			``Loca`` loading, single-text embedding, and batch embedding methods.
+		"""
 		super( ).__init__( model='boogr-small-en-v1.5', model_path=os.path.abspath(
 			os.path.join( 'models', 'boogr', 'boogr-small-en-v1.5-q8_0.gguf' ) ) )
 
 class Nomnom( Loca ):
-	'''
-	
-		Purpose:
-		--------
-		Local Nomic GGUF embedder.
-	
-	'''
+	"""Local Nomic embedding wrapper.
+
+	Purpose:
+		Configures the shared local embedding base class for the local Nomic GGUF model stored
+		under Chonky's ``models/nomi`` directory. The wrapper supplies the logical model name
+		and model path while inheriting loading and embedding behavior from ``Loca``.
+	"""
 	
 	def __init__( self ):
+		"""Initialize the Nomnom local embedding model wrapper.
+
+		Purpose:
+			Assigns the local Nomic model name and GGUF path used by the inherited ``Loca``
+			loading, single-text embedding, and batch embedding methods.
+		"""
 		super( ).__init__( model='nomnom-embed-text-v1.5',
 			model_path=os.path.abspath(
 				os.path.join( 'models', 'nomi', 'nomnom-embed-text-v1.5.Q4_K_M.gguf' ) ) )
 
 class Bobo( Loca ):
-	'''
-	
-		Purpose:
-		--------
-		Local Mixedbread GGUF embedder.
-	
-	'''
+	"""Local Mixedbread embedding wrapper.
+
+	Purpose:
+		Configures the shared local embedding base class for the local Mixedbread GGUF model
+		stored under Chonky's ``models/bobo`` directory. The wrapper supplies the logical model
+		name and model path while inheriting loading and embedding behavior from ``Loca``.
+	"""
 	
 	def __init__( self ):
+		"""Initialize the Bobo local embedding model wrapper.
+
+		Purpose:
+			Assigns the local Mixedbread model name and GGUF path used by the inherited ``Loca``
+			loading, single-text embedding, and batch embedding methods.
+		"""
 		super( ).__init__( model='bobo-embed-large-v1', model_path=os.path.abspath(
 			os.path.join( 'models', 'bobo', 'bobo-embed-large-v1-f16.gguf' ) ) )

@@ -1,0 +1,2350 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for Chonky, a Streamlit-based document loading, text processing, embedding, and vector-search application.">
+      
+      
+        <meta name="author" content="Terry D. Eppler">
+      
+      
+        <link rel="canonical" href="https://is-leeroy-jenkins.github.io/Chonky/api/">
+      
+      
+        <link rel="prev" href="../user-guide/vector-database/">
+      
+      
+        <link rel="next" href="app/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../resources/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Overview - Chonky Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../assets/css/chonky.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#features" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Chonky Documentation" class="md-header__button md-logo" aria-label="Chonky Documentation" data-md-component="logo">
+      
+  <img src="../resources/images/chonky.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Chonky Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/is-leeroy-jenkins/Chonky" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    is-leeroy-jenkins/Chonky
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Development
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Chonky Documentation" class="md-nav__button md-logo" aria-label="Chonky Documentation" data-md-component="logo">
+      
+  <img src="../resources/images/chonky.png" alt="logo">
+
+    </a>
+    Chonky Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/is-leeroy-jenkins/Chonky" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    is-leeroy-jenkins/Chonky
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../user-guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/processing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/tokenization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tokenization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/embeddings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embeddings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/vector-database/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vector Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="embedders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="loca/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loca
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="loaders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="processors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧠 Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#application-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧭 Application Tabs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧰 Setup Instructions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧰 Setup Instructions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clone-the-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Clone the Repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activate-the-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ▶️ Activate the Environment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="▶️ Activate the Environment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows PowerShell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-command-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows Command Prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS / Linux
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Install Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-chonky" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Run Chonky
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-key-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔑 API Key Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔑 API Key Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows PowerShell Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-linux-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS / Linux Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Example Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧪 Example Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-text-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Text Processing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk-text-for-embedding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk Text for Embedding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#similarity-retrieval-with-sqlite-vec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Similarity Retrieval with sqlite-vec
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#document-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📥 Document Loading
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📥 Document Loading">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#text-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧼 Text Processing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔎 Semantic Analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-tokenization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔤 Data Tokenization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensor-embeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧠 Tensor Embeddings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧠 Tensor Embeddings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#embedding-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedding Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vector-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🗄️ Vector Database
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#similarity-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Similarity Search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acknowledgements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🙏 Acknowledgements
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Overview</h1>
+
+<p><img alt="" src="../img/chonky-classes.png" /></p>
+<hr />
+<h2 id="features">🧠 Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Document ingestion</td>
+<td>Load text from local files, NLTK corpora, PDFs, Word documents, spreadsheets, notebooks, email files, web pages, public sources, cloud buckets, and connected document providers.</td>
+</tr>
+<tr>
+<td>Geometry-aware PDF extraction</td>
+<td>Use PyMuPDF-backed geometric extraction with header/footer band controls, page-break preservation, repeat removal, spacing repair, artifact cleanup, and hyphenation repair.</td>
+</tr>
+<tr>
+<td>Text preprocessing</td>
+<td>Remove HTML, Markdown, XML, symbols, numerals, numbers, punctuation, images, encoding artifacts, stopwords, fragments, misspellings, repeated delimiters, and excess whitespace.</td>
+</tr>
+<tr>
+<td>NLTK processing</td>
+<td>Run word tokenization, sentence tokenization, stemming, lemmatization, part-of-speech tagging, and named-entity recognition.</td>
+</tr>
+<tr>
+<td>Corpus metrics</td>
+<td>Display characters, token counts, vocabulary size, type-token ratio, hapax ratio, average token length, stopword ratio, lexical density, and readability scores.</td>
+</tr>
+<tr>
+<td>Semantic analysis</td>
+<td>Chunk processed text by characters or tokens, generate vocabulary and token-frequency distributions, and inspect top-token charts.</td>
+</tr>
+<tr>
+<td>Token diagnostics</td>
+<td>Render sentence chunks, fixed-width token grids, sparsity/padding diagnostics, sentence-length distributions, and embedding-readiness metrics.</td>
+</tr>
+<tr>
+<td>Embedding providers</td>
+<td>Generate embeddings through OpenAI and Gemini provider wrappers, with model, task, and dimensional controls.</td>
+</tr>
+<tr>
+<td>Embedding diagnostics</td>
+<td>Inspect generated embeddings with t-SNE and UMAP dimensionality-reduction diagnostics.</td>
+</tr>
+<tr>
+<td>Vector persistence</td>
+<td>Store embeddings in SQLite vector tables using sqlite-vec and LangChain-compatible vector store workflows.</td>
+</tr>
+<tr>
+<td>Similarity retrieval</td>
+<td>Run semantic similarity search with top-k controls and similarity-threshold filtering.</td>
+</tr>
+<tr>
+<td>Cloud and connected sources</td>
+<td>Load from Google Cloud files/buckets, AWS S3 files/buckets, OneDrive, SharePoint, GitHub, web crawlers, PubMed, and open-city datasets.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="application-tabs">🧭 Application Tabs<a class="headerlink" href="#application-tabs" title="Permanent link">&para;</a></h2>
+<p>The current Streamlit app is organized into the following tabs.</p>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Purpose</th>
+<th>Primary Inputs</th>
+<th>Primary Outputs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Loading</strong></td>
+<td>Ingest documents from local, web, public, email, notebook, and cloud sources.</td>
+<td>Uploaded files, URLs, repository metadata, corpus selectors, cloud identifiers, API keys.</td>
+<td><code>documents</code>, <code>raw_documents</code>, <code>raw_text</code>, active loader metadata, corpus metrics.</td>
+</tr>
+<tr>
+<td><strong>Text Processing</strong></td>
+<td>Clean, normalize, and transform the active raw text.</td>
+<td><code>raw_text</code>, active loader, cleanup checkboxes, NLTK options, PDF/Word/HTML-specific controls.</td>
+<td><code>processed_text</code>, <code>displayed_text</code>, processing statistics, token/NLP artifacts.</td>
+</tr>
+<tr>
+<td><strong>Semantic Analysis</strong></td>
+<td>Chunk processed text and compute vocabulary/frequency diagnostics.</td>
+<td><code>processed_text</code>, chunking mode, chunk size, overlap.</td>
+<td><code>chunked_documents</code>, tokens, vocabulary, frequency distribution.</td>
+</tr>
+<tr>
+<td><strong>Data Tokenization</strong></td>
+<td>Transform processed text into sentence/token structures and readiness diagnostics.</td>
+<td><code>processed_text</code>, token lists, sentence segmentation.</td>
+<td>sentence rows, fixed-width token grids, top-token histograms, sparsity metrics.</td>
+</tr>
+<tr>
+<td><strong>Tensor Embeddings</strong></td>
+<td>Generate hosted embeddings and inspect reduced vector space.</td>
+<td>Processed text or chunked documents, OpenAI/Gemini model controls.</td>
+<td>embedding vectors, embedding dataframe, t-SNE/UMAP projections.</td>
+</tr>
+<tr>
+<td><strong>Vector Database</strong></td>
+<td>Persist embeddings in sqlite-vec and run semantic retrieval.</td>
+<td>embedding vectors, embedding text, provider, model, document/collection name.</td>
+<td>vector table, persisted chunks, similarity-search results.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="architecture">🏛 Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Document Sources
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    ├── Local Files / Corpora / Email / Notebooks
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    ├── Web / Wikipedia / ArXiv / GitHub / PubMed / Open City
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    └── Cloud Files / Buckets / OneDrive / SharePoint
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            ▼
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>      Loading Tab
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            │ raw_text + documents
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            ▼
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>      Text Processing Tab
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            │ processed_text
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>            ▼
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>      Semantic Analysis Tab
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>            │ chunks + vocabulary + frequencies
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>            ▼
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>      Data Tokenization Tab
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>            │ sentence rows + token grids + readiness diagnostics
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            ▼
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>      Tensor Embeddings Tab
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>            │ embeddings + provider/model metadata
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>            ▼
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>      Vector Database Tab
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>            │ sqlite-vec tables + similarity search
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>            ▼
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>      Retrieval / RAG-Ready Outputs
+</code></pre></div>
+<h2 id="setup-instructions">🧰 Setup Instructions<a class="headerlink" href="#setup-instructions" title="Permanent link">&para;</a></h2>
+<h3 id="clone-the-repository">⚡ Clone the Repository<a class="headerlink" href="#clone-the-repository" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/is-leeroy-jenkins/Chonky.git
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>Chonky
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+</code></pre></div>
+<h3 id="activate-the-environment">▶️ Activate the Environment<a class="headerlink" href="#activate-the-environment" title="Permanent link">&para;</a></h3>
+<h4 id="windows-powershell">Windows PowerShell<a class="headerlink" href="#windows-powershell" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<h4 id="windows-command-prompt">Windows Command Prompt<a class="headerlink" href="#windows-command-prompt" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>.\.venv\Scripts\activate.bat
+</code></pre></div>
+<h4 id="macos-linux">macOS / Linux<a class="headerlink" href="#macos-linux" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</code></pre></div>
+<h3 id="install-requirements">📦 Install Requirements<a class="headerlink" href="#install-requirements" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</code></pre></div>
+<h3 id="run-chonky">🚀 Run Chonky<a class="headerlink" href="#run-chonky" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>streamlit<span class="w"> </span>run<span class="w"> </span>app.py
+</code></pre></div>
+<h2 id="api-key-setup">🔑 API Key Setup<a class="headerlink" href="#api-key-setup" title="Permanent link">&para;</a></h2>
+<p>The sidebar exposes API key inputs for hosted embedding, cloud, and future vector-service workflows.
+Set only the providers you plan to use.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Purpose</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OPENAI_API_KEY</code></td>
+<td>OpenAI hosted embeddings and related OpenAI workflows.</td>
+<td>OpenAI Embeddings expander.</td>
+</tr>
+<tr>
+<td><code>GEMINI_API_KEY</code></td>
+<td>Google Gemini embedding workflows.</td>
+<td>Gemini Embeddings expander.</td>
+</tr>
+<tr>
+<td><code>GROQ_API_KEY</code></td>
+<td>Groq/Grok-related provider workflows where enabled by the wrapper layer.</td>
+<td>Provider configuration.</td>
+</tr>
+<tr>
+<td><code>GOOGLE_API_KEY</code></td>
+<td>Google API-backed loaders and services.</td>
+<td>Google-connected loaders and services.</td>
+</tr>
+<tr>
+<td><code>GOOGLE_APPLICATION_CREDENTIALS</code></td>
+<td>Google service-account JSON path.</td>
+<td>Google Cloud file and bucket loaders.</td>
+</tr>
+<tr>
+<td><code>PINECONE_API_KEY</code></td>
+<td>Reserved for future Pinecone vector-service workflows.</td>
+<td>Future vector integrations.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="windows-powershell-example">Windows PowerShell Example<a class="headerlink" href="#windows-powershell-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">$env:OPENAI_API_KEY</span><span class="p">=</span><span class="s2">&quot;your_openai_key&quot;</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">$env:GEMINI_API_KEY</span><span class="p">=</span><span class="s2">&quot;your_gemini_key&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nv">$env:GROQ_API_KEY</span><span class="p">=</span><span class="s2">&quot;your_groq_key&quot;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nv">$env:GOOGLE_API_KEY</span><span class="p">=</span><span class="s2">&quot;your_google_key&quot;</span>
+</code></pre></div>
+<h3 id="macos-linux-example">macOS / Linux Example<a class="headerlink" href="#macos-linux-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_openai_key&quot;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_gemini_key&quot;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GROQ_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_groq_key&quot;</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_google_key&quot;</span>
+</code></pre></div>
+<h2 id="example-usage">🧪 Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">&para;</a></h2>
+<h3 id="basic-text-processing">Basic Text Processing<a class="headerlink" href="#basic-text-processing" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">TextParser</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">processor</span> <span class="o">=</span> <span class="n">TextParser</span><span class="p">(</span> <span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">raw_text</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;This is an example document.&lt;/p&gt;&quot;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">clean_text</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">remove_html</span><span class="p">(</span> <span class="n">raw_text</span> <span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">clean_text</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">normalize_text</span><span class="p">(</span> <span class="n">clean_text</span> <span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">clean_text</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">collapse_whitespace</span><span class="p">(</span> <span class="n">clean_text</span> <span class="p">)</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="nb">print</span><span class="p">(</span> <span class="n">clean_text</span> <span class="p">)</span>
+</code></pre></div>
+<h3 id="chunk-text-for-embedding">Chunk Text for Embedding<a class="headerlink" href="#chunk-text-for-embedding" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">nltk.tokenize</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_tokenize</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;This is a processed document ready for semantic analysis.&quot;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">tokens</span> <span class="o">=</span> <span class="n">word_tokenize</span><span class="p">(</span> <span class="n">text</span> <span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">tokens</span><span class="p">[</span> <span class="n">index</span><span class="p">:</span><span class="n">index</span> <span class="o">+</span> <span class="mi">100</span> <span class="p">]</span> <span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span> <span class="n">tokens</span> <span class="p">),</span> <span class="mi">100</span> <span class="p">)</span> <span class="p">]</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nb">print</span><span class="p">(</span> <span class="n">chunks</span> <span class="p">)</span>
+</code></pre></div>
+<h3 id="similarity-retrieval-with-sqlite-vec">Similarity Retrieval with sqlite-vec<a class="headerlink" href="#similarity-retrieval-with-sqlite-vec" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite_vec</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_community.embeddings.sentence_transformer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformerEmbeddings</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_community.vectorstores</span><span class="w"> </span><span class="kn">import</span> <span class="n">SQLiteVec</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="s2">&quot;vectors.db&quot;</span> <span class="p">)</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="n">conn</span><span class="o">.</span><span class="n">enable_load_extension</span><span class="p">(</span> <span class="kc">True</span> <span class="p">)</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">sqlite_vec</span><span class="o">.</span><span class="n">load</span><span class="p">(</span> <span class="n">conn</span> <span class="p">)</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">embedding_fn</span> <span class="o">=</span> <span class="n">SentenceTransformerEmbeddings</span><span class="p">(</span> <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;all-MiniLM-L6-v2&quot;</span> <span class="p">)</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="n">vector_store</span> <span class="o">=</span> <span class="n">SQLiteVec</span><span class="p">(</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    <span class="n">connection</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;example__OpenAI__text-embedding-3-small__1536&quot;</span><span class="p">,</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    <span class="n">embedding</span><span class="o">=</span><span class="n">embedding_fn</span><span class="p">,</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="p">)</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="n">results</span> <span class="o">=</span> <span class="n">vector_store</span><span class="o">.</span><span class="n">similarity_search</span><span class="p">(</span> <span class="n">query</span><span class="o">=</span><span class="s2">&quot;What is this document about?&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span> <span class="p">)</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    <span class="nb">print</span><span class="p">(</span> <span class="n">document</span><span class="o">.</span><span class="n">page_content</span> <span class="p">)</span>
+</code></pre></div>
+<h2 id="document-loading">📥 Document Loading<a class="headerlink" href="#document-loading" title="Permanent link">&para;</a></h2>
+<p>The Loading tab is organized into local, web, and cloud document groups. Each loader normalizes
+content into LangChain <code>Document</code> objects and updates the shared raw-text buffer for downstream
+processing.</p>
+<h3 id="local-documents">Local Documents<a class="headerlink" href="#local-documents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Loader</th>
+<th>Supported Input</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Corpora Loader</strong></td>
+<td>NLTK Brown, Gutenberg, Reuters, WebText, Inaugural, State of the Union, or local text directory.</td>
+<td>Load reference corpora or local <code>.txt</code> files for NLP analysis.</td>
+</tr>
+<tr>
+<td><strong>Text Loader</strong></td>
+<td><code>.txt</code>, <code>.text</code>, <code>.log</code></td>
+<td>Load plain text files.</td>
+</tr>
+<tr>
+<td><strong>CSV Loader</strong></td>
+<td><code>.csv</code></td>
+<td>Load delimited records with delimiter and quote-character controls.</td>
+</tr>
+<tr>
+<td><strong>XML Loader</strong></td>
+<td><code>.xml</code></td>
+<td>Load semantic XML, split XML documents, parse XML trees, and run XPath queries.</td>
+</tr>
+<tr>
+<td><strong>Word Document Loader</strong></td>
+<td><code>.docx</code></td>
+<td>Extract Word document text and metadata.</td>
+</tr>
+<tr>
+<td><strong>PDF Loader</strong></td>
+<td><code>.pdf</code></td>
+<td>Extract PDF text using geometry-aware PyMuPDF parsing or legacy loader mode.</td>
+</tr>
+<tr>
+<td><strong>PowerPoint Loader</strong></td>
+<td><code>.pptx</code></td>
+<td>Extract slide text from PowerPoint files.</td>
+</tr>
+<tr>
+<td><strong>Jupyter Notebook Loader</strong></td>
+<td><code>.ipynb</code></td>
+<td>Load notebook cells with optional outputs and traceback handling.</td>
+</tr>
+<tr>
+<td><strong>Excel Loader</strong></td>
+<td><code>.xlsx</code>, <code>.xls</code></td>
+<td>Load spreadsheets into SQLite tables or unstructured document mode.</td>
+</tr>
+<tr>
+<td><strong>Markdown Loader</strong></td>
+<td><code>.md</code>, <code>.markdown</code></td>
+<td>Load Markdown as a single document or parsed elements.</td>
+</tr>
+<tr>
+<td><strong>HTML Loader</strong></td>
+<td><code>.html</code>, <code>.htm</code></td>
+<td>Load local HTML documents.</td>
+</tr>
+<tr>
+<td><strong>JSON Loader</strong></td>
+<td><code>.json</code>, <code>.jsonl</code></td>
+<td>Load JSON using jq schema, optional content key, JSON Lines mode, and text/structured selection.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web-documents">Web Documents<a class="headerlink" href="#web-documents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Loader</th>
+<th>Input</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ArXiv Loader</strong></td>
+<td>Query text.</td>
+<td>Retrieve arXiv documents with character-limit controls.</td>
+</tr>
+<tr>
+<td><strong>Wikipedia Loader</strong></td>
+<td>Query text.</td>
+<td>Retrieve Wikipedia documents with max-document and max-character controls.</td>
+</tr>
+<tr>
+<td><strong>GitHub Loader</strong></td>
+<td>GitHub API URL, repository, branch, file-type filter, optional token.</td>
+<td>Load repository files from GitHub.</td>
+</tr>
+<tr>
+<td><strong>Outlook Loader</strong></td>
+<td><code>.msg</code></td>
+<td>Load Outlook message files.</td>
+</tr>
+<tr>
+<td><strong>Web Loader</strong></td>
+<td>One or more URLs.</td>
+<td>Load web pages with timeout and continue-on-failure controls.</td>
+</tr>
+<tr>
+<td><strong>Web Crawler</strong></td>
+<td>Start URL.</td>
+<td>Crawl web pages with depth, timeout, and same-domain controls.</td>
+</tr>
+<tr>
+<td><strong>Email Loader</strong></td>
+<td><code>.eml</code></td>
+<td>Load email messages with single/elements mode and optional attachment processing.</td>
+</tr>
+<tr>
+<td><strong>PubMed Loader</strong></td>
+<td>PubMed query.</td>
+<td>Retrieve PubMed search results.</td>
+</tr>
+<tr>
+<td><strong>Open City Loader</strong></td>
+<td>Socrata city domain, dataset ID, limit.</td>
+<td>Load city open-data records.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cloud-documents">Cloud Documents<a class="headerlink" href="#cloud-documents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Loader</th>
+<th>Input</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OneDrive Loader</strong></td>
+<td>Drive ID and optional folder path.</td>
+<td>Load OneDrive documents.</td>
+</tr>
+<tr>
+<td><strong>Google Cloud File Loader</strong></td>
+<td>Project name, bucket, blob.</td>
+<td>Load a single Google Cloud Storage object.</td>
+</tr>
+<tr>
+<td><strong>AWS File Loader</strong></td>
+<td>Bucket, object key, region, SSL, verification, endpoint.</td>
+<td>Load a single AWS S3 object.</td>
+</tr>
+<tr>
+<td><strong>Google Bucket Loader</strong></td>
+<td>Project name, bucket, prefix, continue-on-failure flag.</td>
+<td>Load documents from a Google Cloud Storage bucket.</td>
+</tr>
+<tr>
+<td><strong>AWS Bucket Loader</strong></td>
+<td>Bucket, prefix, region, SSL, verification, endpoint.</td>
+<td>Load documents from an AWS S3 bucket.</td>
+</tr>
+<tr>
+<td><strong>SharePoint Loader</strong></td>
+<td>Library ID and optional folder ID.</td>
+<td>Load SharePoint library or folder documents.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="text-processing">🧼 Text Processing<a class="headerlink" href="#text-processing" title="Permanent link">&para;</a></h2>
+<p>Text Processing consumes <code>raw_text</code> and produces the authoritative <code>processed_text</code> used by
+downstream semantic analysis, tokenization, embeddings, and vector persistence.</p>
+<table>
+<thead>
+<tr>
+<th>Processing Group</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>General cleanup</td>
+<td>Remove HTML, Markdown, XML, images, encoding artifacts, symbols, numbers, numerals, punctuation, repeated delimiters, stopwords, fragments, misspellings, and excess whitespace.</td>
+</tr>
+<tr>
+<td>Normalization</td>
+<td>Lowercase normalization and whitespace collapse.</td>
+</tr>
+<tr>
+<td>NLTK processing</td>
+<td>Word tokenization, sentence tokenization, stemming, lemmatization, part-of-speech tagging, and named-entity recognition.</td>
+</tr>
+<tr>
+<td>Word processing</td>
+<td>Extract tables and paragraphs when a Word document is active.</td>
+</tr>
+<tr>
+<td>PDF processing</td>
+<td>Remove repeated marginalia, clean parser artifacts, repair spacing, rejoin line-break hyphenation, and repair embedded hyphen splits.</td>
+</tr>
+<tr>
+<td>HTML processing</td>
+<td>Strip script/style content and route HTML-specific cleanup.</td>
+</tr>
+<tr>
+<td>Output controls</td>
+<td>Apply, reset, clear, and save processed text.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="semantic-analysis">🔎 Semantic Analysis<a class="headerlink" href="#semantic-analysis" title="Permanent link">&para;</a></h2>
+<p>Semantic Analysis requires processed text. It chunks text, computes lexical structures, and prepares
+intermediate outputs for diagnostics and embedding workflows.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chunking mode</td>
+<td>Supports character-based and token-based chunking.</td>
+</tr>
+<tr>
+<td>Chunk controls</td>
+<td>Chunk size and overlap.</td>
+</tr>
+<tr>
+<td>Tokenization</td>
+<td>Uses NLTK word tokenization over processed text.</td>
+</tr>
+<tr>
+<td>Vocabulary</td>
+<td>Builds a vocabulary through <code>TextParser</code>.</td>
+</tr>
+<tr>
+<td>Frequency distribution</td>
+<td>Creates and visualizes token-frequency distributions.</td>
+</tr>
+<tr>
+<td>Output state</td>
+<td>Stores chunked documents, tokens, vocabulary, and frequency data in session state.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-tokenization">🔤 Data Tokenization<a class="headerlink" href="#data-tokenization" title="Permanent link">&para;</a></h2>
+<p>The Data Tokenization tab turns processed text into row-based and grid-based diagnostic structures.
+It is intended to reveal whether text is ready for vectorization.</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chunked data</td>
+<td>Sentence-like rows created from processed text.</td>
+</tr>
+<tr>
+<td>Vector-space grid</td>
+<td>Fixed-width token grid using dimensions <code>D0</code> through <code>D14</code>.</td>
+</tr>
+<tr>
+<td>Token-frequency histogram</td>
+<td>Top-N token frequency distribution.</td>
+</tr>
+<tr>
+<td>Sentence-length distribution</td>
+<td>Tokens-per-sentence chart.</td>
+</tr>
+<tr>
+<td>Padding/sparsity analysis</td>
+<td>Filled cell counts, empty cell counts, and padding percentage.</td>
+</tr>
+<tr>
+<td>Embedding readiness scorecard</td>
+<td>Total tokens, unique tokens, average tokens per sentence, and hapax ratio.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tensor-embeddings">🧠 Tensor Embeddings<a class="headerlink" href="#tensor-embeddings" title="Permanent link">&para;</a></h2>
+<p>The Tensor Embeddings tab generates embeddings from either the full processed text or generated
+chunked documents.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Controls</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenAI Embeddings</strong></td>
+<td>Model selector using configured GPT embedding models.</td>
+<td>Embedding dataframe with provider, model, row index, text, and embedding vector.</td>
+</tr>
+<tr>
+<td><strong>Gemini Embeddings</strong></td>
+<td>Model selector, task type, dimensions.</td>
+<td>Embedding dataframe with provider, model, task, dimensions, row index, text, and embedding vector.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="embedding-diagnostics">Embedding Diagnostics<a class="headerlink" href="#embedding-diagnostics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Diagnostic</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>t-SNE</td>
+<td>Inspect local neighborhoods and embedding cluster behavior.</td>
+</tr>
+<tr>
+<td>UMAP</td>
+<td>Inspect broader manifold/global structure where <code>umap-learn</code> is installed.</td>
+</tr>
+<tr>
+<td>Scatter plot</td>
+<td>Visualize embedded chunks in two dimensions.</td>
+</tr>
+<tr>
+<td>Reduced-coordinate table</td>
+<td>Inspect dimensionality-reduction output numerically.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="vector-database">🗄️ Vector Database<a class="headerlink" href="#vector-database" title="Permanent link">&para;</a></h2>
+<p>The Vector Database tab persists generated embeddings to SQLite using sqlite-vec and LangChain's
+<code>SQLiteVec</code> vector store integration.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create Vector Table</td>
+<td>Creates a vector table with dimensionality derived from the generated embedding array.</td>
+</tr>
+<tr>
+<td>Insert Embeddings</td>
+<td>Persists chunk text and embeddings into the vector table.</td>
+</tr>
+<tr>
+<td>Drop Vector Table</td>
+<td>Deletes the selected vector table.</td>
+</tr>
+<tr>
+<td>Inspect Vector Table</td>
+<td>Displays sample rows from the persisted vector table.</td>
+</tr>
+</tbody>
+</table>
+<p>Vector tables are named deterministically using:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>&lt;document&gt;__&lt;provider&gt;__&lt;model&gt;__&lt;dimension&gt;
+</code></pre></div>
+<p>This prevents accidental mixing of embeddings generated by different providers, models, or vector
+dimensions.</p>
+<h2 id="similarity-search">🔍 Similarity Search<a class="headerlink" href="#similarity-search" title="Permanent link">&para;</a></h2>
+<p>Chonky includes an interactive sqlite-vec similarity search interface.</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query Text</td>
+<td>Free-text semantic query.</td>
+</tr>
+<tr>
+<td>Top-K Results</td>
+<td>Number of nearest results to retrieve.</td>
+</tr>
+<tr>
+<td>Minimum Similarity Threshold</td>
+<td>Filters results below the selected similarity score.</td>
+</tr>
+<tr>
+<td>Expandable results</td>
+<td>Displays rank, similarity score, and chunk text.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="requirements">📦 Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<p>The table below reflects the active imports and runtime features used by the current <code>app.py</code>.
+Use the repository <code>requirements.txt</code> as the installation source of truth when version pins are
+present.</p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Package / Import</th>
+<th>Purpose</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td><code>python&gt;=3.10</code></td>
+<td>Runtime for modern type hints and Streamlit execution.</td>
+<td>Entire application.</td>
+</tr>
+<tr>
+<td>Streamlit</td>
+<td><code>streamlit</code></td>
+<td>Web UI framework, tabs, expanders, metrics, data editors, uploaders, and session state.</td>
+<td>All tabs.</td>
+</tr>
+<tr>
+<td>Altair</td>
+<td><code>altair</code></td>
+<td>Declarative visualization support.</td>
+<td>Chart-capable analytics workflows.</td>
+</tr>
+<tr>
+<td>Pandas</td>
+<td><code>pandas</code></td>
+<td>Dataframes, previews, token tables, Excel loading, SQLite import/export, diagnostics.</td>
+<td>Loading, Tokenization, Embeddings, Vector Database.</td>
+</tr>
+<tr>
+<td>NumPy</td>
+<td><code>numpy</code></td>
+<td>Numeric arrays, embedding normalization, vector diagnostics.</td>
+<td>Tensor Embeddings and vector search.</td>
+</tr>
+<tr>
+<td>Pillow</td>
+<td><code>PIL</code> / <code>pillow</code></td>
+<td>Image handling where applicable.</td>
+<td>Loader and UI support.</td>
+</tr>
+<tr>
+<td>NLTK</td>
+<td><code>nltk</code></td>
+<td>Corpora, tokenization, stopwords, WordNet, words corpus, sentence segmentation.</td>
+<td>Loading, Text Processing, Semantic Analysis, Tokenization.</td>
+</tr>
+<tr>
+<td>TextStat</td>
+<td><code>textstat</code></td>
+<td>Optional readability metrics.</td>
+<td>Corpus/comprehension metrics.</td>
+</tr>
+<tr>
+<td>lxml</td>
+<td><code>lxml</code></td>
+<td>XML parsing, pretty-printing, XPath support.</td>
+<td>XML Loader.</td>
+</tr>
+<tr>
+<td>LangChain Core</td>
+<td><code>langchain-core</code></td>
+<td><code>Document</code> abstraction used across loaders and internal document state.</td>
+<td>Loading and processing pipeline.</td>
+</tr>
+<tr>
+<td>LangChain Community</td>
+<td><code>langchain-community</code></td>
+<td>SentenceTransformerEmbeddings and SQLiteVec vector store integration.</td>
+<td>Vector Database and similarity search.</td>
+</tr>
+<tr>
+<td>Sentence Transformers</td>
+<td><code>sentence-transformers</code></td>
+<td>Sentence embedding models used through LangChain wrappers.</td>
+<td>Vector Database / embedding functions.</td>
+</tr>
+<tr>
+<td>sqlite-vec</td>
+<td><code>sqlite-vec</code></td>
+<td>SQLite vector extension for vector table creation and similarity search.</td>
+<td>Vector Database.</td>
+</tr>
+<tr>
+<td>SQLite</td>
+<td><code>sqlite3</code></td>
+<td>Local relational storage and vector table persistence.</td>
+<td>Excel Loader and Vector Database.</td>
+</tr>
+<tr>
+<td>Scikit-learn</td>
+<td><code>scikit-learn</code></td>
+<td>t-SNE dimensionality reduction and supporting ML utilities.</td>
+<td>Embedding diagnostics.</td>
+</tr>
+<tr>
+<td>UMAP Learn</td>
+<td><code>umap-learn</code></td>
+<td>UMAP dimensionality reduction.</td>
+<td>Embedding diagnostics.</td>
+</tr>
+<tr>
+<td>PyMuPDF</td>
+<td><code>pymupdf</code></td>
+<td>Geometry-aware PDF extraction through parser/loader internals.</td>
+<td>PDF Loader and PDF Processing.</td>
+</tr>
+<tr>
+<td>python-docx</td>
+<td><code>python-docx</code></td>
+<td>Word document parsing through loader/parser internals.</td>
+<td>Word Loader and Word Processing.</td>
+</tr>
+<tr>
+<td>python-pptx</td>
+<td><code>python-pptx</code></td>
+<td>PowerPoint text extraction.</td>
+<td>PowerPoint Loader.</td>
+</tr>
+<tr>
+<td>openpyxl</td>
+<td><code>openpyxl</code></td>
+<td>Excel workbook reading.</td>
+<td>Excel Loader.</td>
+</tr>
+<tr>
+<td>BeautifulSoup</td>
+<td><code>beautifulsoup4</code></td>
+<td>HTML parsing/cleanup through loaders and processors.</td>
+<td>HTML Loader and Web Loader.</td>
+</tr>
+<tr>
+<td>Requests / HTTPX</td>
+<td><code>requests</code>, <code>httpx</code></td>
+<td>HTTP transport for web and API-backed loaders.</td>
+<td>Web, GitHub, arXiv, Wikipedia, PubMed, open-city loaders.</td>
+</tr>
+<tr>
+<td>arxiv</td>
+<td><code>arxiv</code></td>
+<td>arXiv retrieval support.</td>
+<td>ArXiv Loader.</td>
+</tr>
+<tr>
+<td>Wikipedia / MediaWiki tooling</td>
+<td><code>wikipedia</code>, <code>mediawiki</code>, or loader-specific dependency</td>
+<td>Wikipedia document retrieval.</td>
+<td>Wikipedia Loader.</td>
+</tr>
+<tr>
+<td>Boto3</td>
+<td><code>boto3</code></td>
+<td>AWS S3 object and bucket access.</td>
+<td>AWS File Loader and AWS Bucket Loader.</td>
+</tr>
+<tr>
+<td>Google Cloud Storage</td>
+<td><code>google-cloud-storage</code></td>
+<td>Google Cloud file and bucket loading.</td>
+<td>Google Cloud File Loader and Google Bucket Loader.</td>
+</tr>
+<tr>
+<td>Google Auth</td>
+<td><code>google-auth</code></td>
+<td>Google credential handling.</td>
+<td>Google Cloud workflows.</td>
+</tr>
+<tr>
+<td>Microsoft Graph / O365 tooling</td>
+<td>provider-specific package</td>
+<td>OneDrive, Outlook, and SharePoint document access where configured.</td>
+<td>OneDrive, Outlook, SharePoint loaders.</td>
+</tr>
+<tr>
+<td>nbformat</td>
+<td><code>nbformat</code></td>
+<td>Jupyter Notebook parsing.</td>
+<td>Jupyter Notebook Loader.</td>
+</tr>
+<tr>
+<td>unstructured</td>
+<td><code>unstructured</code></td>
+<td>Optional semantic document extraction.</td>
+<td>XML, email, PDF, and mixed-document loader internals.</td>
+</tr>
+<tr>
+<td>OpenAI SDK</td>
+<td><code>openai</code></td>
+<td>Hosted OpenAI embedding workflows.</td>
+<td>OpenAI Embeddings.</td>
+</tr>
+<tr>
+<td>Google GenAI</td>
+<td><code>google-genai</code></td>
+<td>Gemini embedding workflows.</td>
+<td>Gemini Embeddings.</td>
+</tr>
+<tr>
+<td>Groq SDK</td>
+<td><code>groq</code></td>
+<td>Groq/Grok provider wrapper support where enabled.</td>
+<td>Provider configuration.</td>
+</tr>
+<tr>
+<td>python-dotenv</td>
+<td><code>python-dotenv</code></td>
+<td>Optional local <code>.env</code> configuration.</td>
+<td>Local setup.</td>
+</tr>
+<tr>
+<td>Typing Extensions</td>
+<td><code>typing-extensions</code></td>
+<td>Compatibility for type hints on older Python environments.</td>
+<td>General dependency support.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="acknowledgements">🙏 Acknowledgements<a class="headerlink" href="#acknowledgements" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Streamlit</li>
+<li>NLTK</li>
+<li>LangChain</li>
+<li>sqlite-vec</li>
+<li>OpenAI</li>
+<li>Google Gemini</li>
+<li>Hugging Face sentence-transformers</li>
+<li>The open-source Python NLP and machine-learning ecosystem</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.highlight", "search.share", "content.code.copy", "content.code.select", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../assets/js/chonky.js"></script>
+      
+    
+  </body>
+</html>

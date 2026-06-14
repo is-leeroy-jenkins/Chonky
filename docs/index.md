@@ -1,246 +1,228 @@
 # Chonky
 
-A modular text-processing framework baseed in python tailored for analysts, data scientists,
-and machine learning practitioners working with unstructured text. It unifies high-performance NLP
-utilities and machine learning-ready pipelines to support text ingestion, cleaning, tokenization,
-feature extraction, and document analysis.
+Chonky is a Streamlit-based document loading, text processing, embedding, and vector-search
+application for working with unstructured and semi-structured text.
 
-``` 
-python
-from chonky import Text
+It provides an end-to-end workflow for loading documents, cleaning text, analyzing corpus structure,
+generating embeddings, storing vectors, and retrieving semantically relevant chunks.
 
-t = Text( )
-print( t.clean_space( "A   chonky   example!\tTabs too." ) )
+![Chonky Architecture](img/chonky-architecture.png)
 
-``` 
+## 🧭 Purpose
 
-```
-markdown
+Chonky is designed to help analysts, data scientists, and machine-learning practitioners move from
+source documents to retrieval-ready outputs through a clear staged workflow.
 
-# Remove repeating headers/footers
-```
+The application supports:
 
-``` 
-from chonky.processing import Text
+| Capability        | Description                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| Document loading  | Ingest files, corpora, notebooks, web pages, public sources, cloud objects, and email content. |
+| Text processing   | Clean, normalize, parse, and transform raw text into analysis-ready text.                      |
+| Semantic analysis | Generate chunks, vocabulary, frequency tables, and corpus diagnostics.                         |
+| Tokenization      | Inspect sentence structure, token grids, token counts, and embedding readiness.                |
+| Embeddings        | Generate hosted or local embedding vectors.                                                    |
+| Vector database   | Persist vectors locally with `sqlite-vec` and run semantic similarity search.                  |
+| Retrieval outputs | Return relevant chunks and semantic matches for review or downstream workflows.                |
 
-pages = [ "Header\nPage 1 body\nFooter", "Header\nPage 2 body\nFooter" ]
-t = Text( )
-clean = t.remove_headers( pages, min = 2 )
-print( clean )
-```
+## 🧱 Application Workflow
 
+Chonky follows a staged document-intelligence pipeline.
 
-## Features
-
-- **Text Preprocessing**: Clean and normalize text by removing HTML, punctuation, special
-  characters, and stopwords.
-- **Tokenization**: Sentence and word-level tokenization with support for HuggingFace and OpenAI
-  tokenizers.
-- **Chunking**: Token or word chunking for long document management and model input preparation.
-- **Text Analysis**: Frequency distributions, conditional frequency analysis, TF-IDF, Word2Vec
-  embeddings.
-- **Multi-format Support**: Extracts from `.txt`, `.docx`, and `.pdf` files with high fidelity.
-- **Custom Pipelines**: Utilities for JSONL export, batch cleaning, and document segmentation.
-- **LLM-Compatible**: Includes OpenAI and HuggingFace tokenizer interfaces for seamless integration.
-
-## Setup Instructions
-
-To ensure a clean and isolated environment for running **Chonky**, follow these steps:
-
-#### Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/Chonky.git
-cd Chonky
-cd venv/Scripts
-./activate.bat
-cd ../../
-pip install -r requirements.txt
+```text
+Document Sources
+        │
+        ▼
+Loading
+        │
+        ▼
+Text Processing
+        │
+        ▼
+Semantic Analysis
+        │
+        ▼
+Data Tokenization
+        │
+        ▼
+Tensor Embeddings
+        │
+        ▼
+Vector Database
+        │
+        ▼
+Retrieval / RAG-Ready Outputs
 ```
 
+Each stage produces shared application state that the next stage consumes. This keeps the workflow
+inspectable and repeatable.
 
-## Text Class
+## 📦 Core Modules
 
-- General-purpose text processor.
-- Methods: `load_text`, `normalize_text`, `remove_html`, `remove_punctuation`, `lemmatize_tokens`,
-  `tokenize_text`, `chunk_text`, `create_word2vec`, `create_tfidf`, and more.
+| Module          | Purpose                                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| `app.py`        | Streamlit interface, tab orchestration, session-state coordination, and workflow execution.               |
+| `config.py`     | Application constants, paths, provider settings, model options, logging paths, and session defaults.      |
+| `loaders.py`    | Document loaders for local files, corpora, web sources, cloud sources, notebooks, email, and public data. |
+| `processors.py` | Text cleaning, parsing, normalization, tokenization, chunking, corpus analysis, and PDF/page processing.  |
+| `embedders.py`  | Hosted embedding provider wrappers for OpenAI, Gemini, and Grok-compatible workflows.                     |
+| `loca.py`       | Local GGUF embedding wrappers using `llama-cpp-python`.                                                   |
 
-| Method                      | Description                                                |
-|-----------------------------|------------------------------------------------------------|
-| `load_text(path)`           | Loads raw text from a file.                                |
-| `split_lines(path)`         | Splits text into individual lines.                         |
-| `split_pages(path, delimit)` | Splits text by page delimiters.                            |
-| `collapse_whitespace(text)` | Collapses multiple whitespaces into single spaces.         |
-| `remove_punctuation(text)` | Removes punctuation from text.                             |
-| `remove_special(text)`      | Removes special characters while preserving select symbols. |
-| `remove_html(text)`          | Strips HTML tags using BeautifulSoup.                      |
-| `remove_errors(text)`      | Removes non-English or misspelled words.                   |
-| `correct_errors(text)`      | Attempts to autocorrect spelling using TextBlob.           |
-| `remove_markdown(text)`     | Strips Markdown syntax like `*`, `#`, etc.                 |
-| `remove_stopwords(text)`     | Removes English stopwords.                                 |
-| `remove_headers(pages)`     | Removes repetitive headers/footers using frequency.        |
-| `normalize_text(text)`      | Normalizes text to lowercase ASCII.                        |
-| `lemmatize_tokens(tokens)`    | Lemmatizes tokens using NLTK's WordNet.                    |
-| `tokenize_text(text)`       | Cleans and tokenizes raw text.                             |
-| `tokenize_words(words)`    | Tokenizes a list of words.                                 |
-| `tokenize_sentences(text)` | Sentence tokenization using NLTK.                          |
-| `split_paragraphs(path)`     | Splits text file into paragraphs.                          |
-| `chunk_text(text, size)`      | Splits text into word chunks.                              |
-| `chunk_words(words, size)`     | Chunks a list of tokenized words.                          |
-| `split_sentences(text)`       | Returns a list of sentences.                               |
-| `compute_frequency_distribution(lines)` | Computes frequency of tokens.                              |
-| `compute_conditional_distribution(lines)` |Computes conditional frequency grouped by condition.        |
-| `create_vocabulary(freq_dist)` | Creates vocabulary list from token frequency.              |
-| `create_wordbag(words)` | Constructs Bag-of-Words from token list.                   |
-| `create_word2vec(words)` | Trains a Word2Vec model from tokenized sentences.          |
-| `create_tfidf(words)`        | Generates TF-IDF matrix.                                   |
-| `clean_files(src, dest)`     | Batch cleans `.txt` files from source to destination.      |
-| `convert_jsonl(src, dest)`     | Converts text files into JSONL format.                     |
+## 📥 Loading
 
-## Word Class
+The loading workflow converts source material into LangChain `Document` objects.
 
-- Parses `.docx` files using Python-docx.
-- Sentence segmentation, vocabulary extraction, frequency computation.
+Supported source categories include:
 
-| Method                             | Description                                                 |
-|------------------------------------|-------------------------------------------------------------|
-| `extract_text()`                   | Extracts text and paragraphs from a `.docx` file.           |
-| `split_sentences()`                | Splits extracted text into sentences.                       |
-| `clean_sentences()`                | Cleans individual sentences: lowercases and removes punctuation. |
-| `create_vocabulary()`              | Builds vocabulary list from cleaned sentences.              |
-| `compute_frequency_distribution()` | Computes token frequency from sentences.                    |
-| `summarize()`                      | Prints summary stats: paragraphs, sentences, vocab size.    |
+| Category         | Examples                                                               |
+| ---------------- | ---------------------------------------------------------------------- |
+| Local documents  | Text, CSV, PDF, Word, Excel, PowerPoint, Markdown, HTML, JSON, XML     |
+| Corpora          | NLTK Brown, Gutenberg, Reuters, WebText, Inaugural, State of the Union |
+| Web sources      | Web pages, recursive crawls, Wikipedia, ArXiv, GitHub, PubMed          |
+| Notebook sources | Jupyter notebooks                                                      |
+| Email sources    | Outlook and email files                                                |
+| Cloud sources    | Google Cloud Storage, AWS S3, Google Drive, SharePoint, OneDrive       |
+| Public data      | Open City Data                                                         |
 
-## PDF Class
+The primary loading outputs are:
 
-- Reads `.pdf` files using `PyMuPDF`.
-- Extracts structured or unstructured text and exports CSV/Excel.
-
-| Method                         | Description |
-|--------------------------------|-------------|
-| `extract_lines(path, max)`     | Extracts and cleans lines of text from PDF pages. |
-| `extract_text(path, max)`      | Extracts full concatenated text from PDF. |
-| `extract_tables(path, max)`    | Extracts tables into pandas DataFrames. |
-| `export_csv(tables, filename)` | Exports extracted tables to CSV files. |
-| `export_text(lines, path)`     | Writes extracted text lines to a `.txt` file. |
-| `export_excel(tables, path)`   | Saves tables to an Excel workbook. |
-
-## Example Usage
-
-```
-    python
-    from processing import Text
-    processor = Text()
-    text = processor.load_text("example.txt")
-    clean = processor.remove_stopwords(text)
-    tokens = processor.tokenize_words(clean)
-    chunks = processor.chunk_text(clean, size=100)
+```text
+documents
+raw_documents
+raw_text
+active_loader
 ```
 
-## Initialize Processor
+## 🧹 Processing
 
-```
-  processor = Text()
+The processing workflow prepares raw text for analysis and embedding.
 
-```
+Common operations include:
 
-## Load Raw Text
+| Operation              | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| Whitespace cleanup     | Normalize spacing, line breaks, and blank regions.           |
+| HTML cleanup           | Remove HTML tags and extract visible content.                |
+| Markdown cleanup       | Remove Markdown syntax while preserving text content.        |
+| XML cleanup            | Extract inner text from XML-like content.                    |
+| Stopword removal       | Remove common words that may not help analysis.              |
+| Punctuation cleanup    | Remove or normalize punctuation patterns.                    |
+| Symbol cleanup         | Remove configured symbols and formatting artifacts.          |
+| Header/footer cleanup  | Remove repeated page-boundary text from extracted documents. |
+| Tokenization           | Split text into words, sentences, or model tokens.           |
+| Lemmatization/stemming | Normalize related word forms.                                |
 
-```
-  raw_text = processor.load_text("data/sample.txt")
-```
+The primary processing output is:
 
-## Clean & Normalize
-
-```
-  text = processor.remove_html(raw_text)                     # 🧹 Strip HTML
-  text = processor.normalize_text(text)                      # 🔡 Lowercase + ASCII
-  text = processor.remove_markdown(text)                     # ✨ Remove markdown (#, *, etc.)
-  text = processor.remove_special(text)                      # ❌ Remove special chars
-  text = processor.remove_punctuation(text)                  # 🪛 Remove punctuation
-  text = processor.collapse_whitespace(text)                 # 📏 Collapse whitespace
-```
-
-## Spelling & Stopwords
-
-```
-  cleaned_text = processor.remove_errors(text)               # 🧬 Remove misspellings
-  corrected_text = processor.correct_errors(cleaned_text)    # 🔁 Auto-correct spelling
-  no_stopwords_text = processor.remove_stopwords(corrected_text)  # 🚫 Remove stopwords
+```text
+processed_text
 ```
 
-## Tokenization
+## 📊 Analysis
 
+The analysis workflow helps inspect the structure and quality of processed text before embedding.
+
+Typical outputs include:
+
+| Output                 | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| Chunks                 | Smaller text windows used for analysis, embedding, and search. |
+| Vocabulary             | Unique term set extracted from the active text.                |
+| Frequency distribution | Token counts and common-term diagnostics.                      |
+| Corpus metrics         | Readability, density, token, and vocabulary measures.          |
+
+## 🔢 Tokenization
+
+The tokenization workflow provides diagnostics for how text is divided before embedding.
+
+It supports:
+
+| Diagnostic            | Purpose                                                  |
+| --------------------- | -------------------------------------------------------- |
+| Sentence rows         | Inspect sentence-level segmentation.                     |
+| Token grids           | View fixed-width token windows.                          |
+| Token counts          | Estimate input length and embedding readiness.           |
+| Sparsity metrics      | Identify empty, short, or uneven token regions.          |
+| Readiness diagnostics | Evaluate whether text is suitable for vector generation. |
+
+## 🧠 Embeddings
+
+Chonky supports both hosted and local embedding workflows.
+
+| Provider Type    | Module         | Examples                                  |
+| ---------------- | -------------- | ----------------------------------------- |
+| Hosted providers | `embedders.py` | OpenAI, Gemini, Grok-compatible workflows |
+| Local providers  | `loca.py`      | Booger, Nomnom, Bobo                      |
+
+Embedding outputs can be inspected, reduced for diagnostics, and persisted for search.
+
+## 🗄 Vector Database
+
+Chonky uses `sqlite-vec` for local vector persistence and semantic similarity search.
+
+The vector workflow connects embedded chunks to query-time retrieval. Users can store vectors,
+search for semantically related content, and inspect retrieved chunks.
+
+Primary outputs include:
+
+```text
+search_results
+retrieved chunks
+semantic matches
 ```
-  word_tokens = processor.tokenize_words(no_stopwords_text)       # 🧩 Word tokens
-  sentence_tokens = processor.tokenize_sentences(no_stopwords_text)  # 🧾 Sentence tokens
+
+## 🚀 Run Chonky
+
+Create and activate a virtual environment.
+
+### Windows PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-## Lemmatization
+Run the application.
 
-```
-  lemmatized_tokens = processor.lemmatize_tokens(word_tokens)
-```
-
-## Chunking
-
-```  
-  text_chunks = processor.chunk_text(no_stopwords_text, max=800)   # 🧳 Word chunked text
-  word_chunks = processor.chunk_words(word_tokens, max=100, over=50)  # 🎒 Token chunks
+```powershell
+python -m streamlit run app.py
 ```
 
-## Structural Splitting
+## 📚 Build the Documentation
 
-```
-  line_groups = processor.split_lines("data/sample.txt")           # 📏 Lines
-  paragraphs = processor.split_paragraphs("data/sample.txt")       # 📄 Paragraphs
-  pages = processor.split_pages("data/sample.txt", delimit="\f")   # 📃 Pages (form-feed)
-```
+Chonky documentation is built with MkDocs, Material for MkDocs, and mkdocstrings.
 
-## Frequency & Vocabulary
-
-```
-  freq_dist = processor.compute_frequency_distribution(word_tokens)  # 📈 Frequency dist
-  cond_freq = processor.compute_conditional_distribution(word_tokens, condition="POS")  # 🧮
-  Conditional
-  vocabulary = processor.create_vocabulary(freq_dist, min=2)         # 📖 Vocabulary
+```powershell
+mkdocs build
 ```
 
-## Vector Representations
+To serve the documentation locally:
 
-```
-  bow_vector = processor.create_wordbag(word_tokens)                 # 🧰 Bag-of-Words
-  word2vec_model = processor.create_word2vec([word_tokens], vector_size=100, window=5)  # 🧬 Word2Vec
-  tfidf_matrix, feature_names = processor.create_tfidf(word_tokens, max_features=500)   # 📐 TF-IDF
+```powershell
+mkdocs serve
 ```
 
-## Batch Utilities
+Then open the local documentation site in the browser.
 
+## 🧪 Validation
+
+Before publishing documentation or source changes, run:
+
+```powershell
+python -m compileall .
+mkdocs build
+python -m streamlit run app.py
 ```
-  processor.clean_files("data/input_dir", "data/cleaned_output_dir")     # 🧼 Clean .txt files in bulk
-  processor.convert_jsonl("data/cleaned_output_dir", "data/jsonl_output_dir")  # 🔄 .txt ➡️ .jsonl
-```
 
-## Dependencies
+These checks confirm that the Python modules compile, the documentation builds, and the Streamlit
+application launches.
 
-| Package         | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `nltk`          | Natural language toolkit for tokenization, stopwords, tagging, etc.         |
-| `gensim`        | Library for Word2Vec and topic modeling.                                    |
-| `spacy`         | Industrial-strength NLP for tagging and parsing.                            |
-| `scikit-learn`  | Machine learning library used for TF-IDF and dimensionality reduction.      |
-| `pandas`        | Data analysis and manipulation tool.                                        |
-| `numpy`         | Fundamental package for scientific computing.                               |
-| `tiktoken`      | OpenAI’s tokenizer for GPT models.                                          |
-| `transformers`  | HuggingFace’s model and tokenizer interface.                               |
-| `pymupdf`       | PDF extraction with PyMuPDF (a.k.a. `fitz`).                               |
-| `python-docx`   | Extracts text from Microsoft Word `.docx` documents.                        |
-| `beautifulsoup4`| Parses and cleans HTML/XML content.                                         |
-| `pydantic`      | Data validation and parsing with Python type hints.                         |
+## 🧾 Summary
 
-## License
+Chonky combines document ingestion, text processing, token diagnostics, embedding generation, vector
+persistence, and semantic retrieval in a single staged application.
 
-Chonky is published under
-the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Chonky/blob/main/LICENSE.txt).
-
-
+The project is organized around clear Python modules and source-driven documentation so the
+application can be used interactively while the API reference remains tied directly to the code.

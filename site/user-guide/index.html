@@ -1,0 +1,1580 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for Chonky, a Streamlit-based document loading, text processing, embedding, and vector-search application.">
+      
+      
+        <meta name="author" content="Terry D. Eppler">
+      
+      
+        <link rel="canonical" href="https://is-leeroy-jenkins.github.io/Chonky/user-guide/">
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="loading/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../resources/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Overview - Chonky Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../assets/css/chonky.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Chonky Documentation" class="md-header__button md-logo" aria-label="Chonky Documentation" data-md-component="logo">
+      
+  <img src="../resources/images/chonky.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Chonky Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/is-leeroy-jenkins/Chonky" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    is-leeroy-jenkins/Chonky
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Development
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Chonky Documentation" class="md-nav__button md-logo" aria-label="Chonky Documentation" data-md-component="logo">
+      
+  <img src="../resources/images/chonky.png" alt="logo">
+
+    </a>
+    Chonky Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/is-leeroy-jenkins/Chonky" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    is-leeroy-jenkins/Chonky
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="processing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tokenization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tokenization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="embeddings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embeddings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="vector-database/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vector Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/embedders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/loca/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loca
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/loaders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/processors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧭 Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Workflow Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loading-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📥 Loading First
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#processing-second" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧹 Processing Second
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#analyze-before-embedding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Analyze Before Embedding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tokenization-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔢 Tokenization Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#embedding-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧠 Embedding Generation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vector-storage-and-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🗄 Vector Storage and Search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧩 Typical Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛠 Recommended Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧯 Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧾 Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="user-guide">User Guide<a class="headerlink" href="#user-guide" title="Permanent link">&para;</a></h1>
+<p>The Chonky user guide explains how to move through the application from document loading to
+retrieval-ready outputs.</p>
+<p>Chonky is organized around a staged workflow. Each tab produces state that later tabs consume. The
+intended sequence is:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Loading
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  → Processing
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  → Analysis
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  → Tokenization
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  → Embeddings
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  → Vector Database
+</code></pre></div>
+<h2 id="purpose">🧭 Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>This guide helps users understand what each Chonky workflow stage does, what inputs it expects, what
+outputs it produces, and how those outputs support downstream analysis, embedding, and semantic
+retrieval.</p>
+<p>Use this guide when you need to:</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where to Start</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Load source documents</td>
+<td><a href="loading/">Loading</a></td>
+</tr>
+<tr>
+<td>Clean and normalize text</td>
+<td><a href="processing/">Processing</a></td>
+</tr>
+<tr>
+<td>Inspect chunks, vocabulary, and frequency distributions</td>
+<td><a href="analysis/">Analysis</a></td>
+</tr>
+<tr>
+<td>Review token and sentence diagnostics</td>
+<td><a href="tokenization/">Tokenization</a></td>
+</tr>
+<tr>
+<td>Generate hosted or local embedding vectors</td>
+<td><a href="embeddings/">Embeddings</a></td>
+</tr>
+<tr>
+<td>Store vectors and run semantic search</td>
+<td><a href="vector-database/">Vector Database</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="workflow-overview">🧱 Workflow Overview<a class="headerlink" href="#workflow-overview" title="Permanent link">&para;</a></h2>
+<p>Chonky follows a document-intelligence pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Tab</th>
+<th>Primary Input</th>
+<th>Primary Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Loading</td>
+<td>Source files, URLs, corpora, cloud objects, notebooks, or email content</td>
+<td><code>documents</code>, <code>raw_documents</code>, <code>raw_text</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Processing</td>
+<td><code>raw_text</code></td>
+<td><code>processed_text</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Analysis</td>
+<td><code>processed_text</code></td>
+<td>chunks, vocabulary, frequency distributions</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Tokenization</td>
+<td><code>processed_text</code>, chunks, or tokenized text</td>
+<td>token rows, sentence rows, token metrics</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Embeddings</td>
+<td>processed text or chunks</td>
+<td>embedding vectors</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Vector Database</td>
+<td>embedding vectors and source text</td>
+<td>persisted vectors, search results</td>
+</tr>
+</tbody>
+</table>
+<h2 id="loading-first">📥 Loading First<a class="headerlink" href="#loading-first" title="Permanent link">&para;</a></h2>
+<p>The Loading tab is the starting point for most workflows.</p>
+<p>It converts source material into LangChain <code>Document</code> objects and builds the shared raw-text buffer
+used by downstream tabs.</p>
+<p>Chonky supports local files, corpora, PDFs, Word documents, spreadsheets, notebooks, web pages,
+public sources, email files, and cloud-backed documents.</p>
+<p>Typical loading outputs are:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>documents
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>raw_documents
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>raw_text
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>active_loader
+</code></pre></div>
+<p>Do not proceed to processing until the expected text appears in the application.</p>
+<h2 id="processing-second">🧹 Processing Second<a class="headerlink" href="#processing-second" title="Permanent link">&para;</a></h2>
+<p>The Processing tab converts <code>raw_text</code> into cleaner <code>processed_text</code>.</p>
+<p>Use this stage to remove formatting artifacts, normalize whitespace, remove markup, strip stopwords,
+handle punctuation, remove headers and footers, or prepare text for tokenization and embedding.</p>
+<p>Processing is especially important for content extracted from:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Common Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PDFs</td>
+<td>Repeated headers, page breaks, hyphenation, spacing artifacts</td>
+</tr>
+<tr>
+<td>HTML</td>
+<td>Tags, navigation text, scripts, boilerplate</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td>Formatting syntax and image references</td>
+</tr>
+<tr>
+<td>XML</td>
+<td>Tags and nested markup</td>
+</tr>
+<tr>
+<td>OCR-like text</td>
+<td>Encoding artifacts, fragmented tokens, repeated symbols</td>
+</tr>
+<tr>
+<td>Spreadsheets</td>
+<td>Column-derived text that may need normalization</td>
+</tr>
+</tbody>
+</table>
+<h2 id="analyze-before-embedding">📊 Analyze Before Embedding<a class="headerlink" href="#analyze-before-embedding" title="Permanent link">&para;</a></h2>
+<p>The Analysis tab helps evaluate text quality and structure before creating vectors.</p>
+<p>Use it to inspect:</p>
+<table>
+<thead>
+<tr>
+<th>Diagnostic</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chunks</td>
+<td>Confirm text is split into usable windows.</td>
+</tr>
+<tr>
+<td>Vocabulary</td>
+<td>Understand the unique term set.</td>
+</tr>
+<tr>
+<td>Frequency distribution</td>
+<td>Identify dominant terms and repeated content.</td>
+</tr>
+<tr>
+<td>Corpus metrics</td>
+<td>Evaluate density, readability, and structure.</td>
+</tr>
+</tbody>
+</table>
+<p>This stage helps catch poor extraction or excessive noise before embedding vectors are created.</p>
+<h2 id="tokenization-diagnostics">🔢 Tokenization Diagnostics<a class="headerlink" href="#tokenization-diagnostics" title="Permanent link">&para;</a></h2>
+<p>The Tokenization tab provides a closer look at sentence and token structure.</p>
+<p>Use it when you need to understand whether text is ready for embedding or model input.</p>
+<p>Useful checks include:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sentence segmentation</td>
+<td>Confirm sentences are separated correctly.</td>
+</tr>
+<tr>
+<td>Token grids</td>
+<td>Inspect fixed-width token windows.</td>
+</tr>
+<tr>
+<td>Token counts</td>
+<td>Estimate model input size.</td>
+</tr>
+<tr>
+<td>Sparsity diagnostics</td>
+<td>Identify blank, short, or uneven text regions.</td>
+</tr>
+<tr>
+<td>Readiness metrics</td>
+<td>Determine whether the text should be cleaned or chunked again.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="embedding-generation">🧠 Embedding Generation<a class="headerlink" href="#embedding-generation" title="Permanent link">&para;</a></h2>
+<p>The Embeddings tab converts text or chunks into numerical vectors.</p>
+<p>Chonky supports two embedding paths:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Module</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hosted providers</td>
+<td><code>embedders.py</code></td>
+<td>OpenAI, Gemini, and Grok-compatible embedding workflows.</td>
+</tr>
+<tr>
+<td>Local providers</td>
+<td><code>loca.py</code></td>
+<td>GGUF embedding models through <code>llama-cpp-python</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Hosted providers require API credentials. Local providers require the expected GGUF model files to
+exist at the configured local paths.</p>
+<h2 id="vector-storage-and-search">🗄 Vector Storage and Search<a class="headerlink" href="#vector-storage-and-search" title="Permanent link">&para;</a></h2>
+<p>The Vector Database tab stores embedding vectors and supports similarity search.</p>
+<p>Chonky uses <code>sqlite-vec</code> for local vector persistence. This gives the application a lightweight
+retrieval layer without requiring a separate vector database service.</p>
+<p>The vector workflow supports:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vector persistence</td>
+<td>Save embedding vectors and associated chunk text.</td>
+</tr>
+<tr>
+<td>Similarity search</td>
+<td>Retrieve chunks close to a query vector.</td>
+</tr>
+<tr>
+<td>Search review</td>
+<td>Inspect semantically relevant source content.</td>
+</tr>
+<tr>
+<td>Reusable output</td>
+<td>Preserve retrieval-ready chunks for downstream work.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="typical-workflow">🧩 Typical Workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
+<p>A standard Chonky workflow looks like this:</p>
+<ol>
+<li>Load a file, corpus, web page, notebook, email, or cloud document.</li>
+<li>Confirm <code>raw_text</code> was extracted.</li>
+<li>Clean and normalize the text.</li>
+<li>Review processed text.</li>
+<li>Generate chunks and frequency diagnostics.</li>
+<li>Inspect token and sentence structure.</li>
+<li>Generate embedding vectors.</li>
+<li>Store vectors in the local vector database.</li>
+<li>Run semantic search.</li>
+<li>Review retrieved chunks.</li>
+</ol>
+<h2 id="recommended-practices">🛠 Recommended Practices<a class="headerlink" href="#recommended-practices" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Practice</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start with one document</td>
+<td>Confirms loader behavior before batch workflows.</td>
+</tr>
+<tr>
+<td>Inspect raw text before processing</td>
+<td>Helps identify extraction problems early.</td>
+</tr>
+<tr>
+<td>Process text before embedding</td>
+<td>Reduces noise and improves retrieval quality.</td>
+</tr>
+<tr>
+<td>Review chunks before vectorization</td>
+<td>Prevents poor chunk boundaries from entering the vector store.</td>
+</tr>
+<tr>
+<td>Use token diagnostics</td>
+<td>Helps avoid sparse or oversized chunks.</td>
+</tr>
+<tr>
+<td>Keep provider credentials out of source files</td>
+<td>Prevents accidental credential exposure.</td>
+</tr>
+<tr>
+<td>Rebuild documentation after source changes</td>
+<td>Confirms docstrings still render correctly.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">🧯 Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No raw text appears</td>
+<td>Loader did not extract usable content</td>
+<td>Try another loader mode or inspect the source file.</td>
+</tr>
+<tr>
+<td>Processed text is empty</td>
+<td>Cleanup settings removed too much text</td>
+<td>Reduce processing options and retry.</td>
+</tr>
+<tr>
+<td>Chunks look too short</td>
+<td>Chunk size is too small or source text is fragmented</td>
+<td>Increase chunk size or improve text cleanup.</td>
+</tr>
+<tr>
+<td>Embeddings fail</td>
+<td>Missing API key, invalid provider model, or missing local GGUF file</td>
+<td>Check provider settings and model paths.</td>
+</tr>
+<tr>
+<td>Search returns weak matches</td>
+<td>Source text may be noisy or chunks may be poor</td>
+<td>Reprocess text and regenerate embeddings.</td>
+</tr>
+<tr>
+<td>MkDocs warns about griffe</td>
+<td>A docstring contains malformed Google-style sections</td>
+<td>Fix the referenced source docstring.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="summary">🧾 Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>The user guide follows the same sequence as the Chonky application. Start with loading, clean the
+extracted text, analyze corpus structure, inspect tokenization, generate embeddings, and then
+persist vectors for semantic retrieval.</p>
+<p>Each stage is intentionally separated so users can inspect results before committing data to the
+next stage.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.highlight", "search.share", "content.code.copy", "content.code.select", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../assets/js/chonky.js"></script>
+      
+    
+  </body>
+</html>

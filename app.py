@@ -37,7 +37,14 @@
 
   </copyright>
   <summary>
-    app.py
+    Provides the Streamlit application shell for the Chonky document-processing workflow.
+
+    Purpose:
+        Coordinates Chonky's staged interface for document loading, text processing,
+        semantic analysis, tokenization diagnostics, hosted and local embedding generation,
+        vector persistence, and similarity retrieval. The module initializes Streamlit
+        session state, configures the page, wires loader, processor, and embedder wrappers
+        into tabbed UI sections, and preserves shared workflow outputs for downstream tabs.
   </summary>
   ******************************************************************************************
 '''
@@ -72,16 +79,16 @@ import time
 import tempfile
 from typing import List
 from langchain_core.documents import Document
-from langchain_community.embeddings.sentence_transformer import ( SentenceTransformerEmbeddings, )
+from langchain_community.embeddings.sentence_transformer import (SentenceTransformerEmbeddings, )
 from langchain_community.vectorstores import SQLiteVec
 from processors import Processor, TextParser, NltkParser, WordParser, PdfParser
 
-from loaders import ( TextLoader, CsvLoader, PdfLoader, ExcelLoader, WordLoader,
-                      MarkdownLoader, HtmlLoader, JsonLoader, PowerPointLoader, WikiLoader,
-                      GithubLoader, WebLoader, ArXivLoader, XmlLoader, OutlookLoader, WebCrawler,
-                      EmailLoader,  JupyterNotebookLoader,  PubMedSearchLoader,  OpenCityLoader,
-	                  GoogleCloudFileLoader, AwsFileLoader, GoogleBucketLoader, AwsBucketLoader,
-                      OneDriveDocLoader, SpfxLoader,)
+from loaders import (TextLoader, CsvLoader, PdfLoader, ExcelLoader, WordLoader,
+                     MarkdownLoader, HtmlLoader, JsonLoader, PowerPointLoader, WikiLoader,
+                     GithubLoader, WebLoader, ArXivLoader, XmlLoader, OutlookLoader, WebCrawler,
+                     EmailLoader, JupyterNotebookLoader, PubMedSearchLoader, OpenCityLoader,
+                     GoogleCloudFileLoader, AwsFileLoader, GoogleBucketLoader, AwsBucketLoader,
+                     OneDriveDocLoader, SpfxLoader, )
 
 from embedders import GPT, Grok, Gemini
 
@@ -96,7 +103,6 @@ except Exception:
 from nltk import sent_tokenize
 from nltk.corpus import stopwords, wordnet, words
 from nltk.tokenize import word_tokenize
-
 
 # ======================================================================================
 # Session State Initialization
@@ -135,12 +141,12 @@ for corpus in cfg.REQUIRED_CORPORA:
 # ======================================================================================
 
 def style_subheaders( ) -> None:
-	"""
-	
-		Purpose:
-		_________
-		Sets the style of subheaders in the main UI
-		
+	"""Style Streamlit subheaders.
+
+	Purpose:
+		Injects the CSS used to keep Chonky's secondary headings visually aligned with the
+		application accent color. The helper affects Streamlit markdown containers and chat
+		message headings without changing application state or downstream workflow data.
 	"""
 	st.markdown(
 		"""
@@ -157,10 +163,32 @@ def style_subheaders( ) -> None:
 	)
 
 def encode_image_base64( path: str ) -> str:
+	"""Encode an image file as base64 text.
+
+	Purpose:
+		Reads an image from disk and converts its bytes into a base64 string for Streamlit
+		HTML or markdown rendering where inline image content is required.
+
+	Args:
+		path: Filesystem path to the image file.
+
+	Returns:
+		str: Base64-encoded image content.
+	"""
 	data = Path( path ).read_bytes( )
 	return base64.b64encode( data ).decode( "utf-8" )
 
 def clear_if_active( loader_name: str ) -> None:
+	"""Clear loader-specific session state when a loader is active.
+
+	Purpose:
+		Resets document, token, chunking, embedding, dataframe, and table state only when the
+		requested loader is the active loader. The helper protects unrelated workflow state while
+		allowing individual loader panels to clear their own downstream outputs.
+
+	Args:
+		loader_name: Name of the loader whose state should be cleared when active.
+	"""
 	if st.session_state.active_loader == loader_name:
 		st.session_state.documents = None
 		st.session_state.active_loader = None
@@ -181,10 +209,17 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.lines = None
 
 def metric_with_tooltip( label: str, value: str, tooltip: str ):
-	"""
-		Renders a metric with a hover tooltip using a two-column layout.
-		Left column = the metric itself
-		Right column = hoverable ℹ️ icon
+	"""Render a Streamlit metric with optional hover guidance.
+
+	Purpose:
+		Displays a metric value beside an informational tooltip icon for Chonky analysis panels.
+		The helper keeps metric layout consistent while suppressing tooltip icons for core text
+		length metrics that do not require additional explanation.
+
+	Args:
+		label: Metric label displayed by Streamlit.
+		value: Metric value displayed by Streamlit.
+		tooltip: Tooltip text rendered in the hover title attribute.
 	"""
 	col_metric, col_info = st.columns( [ 0.5, 0.5 ] )
 	
@@ -206,39 +241,58 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 			)
 
 def normalize_embeddings( emb_array: np.ndarray ) -> np.ndarray:
+	"""Normalize an embedding array to two dimensions.
+
+	Purpose:
+		Converts a single one-dimensional embedding vector into a row-shaped array so Chonky
+		embedding diagnostics, dimensionality reduction, and vector persistence paths can operate
+		on a consistent matrix-like structure.
+
+	Args:
+		emb_array: NumPy embedding array to normalize.
+
+	Returns:
+		np.ndarray: Original array or reshaped two-dimensional embedding array.
+	"""
 	if isinstance( emb_array, np.ndarray ) and emb_array.ndim == 1:
 		return emb_array.reshape( 1, -1 )
 	return emb_array
-	
+
 def rebuild_raw_text_from_documents( ) -> str | None:
-		docs = st.session_state.get( "documents" ) or [ ]
-		if not docs:
-			return None
-		text = '\n\n'.join( d.page_content for d in docs
-		                    if hasattr( d, 'page_content' )
-		                    and isinstance( d.page_content, str )
-		                    and d.page_content.strip( ) )
-		return text if text.strip( ) else None
+	"""Rebuild raw text from loaded documents.
+
+	Purpose:
+		Reconstructs the shared raw-text buffer from the current Streamlit ``documents`` state after
+		loader-specific clear operations. The helper preserves downstream processing compatibility
+		by joining non-empty ``page_content`` values from remaining LangChain documents.
+
+	Returns:
+		str | None: Rebuilt raw text, or ``None`` when no usable document text remains.
+	"""
+	docs = st.session_state.get( "documents" ) or [ ]
+	if not docs:
+		return None
+	text = '\n\n'.join( d.page_content for d in docs
+	                    if hasattr( d, 'page_content' )
+	                    and isinstance( d.page_content, str )
+	                    and d.page_content.strip( ) )
+	return text if text.strip( ) else None
 
 def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
-	"""
-		Purpose:
-		--------
-		Chunk text by characters with overlap.
+	"""Chunk text by character windows.
 
-		Parameters:
-		-----------
-		text : str
-			Input text.
-		size : int
-			Chunk size in characters.
-		overlap : int
-			Overlap in characters.
+	Purpose:
+		Splits source text into overlapping character-based chunks for semantic analysis,
+		embedding preparation, and display workflows. The function clamps chunk size and overlap
+		to safe values before producing non-empty chunk strings.
 
-		Returns:
-		--------
-		list[str]
-			List of chunk strings.
+	Args:
+		text: Source text to chunk.
+		size: Maximum number of characters in each chunk.
+		overlap: Number of overlapping characters between adjacent chunks.
+
+	Returns:
+		List[str]: Character-based chunk strings.
 	"""
 	if not isinstance( text, str ) or not text.strip( ):
 		return [ ]
@@ -262,24 +316,20 @@ def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
 	return chunks
 
 def chunk_tokens( tokens: list[ str ], size: int, overlap: int ) -> List[ str ]:
-	"""
-		Purpose:
-		--------
-		Chunk token list into overlapped token windows and return joined strings.
+	"""Chunk tokens by overlapped token windows.
 
-		Parameters:
-		-----------
-		tokens : list[str]
-			Token list.
-		size : int
-			Tokens per chunk.
-		overlap : int
-			Overlap in tokens.
+	Purpose:
+		Splits a token list into overlapping windows and rejoins each window into a string for
+		Chonky tokenization, semantic-analysis, and embedding-readiness workflows. The function
+		validates list input and clamps chunk parameters to safe values.
 
-		Returns:
-		--------
-		list[str]
-			Chunk strings.
+	Args:
+		tokens: Token values to chunk.
+		size: Maximum number of tokens in each chunk.
+		overlap: Number of overlapping tokens between adjacent chunks.
+
+	Returns:
+		List[str]: Token-window chunk strings.
 	"""
 	if not isinstance( tokens, list ) or not tokens:
 		return [ ]
@@ -304,23 +354,18 @@ def chunk_tokens( tokens: list[ str ], size: int, overlap: int ) -> List[ str ]:
 	return out
 
 def rebuild_token_text( tokens: List[ str ] ) -> str:
-	"""
+	"""Rebuild display text from token values.
 
-		Purpose:
-		--------
-		Rebuilds display text from token lists without adding spaces before sentence
-		delimiters.
+	Purpose:
+		Reconstructs readable text from tokenized output while avoiding spaces before common
+		sentence delimiters and normalizing punctuation spacing. The helper supports Chonky's
+		tokenization and processed-text display panels.
 
-		Parameters:
-		-----------
-		tokens : List[ str ]
-			Token values produced by NLTK tokenization, stemming, or lemmatization.
+	Args:
+		tokens: Token values produced by tokenization, stemming, or lemmatization.
 
-		Returns:
-		--------
-		str
-			Reconstructed text with punctuation spacing normalized.
-
+	Returns:
+		str: Reconstructed display text with normalized punctuation spacing.
 	"""
 	if not isinstance( tokens, list ) or not tokens:
 		return ''
@@ -448,14 +493,13 @@ with tabs[ 0 ]:
 	# ------------------------------------------------------------------
 	# LEFT COLUMN - LOADERS
 	# ------------------------------------------------------------------
-	left, right = st.columns( [ 0.35, 0.65], gap='medium' )
+	left, right = st.columns( [ 0.35, 0.65 ], gap='medium' )
 	with left:
 		_loader_msg = st.session_state.pop( '_loader_status', None )
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
-			
+		
 		with st.expander( label='Local Documents', expanded=False ):
-			
 			# --------------------------- NLTK Loader Expander
 			with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 				import nltk
@@ -464,7 +508,8 @@ with tabs[ 0 ]:
 				st.markdown( '###### NLTK Corpora' )
 				
 				corpus_name = st.selectbox( 'Select corpus',
-					[ 'Brown', 'Gutenberg', 'Reuters', 'WebText', 'Inaugural', 'State of the Union', ],
+					[ 'Brown', 'Gutenberg', 'Reuters', 'WebText', 'Inaugural',
+					  'State of the Union', ],
 					key='nltk_corpus_name', )
 				
 				file_ids = [ ]
@@ -492,7 +537,8 @@ with tabs[ 0 ]:
 				
 				st.markdown( '###### Local Corpus' )
 				
-				local_corpus_dir = st.text_input( 'Local directory', placeholder='path/to/text/files',
+				local_corpus_dir = st.text_input( 'Local directory',
+					placeholder='path/to/text/files',
 					key='nltk_local_dir', )
 				
 				# ------------------------------------------------------------------
@@ -658,7 +704,9 @@ with tabs[ 0 ]:
 					st.session_state.raw_documents = list( documents )
 					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
 					                                         if
-					                                         hasattr( d, 'page_content' ) and isinstance( d.page_content, str )
+					                                         hasattr( d,
+						                                         'page_content' ) and isinstance(
+						                                         d.page_content, str )
 					                                         and d.page_content.strip( ) )
 					st.session_state.active_loader = 'TextLoader'
 					st.success( f'Loaded {len( documents )} text document(s).' )
@@ -743,7 +791,8 @@ with tabs[ 0 ]:
 					st.session_state.processed_text = None
 					st.session_state.active_loader = "CsvLoader"
 					
-					st.session_state[ "_loader_status" ] = f"Loaded {len( documents )} CSV document(s)."
+					st.session_state[
+						"_loader_status" ] = f"Loaded {len( documents )} CSV document(s)."
 			
 			# -------------------------- XML Loader Expander
 			with st.expander( label='XML Loader', icon='🧬', expanded=False ):
@@ -811,7 +860,8 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				if st.button( 'Split Semantic Documents', use_container_width=True ):
 					with st.spinner( 'Splitting documents...' ):
-						split_docs = loader.split( size=int( chunk_size ), amount=int( overlap_amount ) )
+						split_docs = loader.split( size=int( chunk_size ),
+							amount=int( overlap_amount ) )
 					
 					if split_docs:
 						st.session_state[ 'xml_split_documents' ] = split_docs
@@ -896,8 +946,10 @@ with tabs[ 0 ]:
 						st.json(
 							{
 									"file_path": getattr( xml_loader, 'file_path', None ),
-									"documents_loaded": getattr( xml_loader, 'documents', None ) is not None,
-									"xml_tree_loaded": getattr( xml_loader, 'xml_tree', None ) is not None,
+									"documents_loaded": getattr( xml_loader, 'documents',
+										None ) is not None,
+									"xml_tree_loaded": getattr( xml_loader, 'xml_tree',
+										None ) is not None,
 									"namespaces": getattr( xml_loader, 'xml_namespaces', None ),
 									"chunk_size": getattr( xml_loader, 'chunk_size', None ),
 									"overlap_amount": getattr( xml_loader, 'overlap_amount', None ),
@@ -1047,13 +1099,13 @@ with tabs[ 0 ]:
 								preserve_page_breaks=preserve_page_breaks ) or ''
 							
 							documents = [ Document( page_content=raw_text, metadata={
-												'loader': 'PdfLoader',
-												'source': pdf.name,
-												'extract': 'geometry',
-												'header_band': int( header_band ),
-												'footer_band': int( footer_band ),
-												'preserve_page_breaks': preserve_page_breaks,
-										} ) ]
+									'loader': 'PdfLoader',
+									'source': pdf.name,
+									'extract': 'geometry',
+									'header_band': int( header_band ),
+									'footer_band': int( footer_band ),
+									'preserve_page_breaks': preserve_page_breaks,
+							} ) ]
 							
 							st.session_state.pdf_pages = pdf_pages
 						else:
@@ -1070,9 +1122,9 @@ with tabs[ 0 ]:
 								document.metadata.setdefault( 'extract', 'legacy' )
 							
 							raw_text = '\n\n'.join( d.page_content for d in documents
-								if hasattr( d, 'page_content' )
-								and isinstance( d.page_content, str )
-								and d.page_content.strip( ) )
+							                        if hasattr( d, 'page_content' )
+							                        and isinstance( d.page_content, str )
+							                        and d.page_content.strip( ) )
 							
 							st.session_state.pdf_pages = None
 					
@@ -1093,9 +1145,9 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Save
 				# --------------------------------------------------
-				can_save = ( st.session_state.get( 'active_loader' ) == 'PdfLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( ) )
+				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader'
+				            and isinstance( st.session_state.get( 'raw_text' ), str )
+				            and st.session_state.get( 'raw_text' ).strip( ))
 				
 				if can_save:
 					save_pdf.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -1123,7 +1175,8 @@ with tabs[ 0 ]:
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
-						file_name='powerpoint_loader_output.txt', mime='text/plain', key='pptx_save', )
+						file_name='powerpoint_loader_output.txt', mime='text/plain',
+						key='pptx_save', )
 				else:
 					col_save.button( 'Save', key='pptx_save_disabled', disabled=True, )
 				
@@ -1146,7 +1199,9 @@ with tabs[ 0 ]:
 					st.session_state.raw_documents = list( documents )
 					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
 					                                         if
-					                                         hasattr( d, 'page_content' ) and isinstance( d.page_content, str )
+					                                         hasattr( d,
+						                                         'page_content' ) and isinstance(
+						                                         d.page_content, str )
 					                                         and d.page_content.strip( ) )
 					st.session_state.active_loader = "PowerPointLoader"
 					st.success( f"Loaded {len( documents )} PowerPoint document(s)." )
@@ -1246,7 +1301,8 @@ with tabs[ 0 ]:
 						document.metadata[ 'loader' ] = 'JupyterNotebookLoader'
 						document.metadata.setdefault( 'source', notebook_file.name )
 						document.metadata.setdefault( 'include_outputs', include_outputs )
-						document.metadata.setdefault( 'max_output_length', int( max_output_length ) )
+						document.metadata.setdefault( 'max_output_length',
+							int( max_output_length ) )
 						document.metadata.setdefault( 'remove_newline', remove_newline )
 						document.metadata.setdefault( 'traceback', include_traceback )
 					
@@ -1271,17 +1327,22 @@ with tabs[ 0 ]:
 				excel_file = st.file_uploader( 'Upload Excel file', type=[ 'xlsx', 'xls' ],
 					key='excel_upload', )
 				
-				load_mode = st.selectbox( 'Load Mode', [ 'Tabular + SQLite', 'Unstructured Document' ],
+				load_mode = st.selectbox( 'Load Mode',
+					[ 'Tabular + SQLite', 'Unstructured Document' ],
 					index=0, key='excel_load_mode',
-					help=('Use "Tabular + SQLite" to preserve the current sheet-to-SQLite workflow. '
-					      'Use "Unstructured Document" to route through ExcelLoader.'), )
+					help=(
+						'Use "Tabular + SQLite" to preserve the current sheet-to-SQLite workflow. '
+						'Use "Unstructured Document" to route through ExcelLoader.'), )
 				
-				sheet_name = st.text_input( 'Sheet name (leave blank for all sheets)', key='excel_sheet' )
+				sheet_name = st.text_input( 'Sheet name (leave blank for all sheets)',
+					key='excel_sheet' )
 				
 				table_prefix = st.text_input( 'table prefix', value='excel',
-					help='Each sheet will be written as <prefix>_<sheetname>', key='excel_table_prefix' )
+					help='Each sheet will be written as <prefix>_<sheetname>',
+					key='excel_table_prefix' )
 				
-				unstructured_mode = st.selectbox( 'Document Mode', [ 'single', 'elements' ], index=0,
+				unstructured_mode = st.selectbox( 'Document Mode', [ 'single', 'elements' ],
+					index=0,
 					key='excel_unstructured_mode', help='Used only with "Unstructured Documents".' )
 				
 				# --------------------------------------------------
@@ -1310,7 +1371,8 @@ with tabs[ 0 ]:
 					
 					st.session_state.raw_documents = [ d for d in st.session_state.documents
 					                                   if
-					                                   isinstance( getattr( d, 'metadata', None ), dict ) ] if st.session_state.documents else [ ]
+					                                   isinstance( getattr( d, 'metadata', None ),
+						                                   dict ) ] if st.session_state.documents else [ ]
 					
 					st.session_state.raw_text = (
 							'\n\n'.join( d.page_content for d in st.session_state.documents
@@ -1339,7 +1401,8 @@ with tabs[ 0 ]:
 							
 							if sheet_name.strip( ):
 								dfs = {
-										sheet_name: pd.read_excel( excel_path, sheet_name=sheet_name, ) }
+										sheet_name: pd.read_excel( excel_path,
+											sheet_name=sheet_name, ) }
 							else:
 								dfs = pd.read_excel( excel_path, sheet_name=None, )
 							
@@ -1348,7 +1411,8 @@ with tabs[ 0 ]:
 								for sheet, df in dfs.items( ):
 									if df.empty:
 										continue
-									table_name = f"{table_prefix}_{sheet}".replace( " ", "_" ).lower( )
+									table_name = f"{table_prefix}_{sheet}".replace( " ",
+										"_" ).lower( )
 									df.to_sql( table_name, conn, if_exists="replace", index=False, )
 									text = df.to_csv( index=False )
 									documents.append(
@@ -1393,9 +1457,11 @@ with tabs[ 0 ]:
 						st.session_state.active_loader = 'ExcelLoader'
 						
 						if load_mode == 'Tabular + SQLite':
-							st.success( f"Loaded {len( documents )} sheet(s) and stored in SQLite." )
+							st.success(
+								f"Loaded {len( documents )} sheet(s) and stored in SQLite." )
 						else:
-							st.success( f"Loaded {len( documents )} Excel {unstructured_mode!r} mode." )
+							st.success(
+								f"Loaded {len( documents )} Excel {unstructured_mode!r} mode." )
 					else:
 						if load_mode == 'Tabular + SQLite':
 							st.warning( "No data loaded (empty sheets or invalid selection)." )
@@ -1633,9 +1699,8 @@ with tabs[ 0 ]:
 					)
 					st.session_state.active_loader = "JsonLoader"
 					st.success( f"Loaded {len( documents )} JSON document(s)." )
-					
-		with st.expander( label='Web Documents', expanded=False ):
 		
+		with st.expander( label='Web Documents', expanded=False ):
 			# --------------------------- ArXiv Loader
 			with st.expander( label='ArXiv Loader', icon='🧠', expanded=False ):
 				arxiv_query = st.text_input(
@@ -1655,7 +1720,8 @@ with tabs[ 0 ]:
 				)
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
-				arxiv_fetch = col_fetch.button( 'Load', key='arxiv_fetch' )  # label kept as Load button row convention
+				arxiv_fetch = col_fetch.button( 'Load',
+					key='arxiv_fetch' )  # label kept as Load button row convention
 				arxiv_clear = col_clear.button( 'Clear', key='arxiv_clear' )
 				
 				can_save = (
@@ -1788,7 +1854,7 @@ with tabs[ 0 ]:
 						
 						st.session_state[
 							'_loader_status' ] = f'Fetched {len( documents )} Wikipedia document(s).'
-		
+			
 			# --------------------------- GitHub Loader
 			with st.expander( label='GitHub Loader', icon='🐙', expanded=False ):
 				gh_url = st.text_input(
@@ -2146,7 +2212,8 @@ with tabs[ 0 ]:
 				
 				if can_save:
 					col_save.download_button( 'Save',
-						data=st.session_state.get( 'raw_text' ), file_name='email_loader_output.txt',
+						data=st.session_state.get( 'raw_text' ),
+						file_name='email_loader_output.txt',
 						mime='text/plain', key='email_save', )
 				else:
 					col_save.button( 'Save', key='email_save_disabled', disabled=True, )
@@ -2379,7 +2446,6 @@ with tabs[ 0 ]:
 						f'Loaded {len( documents )} Open City document(s).'
 		
 		with st.expander( label='Cloud Documents', expanded=False ):
-			
 			# --------------------------- OneDrive Loader
 			with st.expander( label='OneDrive Loader', icon='🟦', expanded=False ):
 				onedrive_drive_id = st.text_input(
@@ -2490,7 +2556,7 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = 'OneDriveDocLoader'
 					st.session_state[ '_loader_status' ] = \
 						f'Loaded {len( documents )} OneDrive document(s).'
-				
+			
 			# --------------------------- Google Cloud File Loader
 			with st.expander( label='Google Cloud File Loader', icon='☁️', expanded=False ):
 				gcs_project_name = st.text_input(
@@ -2629,14 +2695,15 @@ with tabs[ 0 ]:
 				load_aws_file = col_load.button( 'Load', key='aws_file_load' )
 				clear_aws_file = col_clear.button( 'Clear', key='aws_file_clear' )
 				
-				can_save = ( st.session_state.get( 'active_loader' ) == 'AwsFileLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'AwsFileLoader'
+				            and isinstance( st.session_state.get( 'raw_text' ), str )
+				            and st.session_state.get( 'raw_text' ).strip( )
+				            )
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
-						file_name='aws_file_loader_output.txt', mime='text/plain', key='aws_file_save' )
+						file_name='aws_file_loader_output.txt', mime='text/plain',
+						key='aws_file_save' )
 				else:
 					col_save.button( 'Save', key='aws_file_save_disabled', disabled=True, )
 				
@@ -2651,8 +2718,9 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if ( load_aws_file and isinstance( aws_file_bucket, str ) and aws_file_bucket.strip( )
-						and isinstance( aws_file_key, str ) and aws_file_key.strip( ) ):
+				if (load_aws_file and isinstance( aws_file_bucket,
+						str ) and aws_file_bucket.strip( )
+						and isinstance( aws_file_key, str ) and aws_file_key.strip( )):
 					verify_value: str | bool | None = None
 					
 					if isinstance( aws_file_verify, str ) and aws_file_verify.strip( ):
@@ -2683,11 +2751,14 @@ with tabs[ 0 ]:
 						document.metadata[ 'loader' ] = 'AwsFileLoader'
 						document.metadata.setdefault( 'bucket', aws_file_bucket.strip( ) )
 						document.metadata.setdefault( 'key', aws_file_key.strip( ) )
-						document.metadata.setdefault( 'region_name', aws_file_region.strip( ) or None )
-						document.metadata.setdefault( 'api_version', aws_file_api_version.strip( ) or None )
+						document.metadata.setdefault( 'region_name',
+							aws_file_region.strip( ) or None )
+						document.metadata.setdefault( 'api_version',
+							aws_file_api_version.strip( ) or None )
 						document.metadata.setdefault( 'use_ssl', bool( aws_file_use_ssl ) )
 						document.metadata.setdefault( 'verify', verify_value )
-						document.metadata.setdefault( 'endpoint_url', aws_file_endpoint_url.strip( ) or None )
+						document.metadata.setdefault( 'endpoint_url',
+							aws_file_endpoint_url.strip( ) or None )
 						document.metadata.setdefault(
 							'source',
 							f"s3://{aws_file_bucket.strip( )}/{aws_file_key.strip( )}"
@@ -2967,11 +3038,14 @@ with tabs[ 0 ]:
 						document.metadata[ 'loader' ] = 'AwsBucketLoader'
 						document.metadata.setdefault( 'bucket', aws_bucket_name.strip( ) )
 						document.metadata.setdefault( 'prefix', aws_bucket_prefix.strip( ) )
-						document.metadata.setdefault( 'region_name', aws_bucket_region.strip( ) or None )
-						document.metadata.setdefault( 'api_version', aws_bucket_api_version.strip( ) or None )
+						document.metadata.setdefault( 'region_name',
+							aws_bucket_region.strip( ) or None )
+						document.metadata.setdefault( 'api_version',
+							aws_bucket_api_version.strip( ) or None )
 						document.metadata.setdefault( 'use_ssl', bool( aws_bucket_use_ssl ) )
 						document.metadata.setdefault( 'verify', verify_value )
-						document.metadata.setdefault( 'endpoint_url', aws_bucket_endpoint_url.strip( ) or None )
+						document.metadata.setdefault( 'endpoint_url',
+							aws_bucket_endpoint_url.strip( ) or None )
 						
 						if aws_bucket_prefix.strip( ):
 							document.metadata.setdefault(
@@ -3102,7 +3176,7 @@ with tabs[ 0 ]:
 					st.session_state.active_loader = 'SpfxLoader'
 					st.session_state[ '_loader_status' ] = \
 						f'Loaded {len( documents )} SharePoint document(s).'
-				
+	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — DOCUMENT RENDERING
 	# ------------------------------------------------------------------
@@ -3118,7 +3192,7 @@ with tabs[ 0 ]:
 					st.json( d.metadata )
 					st.text_area( 'Content', d.page_content[ : ],
 						height=450, key=f'preview_doc_{i}' )
-			
+	
 	st.divider( )
 	
 	# ------------------------------------------------------------------
@@ -3143,7 +3217,7 @@ with tabs[ 0 ]:
 				st.session_state.tokens = tokens
 				st.session_state.vocabulary = set( tokens )
 				st.session_state.token_counts = Counter( tokens )
-				
+			
 			tokens = st.session_state.tokens
 			vocabulary = st.session_state.vocabulary
 			counts = st.session_state.token_counts
@@ -3168,29 +3242,29 @@ with tabs[ 0 ]:
 			# ------------ Top Tokens
 			with st.expander( label='Tokens', icon='🉑', expanded=True ):
 				top_tokens = counts.most_common( 10 )
-				df_top = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index( 'token' )
+				df_top = pd.DataFrame( top_tokens, columns=[ 'token', 'count' ] ).set_index(
+					'token' )
 				st.bar_chart( df_top, color='#01438A' )
 			
 			st.divider( )
 			
-			st.subheader( 'Corpus Metrics')
+			st.subheader( 'Corpus Metrics' )
 			
 			# ------------ Corpus Metrics
 			with st.expander( label='Text', icon='📖', expanded=True ):
-				
 				col1, col2, col3, col4 = st.columns( 4, border=True )
 				with col1:
 					metric_with_tooltip( 'Characters', f'{char_count:,}',
 						'Total number of characters in the selected text.' )
-					
+				
 				with col2:
 					metric_with_tooltip( 'Tokens', f'{token_count:,}',
 						'Token Count: total number of tokenized words after cleanup.' )
-					
+				
 				with col3:
 					metric_with_tooltip( 'Unique Tokens', f'{vocab_size:,}',
 						'Vocabulary Size: number of distinct word types in the text.' )
-					
+				
 				with col4:
 					metric_with_tooltip( 'TTR', f'{ttr:.3f}',
 						'Type–Token Ratio: unique words ÷ total words.' )
@@ -3199,15 +3273,15 @@ with tabs[ 0 ]:
 				with col5:
 					metric_with_tooltip( 'Hapax Ratio', f'{hapax_ratio:.3f}',
 						'Hapax Ratio: proportion of words that occur only once.' )
-					
+				
 				with col6:
 					metric_with_tooltip( 'Avg Length', f'{avg_word_len:.2f}',
 						'Average number of characters per token.' )
-					
+				
 				with col7:
 					metric_with_tooltip( 'Stopword Ratio', f'{stopword_ratio:.2%}',
 						'Percentage of stopwords in the text.' )
-					
+				
 				with col8:
 					metric_with_tooltip(
 						'Lexical Density',
@@ -3223,7 +3297,8 @@ with tabs[ 0 ]:
 				if TEXTSTAT_AVAILABLE:
 					r1, r2, r3, r4 = st.columns( 4, border=True )
 					with r1:
-						metric_with_tooltip( 'Flesch Reading Ease', f'{textstat.flesch_reading_ease( raw_text ):.1f}',
+						metric_with_tooltip( 'Flesch Reading Ease',
+							f'{textstat.flesch_reading_ease( raw_text ):.1f}',
 							'Higher scores indicate easier readability.' )
 					
 					with r2:
@@ -3232,7 +3307,8 @@ with tabs[ 0 ]:
 							'Estimated U.S. grade level required.' )
 					
 					with r3:
-						metric_with_tooltip( 'Gunning Fog', f'{textstat.gunning_fog( raw_text ):.1f}',
+						metric_with_tooltip( 'Gunning Fog',
+							f'{textstat.gunning_fog( raw_text ):.1f}',
 							'Readability based on sentence length and complex words.' )
 					
 					with r4:
@@ -3285,7 +3361,7 @@ with tabs[ 1 ]:
 		
 		"""
 		st.session_state.processing_display_version = (
-				int( st.session_state.get( 'processing_display_version', 0 ) ) + 1 )
+				int( st.session_state.get( 'processing_display_version', 0 ) ) + 1)
 	
 	def coerce_text( value: object ) -> str:
 		"""
@@ -3352,14 +3428,13 @@ with tabs[ 1 ]:
 				remove_numbers = st.checkbox( 'Remove Numbers',
 					help='Removes numeric digits 0 through 9', value=False )
 				
-				
 				remove_xml = st.checkbox( 'Remove XML',
 					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
 				
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
 					help=r'Removes punctuation while preserving sentence delimiters',
 					value=False )
-	
+				
 				reduce_repeats = st.checkbox( 'Remove Repeats',
 					help='Reduces consecutive punctuation sequences to the left-most mark '
 					     'and inserts a following space when needed. Examples: ".." -> ". ", '
@@ -3563,8 +3638,8 @@ with tabs[ 1 ]:
 					if remove_pdf_repeats and isinstance( pdf_pages, list ) and pdf_pages:
 						clean_pages = pdf_parser.remove_repeats( pdf_pages )
 						processed_text = coerce_text( pdf_parser.rebuild_pages( pages=clean_pages,
-								preserve_page_breaks=st.session_state.get(
-									'pdf_preserve_page_breaks', False ) ) )
+							preserve_page_breaks=st.session_state.get(
+								'pdf_preserve_page_breaks', False ) ) )
 					
 					if clean_pdf_artifacts:
 						processed_text = coerce_text(
@@ -3575,7 +3650,7 @@ with tabs[ 1 ]:
 					
 					if rejoin_pdf_hyphenation:
 						processed_text = coerce_text( pdf_parser.rejoin_hyphenation(
-								processed_text, repair_embedded=repair_embedded_hyphenation ) )
+							processed_text, repair_embedded=repair_embedded_hyphenation ) )
 				
 				# ----------------------------------------------------------
 				# Noise / non-lexical cleanup
@@ -3591,10 +3666,10 @@ with tabs[ 1 ]:
 				
 				if remove_punctuation:
 					processed_text = coerce_text( tp.remove_punctuation( processed_text ) )
-					
+				
 				if reduce_repeats:
 					processed_text = tp.reduce_repeats( processed_text )
-					
+				
 				# ----------------------------------------------------------
 				# Word normalization
 				# ----------------------------------------------------------
@@ -3657,7 +3732,7 @@ with tabs[ 1 ]:
 				
 				if nltk_sentence_tokenize:
 					st.session_state.nltk_sentence_tokens = (
-							nlp.sentence_tokenizer( processed_text ) or [ ] )
+							nlp.sentence_tokenizer( processed_text ) or [ ])
 					
 					display_text = '\n'.join(
 						s for s in st.session_state.nltk_sentence_tokens
@@ -3694,14 +3769,14 @@ with tabs[ 1 ]:
 						f'{entity}\t{label}'
 						for entity, label in st.session_state.nltk_named_entities
 						if isinstance( entity, str ) and entity.strip( ) )
-					
+				
 				# ----------------------------------------------------------
 				# Final punctuation / delimiter cleanup
 				# ----------------------------------------------------------
 				if reduce_repeats:
 					processed_text = coerce_text( tp.reduce_repeats( processed_text ) )
 					display_text = coerce_text( tp.reduce_repeats( display_text ) )
-					
+				
 				# ----------------------------------------------------------
 				# Finalize timing
 				# ----------------------------------------------------------
@@ -3762,9 +3837,8 @@ with tabs[ 1 ]:
 				height=200, disabled=True, key=f'raw_text_view_display_{display_version}' )
 			
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
-				if ( isinstance( raw_text_current, str ) and raw_text_current.strip( )
-						and isinstance( processed_current, str ) and processed_current.strip( ) ):
-					
+				if (isinstance( raw_text_current, str ) and raw_text_current.strip( )
+						and isinstance( processed_current, str ) and processed_current.strip( )):
 					raw_tokens = raw_text_current.split( )
 					proc_tokens = processed_current.split( )
 					raw_chars = len( raw_text_current )
@@ -3815,7 +3889,6 @@ with tabs[ 2 ]:
 		st.info( 'Run text processing before semantic analysis.' )
 		st.stop( )
 	
-
 	# ------------------------------------------------------------------
 	# Resolve / defaults
 	# ------------------------------------------------------------------
@@ -3900,7 +3973,8 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	# Three-column layout
 	# ------------------------------------------------------------------
-	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True, vertical_alignment='top' )
+	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True,
+		vertical_alignment='top' )
 	
 	with col_tokens:
 		st.write( f'Tokens: {len( tokens )}' )
@@ -4084,7 +4158,7 @@ with (tabs[ 3 ]):
 		
 		if isinstance( processed_text, str ) and processed_text.strip( ):
 			processor = TextParser( )
-			lines = processor.split_sentences( text=processed_text  )
+			lines = processor.split_sentences( text=processed_text )
 			st.session_state.lines = lines
 			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ), num_rows='dynamic',
 				width='stretch', height='stretch' )
@@ -4213,7 +4287,7 @@ with (tabs[ 3 ]):
 		
 		tokens = st.session_state.get( 'tokens' )
 		sentences = st.session_state.get( 'sentences' )
-		token_counts = ( Counter( tokens ) if isinstance( tokens, list ) and tokens else None )
+		token_counts = (Counter( tokens ) if isinstance( tokens, list ) and tokens else None)
 		
 		if token_counts:
 			total_tokens = len( tokens )
@@ -4221,11 +4295,11 @@ with (tabs[ 3 ]):
 			hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
 			hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
 			
-			sentence_lengths = ( [ len( _safe_word_tokenize( s ) ) for s in sentences ]
-					if isinstance( sentences, list ) and sentences else [ ] )
+			sentence_lengths = ([ len( _safe_word_tokenize( s ) ) for s in sentences ]
+			                    if isinstance( sentences, list ) and sentences else [ ])
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
-			avg_sentence_len = ( sum( sentence_lengths ) / len( sentence_lengths )
-					if sentence_lengths else 0.0 )
+			avg_sentence_len = (sum( sentence_lengths ) / len( sentence_lengths )
+			                    if sentence_lengths else 0.0)
 			
 			r1, r2 = st.columns( 2 )
 			r1.metric( 'Total Tokens', f'{total_tokens:,}' )
@@ -4321,7 +4395,8 @@ with tabs[ 4 ]:
 	# ==================================================
 	with left:
 		st.markdown( '##### Embedding Providers' )
-		embedding_source = st.radio( 'Text Source', options=[ 'Processed Text', 'Chunked Documents' ],
+		embedding_source = st.radio( 'Text Source',
+			options=[ 'Processed Text', 'Chunked Documents' ],
 			horizontal=True, key=k( 'text_source' ), )
 		
 		st.session_state.embedding_source = embedding_source
@@ -4334,7 +4409,7 @@ with tabs[ 4 ]:
 		# Derived embedding input dataframe (for right column display)
 		# --------------------------------------------------
 		df_embedding_input = (pd.DataFrame( { 'text': texts } )
-		                      if has_texts else pd.DataFrame( columns=[ 'text' ] ) )
+		                      if has_texts else pd.DataFrame( columns=[ 'text' ] ))
 		
 		if not has_texts:
 			st.info( 'No text available. Run processing or chunking first.' )
@@ -4406,7 +4481,8 @@ with tabs[ 4 ]:
 			model = st.selectbox( 'Model', options=cfg.GEMINI_MODELS, key=k( 'gemini_model' ),
 				disabled=not has_texts, )
 			
-			task = st.selectbox( 'Task Type', options=Gemini( ).task_options, key=k( 'gemini_task' ),
+			task = st.selectbox( 'Task Type', options=Gemini( ).task_options,
+				key=k( 'gemini_task' ),
 				disabled=not has_texts, help='Required to determine embedding intent.', )
 			
 			dimensions = st.number_input( 'Dimensions', min_value=128, max_value=2048, step=128,
@@ -4463,7 +4539,7 @@ with tabs[ 4 ]:
 					st.session_state.embedding_model = model
 					
 					st.success( f'Generated {len( vectors )} embedding(s).' )
-		
+	
 	# ==================================================
 	# RIGHT COLUMN — Embedding input (read-only) + results below
 	# ==================================================
@@ -4481,7 +4557,6 @@ with tabs[ 4 ]:
 		st.data_editor( df_embedding_input, use_container_width=True, hide_index=True,
 			disabled=True, key=k( 'embedding_input_view' ), )
 	
-	
 	# --------------------------------------------------
 	# EMBEDDING RESULTS (read-only)
 	# --------------------------------------------------
@@ -4492,7 +4567,6 @@ with tabs[ 4 ]:
 	else:
 		st.data_editor( st.session_state.df_embedding_output, use_container_width=True,
 			hide_index=True, disabled=True, key=k( 'embedding_output_view' ), )
-	
 	
 	# ======================================================================================
 	# Tensor Embedding — Dimensionality Reduction Diagnostics (t-SNE / UMAP)
@@ -4511,7 +4585,8 @@ with tabs[ 4 ]:
 	else:
 		emb_array = np.asarray( embeddings )
 		if emb_array.ndim != 2 or emb_array.shape[ 0 ] < 5:
-			st.warning( 'At least 5 valid embedding vectors are required for meaningful diagnostics.' )
+			st.warning(
+				'At least 5 valid embedding vectors are required for meaningful diagnostics.' )
 		else:
 			ctrl_col1, ctrl_col2, ctrl_col3 = st.columns( 3, border=True )
 			with ctrl_col1:
@@ -4540,12 +4615,14 @@ with tabs[ 4 ]:
 			try:
 				if reduction_method == 't-SNE':
 					from sklearn.manifold import TSNE
+					
 					reducer = TSNE( n_components=2, perplexity=perplexity,
 						random_state=random_state, init='pca', learning_rate='auto' )
 					
 					reduced = reducer.fit_transform( emb_array )
 				else:
 					import umap
+					
 					reducer = umap.UMAP( n_components=2, n_neighbors=n_neighbors,
 						random_state=random_state, min_dist=0.1 )
 					
@@ -4560,12 +4637,13 @@ with tabs[ 4 ]:
 				st.error( f'Dimensionality reduction failed: {error_message}' )
 			
 			elif isinstance( reduced, np.ndarray ) and reduced.shape[ 1 ] == 2:
-				df_reduced = pd.DataFrame( reduced, columns=[ 'X',  'Y' ] )
+				df_reduced = pd.DataFrame( reduced, columns=[ 'X', 'Y' ] )
 				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
 				if isinstance( embedding_texts, list ):
 					df_reduced[ 'Preview' ] = [ (d[ :120 ] + '…')
-							if isinstance( d, str ) and len( d ) > 120 else str( d )
-							for d in embedding_texts ]
+					                            if isinstance( d, str ) and len( d ) > 120 else str(
+						d )
+					                            for d in embedding_texts ]
 				else:
 					df_reduced[ 'Preview' ] = ''
 				
@@ -4574,18 +4652,19 @@ with tabs[ 4 ]:
 				# ----------------------------
 				chart_container = st.container( border=True )
 				with chart_container:
-					st.caption( 'Each point is an embedded-chunk and proximity reflects similarity.' )
+					st.caption(
+						'Each point is an embedded-chunk and proximity reflects similarity.' )
 					st.scatter_chart( df_reduced, x='X', y='Y', size=60, use_container_width=True )
-	
+				
 				st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	
+				
 				# ----------------------------
 				# Tabular inspection (optional)
 				# ----------------------------
 				st.subheader( 'Dimension-Reduced Data' )
 				with st.expander( 'View Reduced Coordinates (Table)', expanded=True ):
 					st.data_editor( df_reduced, use_container_width=True, num_rows='dynamic' )
-				
+
 # ======================================================================================
 # Tab — Vector Database (sqlite-vec)
 # ======================================================================================
@@ -4624,10 +4703,10 @@ with tabs[ 5 ]:
 	
 	document_name = st.text_input( 'Document / Collection Name', value='default_document' )
 	
-	table_name = ( f'{document_name}__'
-			f'{embedding_provider}__'
-			f'{embedding_model}__'
-			f'{dim}' )
+	table_name = (f'{document_name}__'
+	              f'{embedding_provider}__'
+	              f'{embedding_model}__'
+	              f'{dim}')
 	
 	st.caption( f'Vector Table: `{table_name}`' )
 	
