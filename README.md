@@ -21,6 +21,8 @@
 
 ___
 
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-0078FC?style=for-the-badge&logo=github)](https://is-leeroy-jenkins.github.io/Chonky/)
+
 Chonky is a modular Python and Streamlit text-processing application for analysts, data scientists,
 and machine-learning practitioners working with unstructured, semi-structured, and document-based
 text. It provides a complete pipeline for document ingestion, text cleaning, NLP preprocessing,
