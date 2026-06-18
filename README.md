@@ -54,7 +54,7 @@ ___
 
 - Container App
 
-## ☁️ Google (Colab)
+## ☁️ Google  
   
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/is-leeroy-jenkins/Chonky/blob/main/ipynb/pipes.ipynb)
 
