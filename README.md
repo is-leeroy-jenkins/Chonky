@@ -39,9 +39,10 @@ sqlite-vec; and run semantic similarity search over stored chunks.
 ## 🎥 Demo
 
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/chonky-demo.gif)
+___
 
 
-## 🕸️ Streamlit (Web)
+## 🔥 Streamlit 
 
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit\&logoColor=white)](https://chonky-py.streamlit.app/)
 ![](https://github.com/is-leeroy-jenkins/Chonky/blob/main/resources/images/Chonky-streamlit.gif)
