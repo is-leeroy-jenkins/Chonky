@@ -4482,13 +4482,8 @@ with ( tabs[ 3 ] ):
 					'Character Count',
 			]
 			
-			st.data_editor(
-				df_chunk_records[ chunk_columns ],
-				num_rows='fixed',
-				width='stretch',
-				height='stretch',
-				disabled=True,
-				key='chunk_records_editor',
+			st.data_editor( df_chunk_records[ chunk_columns ], num_rows='fixed',
+				width='stretch', height='stretch', disabled=True, key='chunk_records_editor',
 				column_config={
 						'Chunk ID': st.column_config.NumberColumn( 'Chunk ID', format='%d',
 							width='small', ),
