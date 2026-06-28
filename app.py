@@ -4431,78 +4431,164 @@ with ( tabs[ 3 ] ):
 	st.session_state.lines = lines if lines else None
 	
 	# ------------------------------------------------------------------
+	# Canonical Chunk Data
+	# ------------------------------------------------------------------
+	chunked_documents = st.session_state.get( 'chunked_documents' )
+	df_chunk_records = st.session_state.get( 'df_chunk_records' )
+	
+	# Rebuild canonical records only when chunk text exists but its dataframe
+	# is unavailable, such as after session-state migration or code reload.
+	if (
+			isinstance( chunked_documents, list )
+			and chunked_documents
+			and (
+			not isinstance( df_chunk_records, pd.DataFrame )
+			or df_chunk_records.empty
+	)
+	):
+		df_chunk_records = build_chunk_records(
+			chunks=chunked_documents,
+			mode=st.session_state.get(
+				'chunk_mode_value',
+				'tokens',
+			),
+			configured_size=int(
+				st.session_state.get(
+					'chunk_size',
+					0,
+				) or 0
+			),
+			configured_overlap=int(
+				st.session_state.get(
+					'chunk_overlap',
+					0,
+				) or 0
+			),
+		)
+		
+		st.session_state.df_chunk_records = df_chunk_records
+	
+	# ------------------------------------------------------------------
 	# LEFT COLUMN — Chunked Data
 	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
-		chunked_documents = st.session_state.get( 'chunked_documents' )
-		df_chunk_records = st.session_state.get( 'df_chunk_records' )
-		if isinstance( chunked_documents, list ) and chunked_documents:
-			if not isinstance( df_chunk_records, pd.DataFrame ) or df_chunk_records.empty:
-				import tiktoken
-				
-				encoding = tiktoken.get_encoding( 'cl100k_base' )
-				chunk_mode_value = st.session_state.get( 'chunk_mode_value', 'tokens', )
-				configured_size = st.session_state.get( 'chunk_size', )
-				configured_overlap = st.session_state.get( 'chunk_overlap', )
-				
-				chunk_records = [ {
-								'Chunk ID': index,
-								'Chunk Text': chunk,
-								'Token Count': len( encoding.encode( chunk, disallowed_special=( ), ) ),
-								'Character Count': len( chunk ),
-								'Chunk Mode': chunk_mode_value,
-								'Configured Size': configured_size,
-								'Configured Overlap': configured_overlap,
-						} for index, chunk in enumerate( chunked_documents, start=1, )
-						if isinstance( chunk, str ) and chunk.strip( ) ]
-				
-				df_chunk_records = pd.DataFrame( chunk_records )
-				st.session_state.df_chunk_records = df_chunk_records
+		
+		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
+			chunk_columns = [
+					'Chunk ID',
+					'Chunk Text',
+					'Token Count',
+					'Character Count',
+			]
 			
-			display_columns = [ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', ]
+			st.data_editor(
+				df_chunk_records[ chunk_columns ],
+				num_rows='fixed',
+				width='stretch',
+				height='stretch',
+				disabled=True,
+				key='chunk_records_editor',
+				column_config={
+						'Chunk ID': st.column_config.NumberColumn(
+							'Chunk ID',
+							format='%d',
+							width='small',
+						),
+						'Chunk Text': st.column_config.TextColumn(
+							'Chunk Text',
+							width='large',
+						),
+						'Token Count': st.column_config.NumberColumn(
+							'Tokens',
+							format='%d',
+							width='small',
+						),
+						'Character Count': st.column_config.NumberColumn(
+							'Characters',
+							format='%d',
+							width='small',
+						),
+				},
+			)
 			
-			st.data_editor( df_chunk_records[ display_columns ], num_rows='fixed',
-				width='stretch', height='stretch', disabled=True, key='chunk_records_editor', )
-			
-			st.download_button( label='Save Chunks',
-				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
-				file_name='document_chunks.csv', mime='text/csv',
-				key='download_chunk_records', use_container_width=True, )
+			st.download_button(
+				label='Save Chunks',
+				data=df_chunk_records.to_csv(
+					index=False,
+				).encode( 'utf-8' ),
+				file_name='document_chunks.csv',
+				mime='text/csv',
+				key='download_chunk_records',
+				use_container_width=True,
+			)
 		else:
 			st.info( 'Run chunking in Semantic Analysis first.' )
 	
 	# ------------------------------------------------------------------
-	# RIGHT COLUMN — Vector Space View
+	# RIGHT COLUMN — Chunk Summary
 	# ------------------------------------------------------------------
 	with chunk_col:
-		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens', )
-		
-		if ( isinstance( df_sentence_tokens, pd.DataFrame )
-				and not df_sentence_tokens.empty ):
-			vector_size = ( len( df_sentence_tokens.index ) * len( df_sentence_tokens.columns ) )
-			st.text( f'Vector Space: {vector_size:,}' )
-			df_chunks = df_sentence_tokens.copy( )
-			st.session_state.df_chunks = df_chunks
-			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch',
-				key='vector_space_editor', )
+		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
+			st.text(
+				f'Chunk Summary: {len( df_chunk_records ):,} chunks'
+			)
+			
+			summary_columns = [
+					'Chunk ID',
+					'Token Count',
+					'Character Count',
+					'Word Count',
+					'Sentence Count',
+					'Chunk Preview',
+					'Configured Size',
+					'Configured Overlap',
+			]
+			
+			df_chunk_summary = df_chunk_records[ summary_columns ].copy( )
+			
+			st.data_editor( df_chunk_summary, num_rows='fixed', width='stretch',
+				height='stretch', disabled=True, key='chunk_summary_editor',
+				column_config={ 'Chunk ID': st.column_config.NumberColumn( 'Chunk ID',
+							format='%d', width='small', ),
+						'Token Count': st.column_config.NumberColumn(
+							'Tokens',
+							format='%d',
+							width='small',
+						),
+						'Character Count': st.column_config.NumberColumn(
+							'Characters',
+							format='%d',
+							width='small',
+						),
+						'Word Count': st.column_config.NumberColumn(
+							'Words',
+							format='%d',
+							width='small',
+						),
+						'Sentence Count': st.column_config.NumberColumn(
+							'Sentences',
+							format='%d',
+							width='small',
+						),
+						'Chunk Preview': st.column_config.TextColumn(
+							'Preview',
+							width='large',
+						),
+						'Configured Size': st.column_config.NumberColumn(
+							'Size',
+							format='%d',
+							width='small',
+						),
+						'Configured Overlap': st.column_config.NumberColumn(
+							'Overlap',
+							format='%d',
+							width='small',
+						),
+				},
+			)
 		else:
-			st.session_state.df_chunks = None
-			st.caption( 'Vector space not available yet.' )
-	
-	documents = st.session_state.get( 'documents' )
-	data_connection = st.session_state.get( 'data_connection' )
-	loader_name = st.session_state.get( 'active_loader' )
-	
-	if st.session_state.documents is None:
-		st.warning( 'No documents loaded. Please load documents first.' )
-	elif loader_name is None:
-		st.warning( 'No active loader found.' )
-	else:
-		chunk_modes = cfg.CHUNKABLE_LOADERS.get( loader_name )
-	
-	if chunk_modes is None:
-		st.info( f'Chunking is not supported for loader: {loader_name}' )
+			st.caption( 'Chunk summary not available yet.' )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Tokenization Diagnostics' )
@@ -4539,7 +4625,6 @@ with ( tabs[ 3 ] ):
 			st.info( 'Sentence data not available.' )
 	
 	row2_col1, row2_col2 = st.columns( [ 0.5, 0.5 ], border=True )
-	
 	with row2_col1:
 		st.caption( 'Token Grid Sparsity (Padding Analysis)' )
 		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens' )
