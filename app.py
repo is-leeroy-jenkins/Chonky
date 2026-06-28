@@ -4471,28 +4471,23 @@ with ( tabs[ 3 ] ):
 	
 	with row2_col1:
 		st.caption( 'Token Grid Sparsity (Padding Analysis)' )
-		
 		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens' )
-		
 		if isinstance( df_sentence_tokens, pd.DataFrame ) and not df_sentence_tokens.empty:
 			total_cells = df_sentence_tokens.shape[ 0 ] * df_sentence_tokens.shape[ 1 ]
 			empty_cells = (df_sentence_tokens == '').sum( ).sum( )
 			filled_cells = total_cells - empty_cells
 			padding_ratio = empty_cells / total_cells if total_cells > 0 else 0.0
 			fill_ratio = filled_cells / total_cells if total_cells > 0 else 0.0
-			
 			m1, m2, m3 = st.columns( 3 )
 			m1.metric( 'Total Cells', f'{total_cells:,}' )
 			m2.metric( 'Filled Cells', f'{filled_cells:,}' )
 			m3.metric( 'Padding %', f'{padding_ratio:.1%}' )
-			
 			st.progress( fill_ratio )
 		else:
 			st.info( 'Sentence token grid not available.' )
 	
 	with row2_col2:
 		st.caption( 'Embedding Readiness Scorecard' )
-		
 		tokens = st.session_state.get( 'tokens' )
 		sentences = st.session_state.get( 'sentences' )
 		token_counts = (Counter( tokens ) if isinstance( tokens, list ) and tokens else None)
@@ -4502,9 +4497,8 @@ with ( tabs[ 3 ] ):
 			unique_tokens = len( token_counts )
 			hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
 			hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
-			
-			sentence_lengths = ([ len( _safe_word_tokenize( s ) ) for s in sentences ]
-			                    if isinstance( sentences, list ) and sentences else [ ])
+			sentence_lengths = ( [ len( _safe_word_tokenize( s ) ) for s in sentences ]
+			                    if isinstance( sentences, list ) and sentences else [ ] )
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
 			avg_sentence_len = (sum( sentence_lengths ) / len( sentence_lengths )
 			                    if sentence_lengths else 0.0)
