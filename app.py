@@ -399,6 +399,106 @@ def chunk_tokens( text: str, size: int, overlap: int,
 	
 	return chunks
 
+def build_chunk_records(
+		chunks: List[ str ],
+		mode: str,
+		configured_size: int,
+		configured_overlap: int,
+		preview_length: int = 250 ) -> pd.DataFrame:
+	"""
+	Build canonical chunk records.
+
+	Purpose:
+		Creates the canonical chunk dataframe used by the Chunked Data table,
+		Chunk Summary table, CSV export, validation metrics, and downstream
+		embedding diagnostics. Each record preserves the complete chunk text
+		while adding token, character, word, sentence, and preview measurements.
+
+	Args:
+		chunks: Canonical chunk strings in source order.
+		mode: Chunking mode used to generate the chunks.
+		configured_size: Chunk size selected by the user.
+		configured_overlap: Chunk overlap selected by the user.
+		preview_length: Maximum number of characters retained in each preview.
+
+	Returns:
+		pd.DataFrame: Canonical chunk records with one row per chunk.
+	"""
+	if not isinstance( chunks, list ) or not chunks:
+		return pd.DataFrame(
+			columns=[
+					'Chunk ID',
+					'Chunk Text',
+					'Token Count',
+					'Character Count',
+					'Word Count',
+					'Sentence Count',
+					'Chunk Preview',
+					'Chunk Mode',
+					'Configured Size',
+					'Configured Overlap',
+			]
+		)
+	
+	encoding = tiktoken.get_encoding( 'cl100k_base' )
+	records: List[ dict ] = [ ]
+	
+	for index, chunk in enumerate( chunks, start=1 ):
+		if not isinstance( chunk, str ) or not chunk.strip( ):
+			continue
+		
+		chunk_text = chunk.strip( )
+		token_ids = encoding.encode(
+			chunk_text,
+			disallowed_special=( ),
+		)
+		
+		try:
+			words = word_tokenize( chunk_text )
+		except LookupError:
+			words = re.findall(
+				r"\b[\w'-]+\b",
+				chunk_text,
+				flags=re.UNICODE,
+			)
+		
+		try:
+			sentences = sent_tokenize( chunk_text )
+		except LookupError:
+			sentences = [
+					value.strip( )
+					for value in re.split(
+						r'(?<=[.!?])\s+',
+						chunk_text,
+					)
+					if value.strip( )
+			]
+		
+		preview = re.sub(
+			r'\s+',
+			' ',
+			chunk_text,
+		).strip( )
+		
+		if len( preview ) > int( preview_length ):
+			preview = f'{preview[ : int( preview_length ) ].rstrip( )}…'
+		
+		records.append( {
+					'Chunk ID': index,
+					'Chunk Text': chunk_text,
+					'Token Count': len( token_ids ),
+					'Character Count': len( chunk_text ),
+					'Word Count': len(
+						[ word for word in words if isinstance( word, str ) and word.strip( ) ] ),
+					'Sentence Count': len( sentences ),
+					'Chunk Preview': preview,
+					'Chunk Mode': str( mode ),
+					'Configured Size': int( configured_size ),
+					'Configured Overlap': int( configured_overlap ),
+			} )
+	
+	return pd.DataFrame( records )
+
 def rebuild_token_text( tokens: List[ str ] ) -> str:
 	"""Rebuild display text from token values.
 
@@ -419,7 +519,6 @@ def rebuild_token_text( tokens: List[ str ] ) -> str:
 	delimiters = { '.', '?', '!', ';', ':', ',', ')' }
 	openers = { '(', '[', '{' }
 	parts: List[ str ] = [ ]
-	
 	for token in tokens:
 		if not isinstance( token, str ):
 			continue
