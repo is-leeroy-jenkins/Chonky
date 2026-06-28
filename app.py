@@ -4530,9 +4530,7 @@ with ( tabs[ 3 ] ):
 	# ------------------------------------------------------------------
 	with chunk_col:
 		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
-			st.text(
-				f'Chunk Summary: {len( df_chunk_records ):,} chunks'
-			)
+			st.text( f'Chunk Summary: {len( df_chunk_records ):,} chunks' )
 			
 			summary_columns = [
 					'Chunk ID',
@@ -4542,8 +4540,7 @@ with ( tabs[ 3 ] ):
 					'Sentence Count',
 					'Chunk Preview',
 					'Configured Size',
-					'Configured Overlap',
-			]
+					'Configured Overlap', ]
 			
 			df_chunk_summary = df_chunk_records[ summary_columns ].copy( )
 			
