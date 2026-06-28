@@ -179,34 +179,56 @@ def encode_image_base64( path: str ) -> str:
 	return base64.b64encode( data ).decode( "utf-8" )
 
 def clear_if_active( loader_name: str ) -> None:
-	"""Clear loader-specific session state when a loader is active.
-
+	"""
 	Purpose:
-		Resets document, token, chunking, embedding, dataframe, and table state only when the
-		requested loader is the active loader. The helper protects unrelated workflow state while
-		allowing individual loader panels to clear their own downstream outputs.
+		Clears loader-specific session state when the supplied loader is currently active.
+		The reset removes loaded documents, processed data, chunk records, diagnostic data,
+		embeddings, and dataframe state without affecting an unrelated active loader.
 
 	Args:
-		loader_name: Name of the loader whose state should be cleared when active.
+		loader_name: Name of the loader whose state should be cleared.
+
+	Returns:
+		None.
 	"""
-	if st.session_state.active_loader == loader_name:
+	if st.session_state.get( 'active_loader' ) == loader_name:
 		st.session_state.documents = None
+		st.session_state.raw_documents = None
+		st.session_state.raw_text = None
+		st.session_state.processed_text = None
+		st.session_state.displayed_text = ''
+		st.session_state.processed_text_display = ''
 		st.session_state.active_loader = None
+		
 		st.session_state.tokens = None
 		st.session_state.vocabulary = None
 		st.session_state.token_counts = None
+		
 		st.session_state.chunks = None
 		st.session_state.chunk_modes = None
 		st.session_state.chunked_documents = None
+		st.session_state.df_chunk_records = None
+		st.session_state.chunk_size = None
+		st.session_state.chunk_overlap = None
+		st.session_state.chunk_mode_value = None
+		
+		st.session_state.sentences = None
+		st.session_state.lines = None
+		st.session_state.df_sentence_tokens = None
+		
 		st.session_state.embeddings = None
+		st.session_state.embedding_model = None
+		
 		st.session_state.active_table = None
 		st.session_state.df_frequency = None
+		st.session_state.df_token_frequency = None
 		st.session_state.df_tables = None
 		st.session_state.df_schema = None
 		st.session_state.df_preview = None
 		st.session_state.df_count = None
 		st.session_state.df_chunks = None
-		st.session_state.lines = None
+		
+		st.session_state.pdf_pages = None
 
 def metric_with_tooltip( label: str, value: str, tooltip: str ):
 	"""Render a Streamlit metric with optional hover guidance.
@@ -315,43 +337,67 @@ def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
 	
 	return chunks
 
-def chunk_tokens( tokens: list[ str ], size: int, overlap: int ) -> List[ str ]:
-	"""Chunk tokens by overlapped token windows.
-
+def chunk_tokens( text: str, size: int, overlap: int,
+		encoding_name: str = 'cl100k_base' ) -> List[ str ]:
+	"""
 	Purpose:
-		Splits a token list into overlapping windows and rejoins each window into a string for
-		Chonky tokenization, semantic-analysis, and embedding-readiness workflows. The function
-		validates list input and clamps chunk parameters to safe values.
+		Splits source text into overlapping model-token windows using the selected
+		tiktoken encoding. Each returned string represents one canonical chunk used
+		for display, CSV export, embedding generation, and vector persistence.
 
 	Args:
-		tokens: Token values to chunk.
-		size: Maximum number of tokens in each chunk.
-		overlap: Number of overlapping tokens between adjacent chunks.
+		text: Source text to divide into token windows.
+		size: Maximum number of model tokens in each chunk.
+		overlap: Number of model tokens repeated between adjacent chunks.
+		encoding_name: Tiktoken encoding used to encode and decode the source text.
 
 	Returns:
-		List[str]: Token-window chunk strings.
+		List[str]: Decoded model-token chunks in source order.
+
+	Raises:
+		ValueError: Raised when size is less than one or overlap is not smaller than size.
 	"""
-	if not isinstance( tokens, list ) or not tokens:
+	import tiktoken
+	
+	if not isinstance( text, str ) or not text.strip( ):
 		return [ ]
 	
 	size = int( size )
 	overlap = int( overlap )
-	size = max( 1, size )
-	overlap = max( 0, min( overlap, size - 1 ) )
+	
+	if size < 1:
+		raise ValueError( 'Chunk size must be greater than zero.' )
+	
+	if overlap < 0:
+		raise ValueError( 'Chunk overlap cannot be negative.' )
+	
+	if overlap >= size:
+		raise ValueError( 'Chunk overlap must be smaller than chunk size.' )
+	
+	encoding = tiktoken.get_encoding( encoding_name )
+	token_ids = encoding.encode( text, disallowed_special=( ) )
+	
+	if not token_ids:
+		return [ ]
 	
 	step = size - overlap
-	out: list[ str ] = [ ]
+	chunks: List[ str ] = [ ]
 	
-	i = 0
-	n = len( tokens )
-	while i < n:
-		window = tokens[ i: i + size ]
-		s = " ".join( t for t in window if isinstance( t, str ) and t.strip( ) ).strip( )
-		if s:
-			out.append( s )
-		i += step
+	for start in range( 0, len( token_ids ), step ):
+		window = token_ids[ start: start + size ]
+		
+		if not window:
+			continue
+		
+		chunk_text = encoding.decode( window ).strip( )
+		
+		if chunk_text:
+			chunks.append( chunk_text )
+		
+		if start + size >= len( token_ids ):
+			break
 	
-	return out
+	return chunks
 
 def rebuild_token_text( tokens: List[ str ] ) -> str:
 	"""Rebuild display text from token values.
@@ -3878,21 +3924,23 @@ with tabs[ 1 ]:
 # ======================================================================================
 with tabs[ 2 ]:
 	import pandas as pd
+	import tiktoken
 	from nltk.tokenize import word_tokenize
 	
 	processed_text = st.session_state.get( 'processed_text' )
 	
 	# ------------------------------------------------------------------
-	# Guard: must have processed text to proceed
+	# Guard
 	# ------------------------------------------------------------------
 	if not isinstance( processed_text, str ) or not processed_text.strip( ):
 		st.info( 'Run text processing before semantic analysis.' )
 		st.stop( )
 	
 	# ------------------------------------------------------------------
-	# Resolve / defaults
+	# Chunking Modes
 	# ------------------------------------------------------------------
 	chunk_modes = st.session_state.get( 'chunk_modes' )
+	
 	if not isinstance( chunk_modes, (list, tuple) ) or not chunk_modes:
 		chunk_modes = [ 'chars', 'tokens' ]
 		st.session_state.chunk_modes = list( chunk_modes )
@@ -3900,55 +3948,171 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	# Controls
 	# ------------------------------------------------------------------
-	st.subheader( "Semantic Analysis" )
+	st.subheader( 'Semantic Analysis' )
 	
-	mode = st.selectbox( 'Chunking Mode', options=list( chunk_modes ), key='chunk_mode',
-		help='Select how documents are chunked', )
+	mode = st.selectbox(
+		'Chunking Mode',
+		options=list( chunk_modes ),
+		key='chunk_mode',
+		help='Select whether chunk size and overlap are measured in characters or model tokens.',
+	)
 	
 	col_a, col_b = st.columns( 2 )
 	
 	with col_a:
-		chunk_size = st.number_input( 'Chunk Size', min_value=10, max_value=5000, value=1000,
-			step=10, key='chunk_count', )
+		chunk_size = st.number_input(
+			'Chunk Size',
+			min_value=10,
+			max_value=5000,
+			value=1000,
+			step=10,
+			key='chunk_count',
+		)
 	
 	with col_b:
-		overlap = st.number_input( 'Overlap', min_value=0, max_value=2000, value=200,
-			step=50, key='overlap_input', )
+		overlap = st.number_input(
+			'Overlap',
+			min_value=0,
+			max_value=2000,
+			value=200,
+			step=50,
+			key='overlap_input',
+		)
 	
 	col_run, col_reset = st.columns( 2 )
-	run_chunking = col_run.button( 'Chunk', key='run_button' )
-	reset_chunking = col_reset.button( 'Reset', key='reset_control' )
+	
+	run_chunking = col_run.button(
+		'Chunk',
+		key='run_button',
+	)
+	
+	reset_chunking = col_reset.button(
+		'Reset',
+		key='reset_control',
+	)
 	
 	# ------------------------------------------------------------------
-	# Actions
+	# Reset
 	# ------------------------------------------------------------------
 	if reset_chunking:
 		st.session_state.chunked_documents = None
+		st.session_state.df_chunk_records = None
+		st.session_state.chunk_size = None
+		st.session_state.chunk_overlap = None
+		st.session_state.chunk_mode_value = None
+		st.session_state.embeddings = None
+		
 		st.info( 'Chunking controls reset.' )
 	
+	# ------------------------------------------------------------------
+	# Chunk Generation
+	# ------------------------------------------------------------------
 	if run_chunking:
-		if mode == 'chars':
-			chunked_documents = chunk_characters( text=processed_text, size=int( chunk_size ),
-				overlap=int( overlap ) )
-		elif mode == 'tokens':
-			toks = word_tokenize( processed_text )
-			chunked_documents = chunk_tokens( tokens=toks, size=int( max( 1, chunk_size // 10 ) ),
-				# practical default if user picked 1000 chars
-				overlap=int( max( 0, overlap // 10 ) ) )
+		if int( overlap ) >= int( chunk_size ):
+			st.error( 'Overlap must be smaller than chunk size.' )
 		else:
-			chunked_documents = [ ]
-			st.error( f'Unsupported chunking mode: {mode}' )
-		
-		st.session_state.chunked_documents = chunked_documents
-		st.success(
-			f'Chunking complete: {len( chunked_documents )} chunks generated '
-			f'(mode={mode}, size={chunk_size}, overlap={overlap})'
-		)
-	
-	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+			if mode == 'chars':
+				chunked_documents = chunk_characters(
+					text=processed_text,
+					size=int( chunk_size ),
+					overlap=int( overlap ),
+				)
+			elif mode == 'tokens':
+				chunked_documents = chunk_tokens(
+					text=processed_text,
+					size=int( chunk_size ),
+					overlap=int( overlap ),
+					encoding_name='cl100k_base',
+				)
+			else:
+				chunked_documents = [ ]
+				st.error( f'Unsupported chunking mode: {mode}' )
+			
+			# ----------------------------------------------------------
+			# Canonical Chunk Records
+			# ----------------------------------------------------------
+			if chunked_documents:
+				encoding = tiktoken.get_encoding( 'cl100k_base' )
+				
+				chunk_records = [
+						{
+								'Chunk ID': index,
+								'Chunk Text': chunk,
+								'Token Count': len(
+									encoding.encode(
+										chunk,
+										disallowed_special=( ),
+									)
+								),
+								'Character Count': len( chunk ),
+								'Chunk Mode': mode,
+								'Configured Size': int( chunk_size ),
+								'Configured Overlap': int( overlap ),
+						}
+						for index, chunk in enumerate(
+							chunked_documents,
+							start=1,
+						)
+				]
+				
+				df_chunk_records = pd.DataFrame( chunk_records )
+				
+				st.session_state.chunked_documents = chunked_documents
+				st.session_state.df_chunk_records = df_chunk_records
+				st.session_state.chunk_size = int( chunk_size )
+				st.session_state.chunk_overlap = int( overlap )
+				st.session_state.chunk_mode_value = mode
+				
+				# Existing embeddings no longer correspond to current chunks.
+				st.session_state.embeddings = None
+				
+				st.success(
+					f'Chunking complete: {len( chunked_documents ):,} chunks generated '
+					f'(mode={mode}, size={int( chunk_size )}, '
+					f'overlap={int( overlap )}).'
+				)
+			else:
+				st.session_state.chunked_documents = None
+				st.session_state.df_chunk_records = None
+				st.warning( 'No chunks were generated.' )
 	
 	# ------------------------------------------------------------------
-	# Tokenization & Vocabulary
+	# Chunk Validation
+	# ------------------------------------------------------------------
+	df_chunk_records = st.session_state.get( 'df_chunk_records' )
+	
+	if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
+		token_counts = df_chunk_records[ 'Token Count' ]
+		
+		metric_1, metric_2, metric_3, metric_4 = st.columns(
+			4,
+			border=True,
+		)
+		
+		metric_1.metric(
+			'Chunks',
+			f'{len( df_chunk_records ):,}',
+		)
+		
+		metric_2.metric(
+			'Minimum Tokens',
+			f'{int( token_counts.min( ) ):,}',
+		)
+		
+		metric_3.metric(
+			'Median Tokens',
+			f'{int( token_counts.median( ) ):,}',
+		)
+		
+		metric_4.metric(
+			'Maximum Tokens',
+			f'{int( token_counts.max( ) ):,}',
+		)
+	
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True, )
+	
+	# ------------------------------------------------------------------
+	# Tokenization and Vocabulary
 	# ------------------------------------------------------------------
 	processor = TextParser( )
 	tokens = word_tokenize( processed_text )
@@ -3971,39 +4135,84 @@ with tabs[ 2 ]:
 		st.session_state.df_token_frequency = None
 	
 	# ------------------------------------------------------------------
-	# Three-column layout
+	# Three-Column Layout
 	# ------------------------------------------------------------------
-	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True,
-		vertical_alignment='top' )
+	col_tokens, col_vocab, col_freq = st.columns(
+		[ 1, 1, 2 ],
+		border=True,
+		vertical_alignment='top',
+	)
 	
 	with col_tokens:
-		st.write( f'Tokens: {len( tokens )}' )
-		st.data_editor( pd.DataFrame( tokens, columns=[ 'Token' ] ), num_rows='dynamic',
-			use_container_width=True, height='stretch', disabled=True, )
+		st.write( f'Tokens: {len( tokens ):,}' )
+		
+		st.data_editor(
+			pd.DataFrame(
+				tokens,
+				columns=[ 'Token' ],
+			),
+			num_rows='dynamic',
+			use_container_width=True,
+			height='stretch',
+			disabled=True,
+		)
 	
 	with col_vocab:
-		st.write( f'Vocabulary: {len( vocabulary )}' )
-		st.data_editor( pd.DataFrame( vocabulary, columns=[ 'Word' ] ), num_rows='dynamic',
-			use_container_width=True, height='stretch', disabled=True, )
+		st.write( f'Vocabulary: {len( vocabulary ):,}' )
+		
+		st.data_editor(
+			pd.DataFrame(
+				vocabulary,
+				columns=[ 'Word' ],
+			),
+			num_rows='dynamic',
+			use_container_width=True,
+			height='stretch',
+			disabled=True,
+		)
 	
 	with col_freq:
 		st.markdown( '#### Frequency Distribution' )
 		st.caption( 'Top 100 most frequent tokens' )
 		
 		if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
-			numeric_cols = df_frequency.select_dtypes( include='number' )
+			numeric_cols = df_frequency.select_dtypes(
+				include='number',
+			)
+			
 			if not numeric_cols.empty:
 				freq_col = numeric_cols.columns[ 0 ]
-				label_col = df_frequency.columns[ 0 ]
-				df_top = df_frequency.sort_values( freq_col, ascending=False ).head( 100 )
 				
-				st.bar_chart( df_top.set_index( label_col )[ freq_col ], use_container_width=True, )
+				label_cols = [
+						column
+						for column in df_frequency.columns
+						if column != freq_col
+				]
+				
+				if label_cols:
+					label_col = label_cols[ 0 ]
+					
+					df_top = (
+							df_frequency
+							.sort_values(
+								freq_col,
+								ascending=False,
+							)
+							.head( 100 )
+					)
+					
+					st.bar_chart(
+						df_top.set_index( label_col )[ freq_col ],
+						use_container_width=True,
+					)
+				else:
+					st.info( 'No token label column available for charting.' )
 			else:
 				st.info( 'No numeric frequency column available for charting.' )
 		else:
 			st.info( 'Frequency distribution unavailable.' )
 	
-	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True, )
 
 # ======================================================================================
 # Tab - Data Tokenization
@@ -4151,43 +4360,84 @@ with (tabs[ 3 ]):
 		st.session_state.df_sentence_tokens = None
 	
 	# ------------------------------------------------------------------
+	# Canonical Sentence Diagnostic State
+	# ------------------------------------------------------------------
+	lines = sentences if isinstance( sentences, list ) else [ ]
+	st.session_state.lines = lines if lines else None
+	
+	# ------------------------------------------------------------------
 	# LEFT COLUMN — Chunked Data
 	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
 		
-		if isinstance( processed_text, str ) and processed_text.strip( ):
-			processor = TextParser( )
-			lines = processor.split_sentences( text=processed_text )
-			st.session_state.lines = lines
-			st.data_editor( pd.DataFrame( lines, columns=[ 'Processed Text' ] ), num_rows='dynamic',
-				width='stretch', height='stretch' )
+		chunked_documents = st.session_state.get( 'chunked_documents' )
+		df_chunk_records = st.session_state.get( 'df_chunk_records' )
+		
+		if isinstance( chunked_documents, list ) and chunked_documents:
+			if not isinstance( df_chunk_records, pd.DataFrame ) or df_chunk_records.empty:
+				import tiktoken
+				
+				encoding = tiktoken.get_encoding( 'cl100k_base' )
+				
+				chunk_mode_value = st.session_state.get( 'chunk_mode_value', 'tokens', )
+				
+				configured_size = st.session_state.get( 'chunk_size', )
+				
+				configured_overlap = st.session_state.get( 'chunk_overlap', )
+				
+				chunk_records = [
+						{
+								'Chunk ID': index,
+								'Chunk Text': chunk,
+								'Token Count': len( encoding.encode( chunk, disallowed_special=( ), ) ),
+								'Character Count': len( chunk ),
+								'Chunk Mode': chunk_mode_value,
+								'Configured Size': configured_size,
+								'Configured Overlap': configured_overlap,
+						}
+						for index, chunk in enumerate( chunked_documents,
+							start=1,
+						)
+						if isinstance( chunk, str ) and chunk.strip( )
+				]
+				
+				df_chunk_records = pd.DataFrame( chunk_records )
+				st.session_state.df_chunk_records = df_chunk_records
+			
+			display_columns = [ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', ]
+			
+			st.data_editor( df_chunk_records[ display_columns ], num_rows='fixed',
+				width='stretch', height='stretch', disabled=True,
+				key='chunk_records_editor', )
+			
+			st.download_button( label='Save Chunks',
+				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
+				file_name='document_chunks.csv', mime='text/csv',
+				key='download_chunk_records', use_container_width=True, )
 		else:
-			st.info( 'Run preprocessing first' )
+			st.info( 'Run chunking in Semantic Analysis first.' )
 	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — Vector Space View
 	# ------------------------------------------------------------------
 	with chunk_col:
-		if isinstance( lines, (list, tuple) ) and isinstance( dimensions, (list, tuple) ):
-			st.text( f'Vector Space: {len( lines ) * len( dimensions ):,}' )
-		else:
-			st.caption( 'Vector space not available yet.' )
+		df_sentence_tokens = st.session_state.get( 'df_sentence_tokens', )
 		
-		if isinstance( processed_text, str ) and processed_text.strip( ):
-			if not isinstance( lines, list ) or not lines:
-				processor = TextParser( )
-				lines = processor.split_sentences( text=processed_text, size=15 )
-				st.session_state.lines = lines
+		if ( isinstance( df_sentence_tokens, pd.DataFrame )
+				and not df_sentence_tokens.empty ):
+			vector_size = ( len( df_sentence_tokens.index ) * len( df_sentence_tokens.columns ) )
 			
-			_chunks = [ (l.split( ) if isinstance( l, str ) else [ ]) for l in lines ]
-			_chunks = [ pad_or_trim_row( r, size=len( dimensions ) ) for r in _chunks ]
+			st.text( f'Vector Space: {vector_size:,}' )
 			
-			df_chunks = pd.DataFrame( _chunks, columns=dimensions )
+			df_chunks = df_sentence_tokens.copy( )
 			st.session_state.df_chunks = df_chunks
-			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch' )
+			
+			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch',
+				key='vector_space_editor', )
 		else:
-			st.info( 'Run preprocessing first' )
+			st.session_state.df_chunks = None
+			st.caption( 'Vector space not available yet.' )
 	
 	# ------------------------------------------------------------------
 	# Existing trailing block
