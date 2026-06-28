@@ -4131,30 +4131,8 @@ with tabs[ 2 ]:
 			# Canonical Chunk Records
 			# ----------------------------------------------------------
 			if chunked_documents:
-				encoding = tiktoken.get_encoding( 'cl100k_base' )
-				
-				chunk_records = [
-						{
-								'Chunk ID': index,
-								'Chunk Text': chunk,
-								'Token Count': len(
-									encoding.encode(
-										chunk,
-										disallowed_special=( ),
-									)
-								),
-								'Character Count': len( chunk ),
-								'Chunk Mode': mode,
-								'Configured Size': int( chunk_size ),
-								'Configured Overlap': int( overlap ),
-						}
-						for index, chunk in enumerate(
-							chunked_documents,
-							start=1,
-						)
-				]
-				
-				df_chunk_records = pd.DataFrame( chunk_records )
+				df_chunk_records = build_chunk_records( chunks=chunked_documents, mode=mode,
+					configured_size=int( chunk_size ), configured_overlap=int( overlap ), )
 				
 				st.session_state.chunked_documents = chunked_documents
 				st.session_state.df_chunk_records = df_chunk_records
@@ -4162,18 +4140,27 @@ with tabs[ 2 ]:
 				st.session_state.chunk_overlap = int( overlap )
 				st.session_state.chunk_mode_value = mode
 				
-				# Existing embeddings no longer correspond to current chunks.
+				# Existing embeddings no longer correspond to the active chunks.
 				st.session_state.embeddings = None
+				st.session_state.embedding_texts = None
 				
-				st.success(
-					f'Chunking complete: {len( chunked_documents ):,} chunks generated '
+				st.success( f'Chunking complete: {len( chunked_documents ):,} chunks generated '
 					f'(mode={mode}, size={int( chunk_size )}, '
-					f'overlap={int( overlap )}).'
-				)
+					f'overlap={int( overlap )}).' )
 			else:
 				st.session_state.chunked_documents = None
 				st.session_state.df_chunk_records = None
+				st.session_state.chunk_size = None
+				st.session_state.chunk_overlap = None
+				st.session_state.chunk_mode_value = None
 				st.warning( 'No chunks were generated.' )
+				
+				# Existing embeddings no longer correspond to current chunks.
+				st.session_state.embeddings = None
+				
+				st.success( f'Chunking complete: {len( chunked_documents ):,} chunks generated '
+					f'(mode={mode}, size={int( chunk_size )}, '
+					f'overlap={int( overlap )}).' )
 	
 	# ------------------------------------------------------------------
 	# Chunk Validation
@@ -4183,30 +4170,15 @@ with tabs[ 2 ]:
 	if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
 		token_counts = df_chunk_records[ 'Token Count' ]
 		
-		metric_1, metric_2, metric_3, metric_4 = st.columns(
-			4,
-			border=True,
-		)
+		metric_1, metric_2, metric_3, metric_4 = st.columns( 4, border=True, )
 		
-		metric_1.metric(
-			'Chunks',
-			f'{len( df_chunk_records ):,}',
-		)
+		metric_1.metric( 'Chunks', f'{len( df_chunk_records ):,}', )
 		
-		metric_2.metric(
-			'Minimum Tokens',
-			f'{int( token_counts.min( ) ):,}',
-		)
+		metric_2.metric( 'Minimum Tokens', f'{int( token_counts.min( ) ):,}', )
 		
-		metric_3.metric(
-			'Median Tokens',
-			f'{int( token_counts.median( ) ):,}',
-		)
+		metric_3.metric( 'Median Tokens', f'{int( token_counts.median( ) ):,}', )
 		
-		metric_4.metric(
-			'Maximum Tokens',
-			f'{int( token_counts.max( ) ):,}',
-		)
+		metric_4.metric( 'Maximum Tokens', f'{int( token_counts.max( ) ):,}', )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True, )
 	
