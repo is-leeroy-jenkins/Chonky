@@ -4490,38 +4490,18 @@ with ( tabs[ 3 ] ):
 				disabled=True,
 				key='chunk_records_editor',
 				column_config={
-						'Chunk ID': st.column_config.NumberColumn(
-							'Chunk ID',
-							format='%d',
-							width='small',
-						),
-						'Chunk Text': st.column_config.TextColumn(
-							'Chunk Text',
-							width='large',
-						),
-						'Token Count': st.column_config.NumberColumn(
-							'Tokens',
-							format='%d',
-							width='small',
-						),
-						'Character Count': st.column_config.NumberColumn(
-							'Characters',
-							format='%d',
-							width='small',
-						),
-				},
-			)
+						'Chunk ID': st.column_config.NumberColumn( 'Chunk ID', format='%d',
+							width='small', ),
+						'Chunk Text': st.column_config.TextColumn( 'Chunk Text', width='large', ),
+						'Token Count': st.column_config.NumberColumn( 'Tokens', format='%d',
+							width='small', ),
+						'Character Count': st.column_config.NumberColumn( 'Characters', format='%d',
+							width='small',  ), }, )
 			
-			st.download_button(
-				label='Save Chunks',
-				data=df_chunk_records.to_csv(
-					index=False,
-				).encode( 'utf-8' ),
-				file_name='document_chunks.csv',
-				mime='text/csv',
-				key='download_chunk_records',
-				use_container_width=True,
-			)
+			st.download_button( label='Save Chunks',
+				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
+				file_name='document_chunks.csv', mime='text/csv', key='download_chunk_records',
+				use_container_width=True, )
 		else:
 			st.info( 'Run chunking in Semantic Analysis first.' )
 	
