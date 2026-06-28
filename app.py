@@ -4371,15 +4371,11 @@ with ( tabs[ 3 ] ):
 				import tiktoken
 				
 				encoding = tiktoken.get_encoding( 'cl100k_base' )
-				
 				chunk_mode_value = st.session_state.get( 'chunk_mode_value', 'tokens', )
-				
 				configured_size = st.session_state.get( 'chunk_size', )
-				
 				configured_overlap = st.session_state.get( 'chunk_overlap', )
 				
-				chunk_records = [
-						{
+				chunk_records = [ {
 								'Chunk ID': index,
 								'Chunk Text': chunk,
 								'Token Count': len( encoding.encode( chunk, disallowed_special=( ), ) ),
@@ -4387,8 +4383,7 @@ with ( tabs[ 3 ] ):
 								'Chunk Mode': chunk_mode_value,
 								'Configured Size': configured_size,
 								'Configured Overlap': configured_overlap,
-						}
-						for index, chunk in enumerate( chunked_documents, start=1, )
+						} for index, chunk in enumerate( chunked_documents, start=1, )
 						if isinstance( chunk, str ) and chunk.strip( ) ]
 				
 				df_chunk_records = pd.DataFrame( chunk_records )
@@ -4415,21 +4410,15 @@ with ( tabs[ 3 ] ):
 		if ( isinstance( df_sentence_tokens, pd.DataFrame )
 				and not df_sentence_tokens.empty ):
 			vector_size = ( len( df_sentence_tokens.index ) * len( df_sentence_tokens.columns ) )
-			
 			st.text( f'Vector Space: {vector_size:,}' )
-			
 			df_chunks = df_sentence_tokens.copy( )
 			st.session_state.df_chunks = df_chunks
-			
 			st.data_editor( df_chunks, num_rows='dynamic', width='stretch', height='stretch',
 				key='vector_space_editor', )
 		else:
 			st.session_state.df_chunks = None
 			st.caption( 'Vector space not available yet.' )
 	
-	# ------------------------------------------------------------------
-	# Existing trailing block
-	# ------------------------------------------------------------------
 	documents = st.session_state.get( 'documents' )
 	data_connection = st.session_state.get( 'data_connection' )
 	loader_name = st.session_state.get( 'active_loader' )
@@ -4444,16 +4433,9 @@ with ( tabs[ 3 ] ):
 	if chunk_modes is None:
 		st.info( f'Chunking is not supported for loader: {loader_name}' )
 	
-	# ======================================================================================
-	# Diagnostics — Token & Sentence Distributions
-	# ======================================================================================
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	st.subheader( 'Tokenization Diagnostics' )
 	row1_col1, row1_col2 = st.columns( [ 0.5, 0.5 ], border=True )
-	
-	# ------------------------------------------------------------------
-	# Top-N Token Frequency Histogram
-	# ------------------------------------------------------------------
 	with row1_col1:
 		st.caption( 'Top-N Token Frequency Distribution' )
 		df_token_frequency = st.session_state.get( 'df_token_frequency' )
@@ -4465,10 +4447,7 @@ with ( tabs[ 3 ] ):
 			st.bar_chart( df_top.set_index( 'Token' )[ 'Frequency' ], use_container_width=True )
 		else:
 			st.info( 'Token frequency data not available.' )
-	
-	# ------------------------------------------------------------------
-	# Sentence Length Distribution
-	# ------------------------------------------------------------------
+
 	with row1_col2:
 		st.caption( 'Sentence Length Distribution (Tokens per Sentence)' )
 		
@@ -4488,14 +4467,8 @@ with ( tabs[ 3 ] ):
 		else:
 			st.info( 'Sentence data not available.' )
 	
-	# ======================================================================================
-	# Diagnostics — Sparsity & Embedding Readiness
-	# ======================================================================================
 	row2_col1, row2_col2 = st.columns( [ 0.5, 0.5 ], border=True )
 	
-	# ------------------------------------------------------------------
-	# Padding / Sparsity Analysis (D0–D14)
-	# ------------------------------------------------------------------
 	with row2_col1:
 		st.caption( 'Token Grid Sparsity (Padding Analysis)' )
 		
@@ -4517,9 +4490,6 @@ with ( tabs[ 3 ] ):
 		else:
 			st.info( 'Sentence token grid not available.' )
 	
-	# ------------------------------------------------------------------
-	# Embedding Readiness Scorecard
-	# ------------------------------------------------------------------
 	with row2_col2:
 		st.caption( 'Embedding Readiness Scorecard' )
 		
@@ -4551,9 +4521,6 @@ with ( tabs[ 3 ] ):
 		else:
 			st.info( 'Token readiness metrics unavailable.' )
 
-# ======================================================================================
-# Tab — Tensor Embeddings
-# ======================================================================================
 with tabs[ 4 ]:
 	import pandas as pd
 	
@@ -4903,9 +4870,6 @@ with tabs[ 4 ]:
 				with st.expander( 'View Reduced Coordinates (Table)', expanded=True ):
 					st.data_editor( df_reduced, use_container_width=True, num_rows='dynamic' )
 
-# ======================================================================================
-# Tab — Vector Database (sqlite-vec)
-# ======================================================================================
 with tabs[ 5 ]:
 	st.subheader( 'Vector Database (sqlite-vec)' )
 	
