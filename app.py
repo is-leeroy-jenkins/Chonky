@@ -4217,12 +4217,8 @@ with tabs[ 2 ]:
 # ======================================================================================
 # Tab - Data Tokenization
 # ======================================================================================
-with (tabs[ 3 ]):
+with ( tabs[ 3 ] ):
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='top' )
-	
-	# ------------------------------------------------------------------
-	# Session-state
-	# ------------------------------------------------------------------
 	df_frequency = st.session_state.get( 'df_frequency' )
 	df_tables = st.session_state.get( 'df_tables' )
 	df_count = st.session_state.get( 'df_count' )
@@ -4332,8 +4328,7 @@ with (tabs[ 3 ]):
 	if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
 		if 'Word' in df_frequency.columns and 'Frequency' in df_frequency.columns:
 			st.session_state.df_token_frequency = df_frequency.rename(
-				columns={ 'Word': 'Token' }
-			).copy( )
+				columns={ 'Word': 'Token' } ).copy( )
 		else:
 			st.session_state.df_token_frequency = df_frequency.copy( )
 	else:
@@ -4346,7 +4341,6 @@ with (tabs[ 3 ]):
 		diagnostic_text = raw_text
 	elif isinstance( processed_text, str ) and processed_text.strip( ):
 		diagnostic_text = processed_text
-	
 	sentences = _safe_sent_tokenize( diagnostic_text ) if diagnostic_text else [ ]
 	st.session_state.sentences = sentences if sentences else None
 	if sentences:
@@ -4370,10 +4364,8 @@ with (tabs[ 3 ]):
 	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
-		
 		chunked_documents = st.session_state.get( 'chunked_documents' )
 		df_chunk_records = st.session_state.get( 'df_chunk_records' )
-		
 		if isinstance( chunked_documents, list ) and chunked_documents:
 			if not isinstance( df_chunk_records, pd.DataFrame ) or df_chunk_records.empty:
 				import tiktoken
@@ -4396,11 +4388,8 @@ with (tabs[ 3 ]):
 								'Configured Size': configured_size,
 								'Configured Overlap': configured_overlap,
 						}
-						for index, chunk in enumerate( chunked_documents,
-							start=1,
-						)
-						if isinstance( chunk, str ) and chunk.strip( )
-				]
+						for index, chunk in enumerate( chunked_documents, start=1, )
+						if isinstance( chunk, str ) and chunk.strip( ) ]
 				
 				df_chunk_records = pd.DataFrame( chunk_records )
 				st.session_state.df_chunk_records = df_chunk_records
@@ -4408,8 +4397,7 @@ with (tabs[ 3 ]):
 			display_columns = [ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', ]
 			
 			st.data_editor( df_chunk_records[ display_columns ], num_rows='fixed',
-				width='stretch', height='stretch', disabled=True,
-				key='chunk_records_editor', )
+				width='stretch', height='stretch', disabled=True, key='chunk_records_editor', )
 			
 			st.download_button( label='Save Chunks',
 				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
