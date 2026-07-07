@@ -83,10 +83,10 @@ from langchain_community.embeddings.sentence_transformer import (SentenceTransfo
 from langchain_community.vectorstores import SQLiteVec
 from processors import Processor, TextParser, NltkParser, WordParser, PdfParser
 
-from loaders import (TextLoader, CsvLoader, PdfLoader, ExcelLoader, WordLoader,
-                     MarkdownLoader, HtmlLoader, JsonLoader, PowerPointLoader, WikiLoader,
-                     GithubLoader, WebLoader, ArXivLoader, XmlLoader, OutlookLoader, WebCrawler,
-                     EmailLoader, JupyterNotebookLoader, PubMedSearchLoader, OpenCityLoader,
+from loaders import (TextLoader, CsvLoader, PdfLoader, ExcelLoader, WordLoader, MarkdownLoader,
+                     HtmlLoader, JsonLoader, PowerPointLoader, WikiLoader, GithubLoader, WebLoader,
+                     ArXivLoader, XmlLoader, OutlookLoader, WebCrawler, EmailLoader,
+                     JupyterNotebookLoader, PubMedSearchLoader, OpenCityLoader,
                      GoogleCloudFileLoader, AwsFileLoader, GoogleBucketLoader, AwsBucketLoader,
                      OneDriveDocLoader, SpfxLoader, )
 
@@ -148,8 +148,7 @@ def style_subheaders( ) -> None:
 		application accent color. The helper affects Streamlit markdown containers and chat
 		message headings without changing application state or downstream workflow data.
 	"""
-	st.markdown(
-		"""
+	st.markdown( """
 		<style>
 		div[data-testid="stMarkdownContainer"] h2,
 		div[data-testid="stMarkdownContainer"] h3,
@@ -158,9 +157,7 @@ def style_subheaders( ) -> None:
 			color: rgb(0, 120, 252) !important;
 		}
 		</style>
-		""",
-		unsafe_allow_html=True,
-	)
+		""", unsafe_allow_html=True, )
 
 def encode_image_base64( path: str ) -> str:
 	"""Encode an image file as base64 text.
@@ -250,17 +247,14 @@ def metric_with_tooltip( label: str, value: str, tooltip: str ):
 	
 	with col_info:
 		if label not in [ 'Characters', 'Tokens', 'Unique Tokens', 'Avg Length' ]:
-			st.markdown(
-				f"""
+			st.markdown( f"""
 	            <span style="
 	                cursor: help;
 	                font-size: 0.85rem;
 	                color:#888;
 	                vertical-align: super;
 	            " title="{tooltip}">ℹ️ </span>
-	            """,
-				unsafe_allow_html=True,
-			)
+	            """, unsafe_allow_html=True, )
 
 def normalize_embeddings( emb_array: np.ndarray ) -> np.ndarray:
 	"""Normalize an embedding array to two dimensions.
@@ -284,7 +278,8 @@ def rebuild_raw_text_from_documents( ) -> str | None:
 	"""Rebuild raw text from loaded documents.
 
 	Purpose:
-		Reconstructs the shared raw-text buffer from the current Streamlit ``documents`` state after
+		Reconstructs the shared raw-text buffer from the current Streamlit ``documents`` state
+		after
 		loader-specific clear operations. The helper preserves downstream processing compatibility
 		by joining non-empty ``page_content`` values from remaining LangChain documents.
 
@@ -294,10 +289,10 @@ def rebuild_raw_text_from_documents( ) -> str | None:
 	docs = st.session_state.get( "documents" ) or [ ]
 	if not docs:
 		return None
-	text = '\n\n'.join( d.page_content for d in docs
-	                    if hasattr( d, 'page_content' )
-	                    and isinstance( d.page_content, str )
-	                    and d.page_content.strip( ) )
+	text = '\n\n'.join( d.page_content for d in docs if
+	hasattr( d, 'page_content' ) and isinstance( d.page_content, str ) and d.page_content.strip(
+	
+	) )
 	return text if text.strip( ) else None
 
 def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
@@ -338,7 +333,7 @@ def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
 	return chunks
 
 def chunk_tokens( text: str, size: int, overlap: int,
-		encoding_name: str = 'cl100k_base' ) -> List[ str ]:
+	encoding_name: str='cl100k_base' ) -> List[ str ]:
 	"""
 	Purpose:
 		Splits source text into overlapping model-token windows using the selected
@@ -399,12 +394,8 @@ def chunk_tokens( text: str, size: int, overlap: int,
 	
 	return chunks
 
-def build_chunk_records(
-		chunks: List[ str ],
-		mode: str,
-		configured_size: int,
-		configured_overlap: int,
-		preview_length: int = 250 ) -> pd.DataFrame:
+def build_chunk_records( chunks: List[ str ], mode: str, configured_size: int,
+	configured_overlap: int, preview_length: int=250 ) -> pd.DataFrame:
 	"""
 	Build canonical chunk records.
 
@@ -426,19 +417,9 @@ def build_chunk_records(
 	"""
 	if not isinstance( chunks, list ) or not chunks:
 		return pd.DataFrame(
-			columns=[
-					'Chunk ID',
-					'Chunk Text',
-					'Token Count',
-					'Character Count',
-					'Word Count',
-					'Sentence Count',
-					'Chunk Preview',
-					'Chunk Mode',
-					'Configured Size',
-					'Configured Overlap',
-			]
-		)
+			columns=[ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', 'Word Count',
+				'Sentence Count', 'Chunk Preview', 'Chunk Mode', 'Configured Size',
+				'Configured Overlap', ] )
 	
 	encoding = tiktoken.get_encoding( 'cl100k_base' )
 	records: List[ dict ] = [ ]
@@ -448,54 +429,31 @@ def build_chunk_records(
 			continue
 		
 		chunk_text = chunk.strip( )
-		token_ids = encoding.encode(
-			chunk_text,
-			disallowed_special=( ),
-		)
+		token_ids = encoding.encode( chunk_text, disallowed_special=( ), )
 		
 		try:
 			words = word_tokenize( chunk_text )
 		except LookupError:
-			words = re.findall(
-				r"\b[\w'-]+\b",
-				chunk_text,
-				flags=re.UNICODE,
-			)
+			words = re.findall( r"\b[\w'-]+\b", chunk_text, flags=re.UNICODE, )
 		
 		try:
 			sentences = sent_tokenize( chunk_text )
 		except LookupError:
-			sentences = [
-					value.strip( )
-					for value in re.split(
-						r'(?<=[.!?])\s+',
-						chunk_text,
-					)
-					if value.strip( )
-			]
+			sentences = [ value.strip( ) for value in re.split( r'(?<=[.!?])\s+', chunk_text, ) if
+				value.strip( ) ]
 		
-		preview = re.sub(
-			r'\s+',
-			' ',
-			chunk_text,
-		).strip( )
+		preview = re.sub( r'\s+', ' ', chunk_text, ).strip( )
 		
 		if len( preview ) > int( preview_length ):
 			preview = f'{preview[ : int( preview_length ) ].rstrip( )}…'
 		
-		records.append( {
-					'Chunk ID': index,
-					'Chunk Text': chunk_text,
-					'Token Count': len( token_ids ),
-					'Character Count': len( chunk_text ),
-					'Word Count': len(
-						[ word for word in words if isinstance( word, str ) and word.strip( ) ] ),
-					'Sentence Count': len( sentences ),
-					'Chunk Preview': preview,
-					'Chunk Mode': str( mode ),
-					'Configured Size': int( configured_size ),
-					'Configured Overlap': int( configured_overlap ),
-			} )
+		records.append(
+			{ 'Chunk ID': index, 'Chunk Text': chunk_text, 'Token Count': len( token_ids ),
+				'Character Count': len( chunk_text ), 'Word Count': len(
+				[ word for word in words if isinstance( word, str ) and word.strip( ) ] ),
+				'Sentence Count': len( sentences ), 'Chunk Preview': preview,
+				'Chunk Mode': str( mode ), 'Configured Size': int( configured_size ),
+				'Configured Overlap': int( configured_overlap ), } )
 	
 	return pd.DataFrame( records )
 
@@ -545,8 +503,8 @@ def rebuild_token_text( tokens: List[ str ] ) -> str:
 # ======================================================================================
 # Page Configuration
 # ======================================================================================
-st.set_page_config( page_title='Chonky', layout='wide',
-	page_icon=cfg.ICON, initial_sidebar_state='collapsed' )
+st.set_page_config( page_title='Chonky', layout='wide', page_icon=cfg.ICON,
+	initial_sidebar_state='collapsed' )
 
 # ======================================================================================
 # Headers/Title
@@ -599,20 +557,20 @@ with st.sidebar:
 	
 	with st.expander( "🔐 API Keys", expanded=False ):
 		# --- OpenAI ---
-		openai_key = st.text_input( 'OpenAI API Key',
-			value=st.session_state.openai_api_key, type='password' )
+		openai_key = st.text_input( 'OpenAI API Key', value=st.session_state.openai_api_key,
+			type='password' )
 		
 		# --- Groq ---
-		groq_key = st.text_input( 'Groq API Key',
-			value=st.session_state.groq_api_key, type='password' )
+		groq_key = st.text_input( 'Groq API Key', value=st.session_state.groq_api_key,
+			type='password' )
 		
 		# --- Gemini API ---
-		gemini_key = st.text_input( 'Gemini API Key',
-			value=st.session_state.gemini_api_key, type='password' )
+		gemini_key = st.text_input( 'Gemini API Key', value=st.session_state.gemini_api_key,
+			type='password' )
 		
 		# --- Google API ---
-		google_key = st.text_input( 'Google API Key',
-			value=st.session_state.google_api_key, type='password' )
+		google_key = st.text_input( 'Google API Key', value=st.session_state.google_api_key,
+			type='password' )
 		
 		# --- Google Application Credentials ---
 		google_creds_path = st.text_input( 'Google Application Credentials (JSON Path)',
@@ -645,17 +603,18 @@ with tabs[ 0 ]:
 			st.success( _loader_msg )
 		
 		with st.expander( label='Local Documents', expanded=False ):
+			
 			# --------------------------- NLTK Loader Expander
 			with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 				import nltk
-				from nltk.corpus import (brown, gutenberg, reuters, webtext, inaugural, state_union)
+				from nltk.corpus import (brown, gutenberg, reuters, webtext, inaugural,
+				                         state_union)
 				
 				st.markdown( '###### NLTK Corpora' )
 				
 				corpus_name = st.selectbox( 'Select corpus',
 					[ 'Brown', 'Gutenberg', 'Reuters', 'WebText', 'Inaugural',
-					  'State of the Union', ],
-					key='nltk_corpus_name', )
+						'State of the Union', ], key='nltk_corpus_name', )
 				
 				file_ids = [ ]
 				try:
@@ -683,8 +642,7 @@ with tabs[ 0 ]:
 				st.markdown( '###### Local Corpus' )
 				
 				local_corpus_dir = st.text_input( 'Local directory',
-					placeholder='path/to/text/files',
-					key='nltk_local_dir', )
+					placeholder='path/to/text/files', key='nltk_local_dir', )
 				
 				# ------------------------------------------------------------------
 				# Load / Clear / Save controls
@@ -705,12 +663,11 @@ with tabs[ 0 ]:
 				# Clear
 				# ------------------------------------------------------------------
 				if clear_nltk and st.session_state.get( 'documents' ):
-					st.session_state.documents = [ d for d in st.session_state.documents
-					                               if d.metadata.get( 'loader' ) != 'NLTKLoader' ]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( 'loader' ) != 'NLTKLoader' ]
 					
-					st.session_state.raw_text = ("\n\n".join(
-						d.page_content for d in st.session_state.documents )
-					                             if st.session_state.documents else None)
+					st.session_state.raw_text = ("\n\n".join( d.page_content for d in
+					st.session_state.documents ) if st.session_state.documents else None)
 					
 					st.session_state.active_loader = None
 					
@@ -742,16 +699,9 @@ with tabs[ 0 ]:
 									text = state_union.raw( fid )
 								
 								if text.strip( ):
-									documents.append(
-										Document(
-											page_content=text,
-											metadata={
-													'loader': 'NLTKLoader',
-													'corpus': corpus_name,
-													'file_id': fid,
-											},
-										)
-									)
+									documents.append( Document( page_content=text,
+										metadata={ 'loader': 'NLTKLoader', 'corpus': corpus_name,
+											'file_id': fid, }, ) )
 							except Exception:
 								continue
 					
@@ -764,15 +714,8 @@ with tabs[ 0 ]:
 									text = f.read( )
 								
 								if text.strip( ):
-									documents.append(
-										Document(
-											page_content=text,
-											metadata={
-													'loader': 'NLTKLoader',
-													'source': path,
-											},
-										)
-									)
+									documents.append( Document( page_content=text,
+										metadata={ 'loader': 'NLTKLoader', 'source': path, }, ) )
 					
 					if documents:
 						if st.session_state.get( 'documents' ):
@@ -782,8 +725,7 @@ with tabs[ 0 ]:
 							st.session_state.raw_documents = list( documents )
 						
 						st.session_state.raw_text = "\n\n".join(
-							d.page_content for d in st.session_state.documents
-						)
+							d.page_content for d in st.session_state.documents )
 						
 						st.session_state.processed_text = None
 						st.session_state.active_loader = 'NLTKLoader'
@@ -803,9 +745,9 @@ with tabs[ 0 ]:
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_txt = col_load.button( 'Load', key='txt_load' )
 				clear_txt = col_clear.button( 'Clear', key='txt_clear' )
-				can_save = (st.session_state.get( 'active_loader' ) == 'TextLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'TextLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -847,34 +789,19 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
-					                                         if
-					                                         hasattr( d,
-						                                         'page_content' ) and isinstance(
-						                                         d.page_content, str )
-					                                         and d.page_content.strip( ) )
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents if
+						hasattr( d, 'page_content' ) and isinstance( d.page_content,
+							str ) and d.page_content.strip( ) )
 					st.session_state.active_loader = 'TextLoader'
 					st.success( f'Loaded {len( documents )} text document(s).' )
 			
 			# --------------------------- CSV Loader Expander
 			with st.expander( label="CSV Loader", icon='📑', expanded=False ):
-				csv_file = st.file_uploader(
-					"Upload CSV",
-					type=[ "csv" ],
-					key="csv_upload",
-				)
+				csv_file = st.file_uploader( "Upload CSV", type=[ "csv" ], key="csv_upload", )
 				
-				delimiter = st.text_input(
-					"Delimiter",
-					value=",",
-					key="csv_delim",
-				)
+				delimiter = st.text_input( "Delimiter", value=",", key="csv_delim", )
 				
-				quotechar = st.text_input(
-					"Quote Character",
-					value='"',
-					key="csv_quote",
-				)
+				quotechar = st.text_input( "Quote Character", value='"', key="csv_quote", )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -883,20 +810,13 @@ with tabs[ 0 ]:
 				load_csv = col_load.button( 'Load', key='csv_load' )
 				clear_csv = col_clear.button( 'Clear', key='csv_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'CsvLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'CsvLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='csv_loader_output.txt',
-						mime='text/plain',
-						key='csv_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='csv_loader_output.txt', mime='text/plain', key='csv_save', )
 				else:
 					col_save.button( 'Save', key='csv_save_disabled', disabled=True )
 				
@@ -918,21 +838,14 @@ with tabs[ 0 ]:
 							f.write( csv_file.read( ) )
 						
 						loader = CsvLoader( )
-						documents = loader.load(
-							path,
-							columns=None,
-							delimiter=delimiter,
-							quotechar=quotechar,
-						) or [ ]
+						documents = loader.load( path, columns=None, delimiter=delimiter,
+							quotechar=quotechar, ) or [ ]
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in documents
-						if hasattr( d, "page_content" )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents if
+					hasattr( d, "page_content" ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.active_loader = "CsvLoader"
 					
@@ -980,13 +893,9 @@ with tabs[ 0 ]:
 								documents = loader.load( path )
 						
 						if documents:
-							raw_text = '\n\n'.join(
-								d.page_content
-								for d in documents
-								if hasattr( d, 'page_content' )
-								and isinstance( d.page_content, str )
-								and d.page_content.strip( )
-							)
+							raw_text = '\n\n'.join( d.page_content for d in documents if
+							hasattr( d, 'page_content' ) and isinstance( d.page_content,
+								str ) and d.page_content.strip( ) )
 							
 							st.session_state.documents = documents
 							st.session_state.raw_documents = list( documents )
@@ -1031,7 +940,8 @@ with tabs[ 0 ]:
 								tree = loader.load_tree( path )
 						
 						if tree is not None:
-							xml_text = etree.tostring( tree, pretty_print=True, encoding='unicode' )
+							xml_text = etree.tostring( tree, pretty_print=True,
+								encoding='unicode' )
 							
 							st.session_state.raw_text = xml_text
 							st.session_state.processed_text = None
@@ -1069,8 +979,8 @@ with tabs[ 0 ]:
 							st.session_state[ 'xml_xpath_results' ] = elements
 							st.success( f'Returned {len( elements )} elements.' )
 					
-					if 'xml_xpath_results' in st.session_state and \
-							st.session_state[ 'xml_xpath_results' ] is not None:
+					if 'xml_xpath_results' in st.session_state and st.session_state[
+						'xml_xpath_results' ] is not None:
 						preview_count = min( 10, len( st.session_state[ 'xml_xpath_results' ] ) )
 						
 						st.caption( f'Previewing first {preview_count} elements' )
@@ -1088,18 +998,13 @@ with tabs[ 0 ]:
 					if xml_loader is None:
 						st.info( "No loader initialized." )
 					else:
-						st.json(
-							{
-									"file_path": getattr( xml_loader, 'file_path', None ),
-									"documents_loaded": getattr( xml_loader, 'documents',
-										None ) is not None,
-									"xml_tree_loaded": getattr( xml_loader, 'xml_tree',
-										None ) is not None,
-									"namespaces": getattr( xml_loader, 'xml_namespaces', None ),
-									"chunk_size": getattr( xml_loader, 'chunk_size', None ),
-									"overlap_amount": getattr( xml_loader, 'overlap_amount', None ),
-							}
-						)
+						st.json( { "file_path": getattr( xml_loader, 'file_path', None ),
+							"documents_loaded": getattr( xml_loader, 'documents',
+								None ) is not None,
+							"xml_tree_loaded": getattr( xml_loader, 'xml_tree', None ) is not None,
+							"namespaces": getattr( xml_loader, 'xml_namespaces', None ),
+							"chunk_size": getattr( xml_loader, 'chunk_size', None ),
+							"overlap_amount": getattr( xml_loader, 'overlap_amount', None ), } )
 			
 			# --------------------------- Word Loader
 			with st.expander( label='Word Document Loader', icon='📘', expanded=False ):
@@ -1113,16 +1018,15 @@ with tabs[ 0 ]:
 				load_word = col_load.button( 'Load', key='word_load' )
 				clear_word = col_clear.button( 'Clear', key='word_clear' )
 				
-				can_save = (st.session_state.get( 'active_loader' ) == 'WordLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'WordLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
 						file_name='word_loader_output.txt', mime='text/plain', key='word_save', )
 				else:
-					col_save.button( 'Save', key='word_save_disabled',
-						disabled=True, )
+					col_save.button( 'Save', key='word_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -1153,19 +1057,16 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'WordLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} Word document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} Word document(s).'
 			
 			# --------------------------- PDF Loader Expander
 			with st.expander( label='PDF Loader', icon='📕', expanded=False ):
@@ -1181,8 +1082,7 @@ with tabs[ 0 ]:
 					help='Used only when legacy extraction is enabled.' )
 				
 				fmt = st.selectbox( 'Format', [ 'markdown-img', 'html-img', 'text-img' ],
-					key='pdf_fmt',
-					help='Used only when legacy extraction is enabled.' )
+					key='pdf_fmt', help='Used only when legacy extraction is enabled.' )
 				
 				use_geometry = st.checkbox( 'Use Geometry Extraction', value=True,
 					key='pdf_use_geometry',
@@ -1190,19 +1090,22 @@ with tabs[ 0 ]:
 				
 				use_legacy_pdf_loader = st.checkbox( 'Use Legacy PdfLoader', value=False,
 					key='pdf_use_legacy_loader',
-					help='Falls back to the existing PdfLoader path instead of geometry extraction.' )
+					help='Falls back to the existing PdfLoader path instead of geometry '
+					     'extraction.' )
 				
 				band_left, band_right = st.columns( 2, border=True )
 				
 				with band_left:
-					header_band = st.slider( 'Header Band', min_value=0, max_value=30,
-						value=8, step=1, key='pdf_header_band',
-						help='Percentage of page height classified as the top candidate header band.' )
+					header_band = st.slider( 'Header Band', min_value=0, max_value=30, value=8,
+						step=1, key='pdf_header_band',
+						help='Percentage of page height classified as the top candidate header '
+						     'band.' )
 				
 				with band_right:
-					footer_band = st.slider( 'Footer Band', min_value=0, max_value=30,
-						value=8, step=1, key='pdf_footer_band',
-						help='Percentage of page height classified as the bottom candidate footer band.' )
+					footer_band = st.slider( 'Footer Band', min_value=0, max_value=30, value=8,
+						step=1, key='pdf_footer_band',
+						help='Percentage of page height classified as the bottom candidate footer '
+						     'band.' )
 				
 				preserve_page_breaks = st.checkbox( 'Preserve Page Breaks', value=False,
 					key='pdf_preserve_page_breaks',
@@ -1243,14 +1146,11 @@ with tabs[ 0 ]:
 							raw_text = parser.rebuild_pages( pages=pdf_pages,
 								preserve_page_breaks=preserve_page_breaks ) or ''
 							
-							documents = [ Document( page_content=raw_text, metadata={
-									'loader': 'PdfLoader',
-									'source': pdf.name,
-									'extract': 'geometry',
-									'header_band': int( header_band ),
+							documents = [ Document( page_content=raw_text,
+								metadata={ 'loader': 'PdfLoader', 'source': pdf.name,
+									'extract': 'geometry', 'header_band': int( header_band ),
 									'footer_band': int( footer_band ),
-									'preserve_page_breaks': preserve_page_breaks,
-							} ) ]
+									'preserve_page_breaks': preserve_page_breaks, } ) ]
 							
 							st.session_state.pdf_pages = pdf_pages
 						else:
@@ -1266,10 +1166,9 @@ with tabs[ 0 ]:
 								document.metadata.setdefault( 'source', pdf.name )
 								document.metadata.setdefault( 'extract', 'legacy' )
 							
-							raw_text = '\n\n'.join( d.page_content for d in documents
-							                        if hasattr( d, 'page_content' )
-							                        and isinstance( d.page_content, str )
-							                        and d.page_content.strip( ) )
+							raw_text = '\n\n'.join( d.page_content for d in documents if
+							hasattr( d, 'page_content' ) and isinstance( d.page_content,
+								str ) and d.page_content.strip( ) )
 							
 							st.session_state.pdf_pages = None
 					
@@ -1284,15 +1183,15 @@ with tabs[ 0 ]:
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'PdfLoader'
 					
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} PDF document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} PDF document(s).'
 				
 				# --------------------------------------------------
 				# Save
 				# --------------------------------------------------
-				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'PdfLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					save_pdf.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -1314,9 +1213,10 @@ with tabs[ 0 ]:
 				clear_pptx = col_clear.button( 'Clear', key='pptx_clear', )
 				
 				# ---------- Save
-				can_save = (st.session_state.get( 'active_loader' ) == 'PowerPointLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'PowerPointLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -1342,48 +1242,28 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents
-					                                         if
-					                                         hasattr( d,
-						                                         'page_content' ) and isinstance(
-						                                         d.page_content, str )
-					                                         and d.page_content.strip( ) )
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents if
+						hasattr( d, 'page_content' ) and isinstance( d.page_content,
+							str ) and d.page_content.strip( ) )
 					st.session_state.active_loader = "PowerPointLoader"
 					st.success( f"Loaded {len( documents )} PowerPoint document(s)." )
 			
 			# --------------------------- Jupyter Notebook Loader
 			with st.expander( label='Jupyter Notebook Loader', icon='📓', expanded=False ):
-				notebook_file = st.file_uploader(
-					'Upload Notebook',
-					type=[ 'ipynb' ],
-					key='ipynb_upload',
-				)
+				notebook_file = st.file_uploader( 'Upload Notebook', type=[ 'ipynb' ],
+					key='ipynb_upload', )
 				
-				include_outputs = st.checkbox(
-					'Include Outputs',
-					value=False,
-					key='ipynb_include_outputs',
-				)
+				include_outputs = st.checkbox( 'Include Outputs', value=False,
+					key='ipynb_include_outputs', )
 				
-				max_output_length = st.number_input(
-					'Max Output Length',
-					min_value=1,
-					value=10,
-					step=1,
-					key='ipynb_max_output_length',
-				)
+				max_output_length = st.number_input( 'Max Output Length', min_value=1, value=10,
+					step=1, key='ipynb_max_output_length', )
 				
-				remove_newline = st.checkbox(
-					'Remove Newline',
-					value=False,
-					key='ipynb_remove_newline',
-				)
+				remove_newline = st.checkbox( 'Remove Newline', value=False,
+					key='ipynb_remove_newline', )
 				
-				include_traceback = st.checkbox(
-					'Include Traceback',
-					value=False,
-					key='ipynb_traceback',
-				)
+				include_traceback = st.checkbox( 'Include Traceback', value=False,
+					key='ipynb_traceback', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -1392,26 +1272,17 @@ with tabs[ 0 ]:
 				load_ipynb = col_load.button( 'Load', key='ipynb_load' )
 				clear_ipynb = col_clear.button( 'Clear', key='ipynb_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'JupyterNotebookLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'JupyterNotebookLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='jupyter_notebook_loader_output.txt',
-						mime='text/plain',
-						key='ipynb_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='jupyter_notebook_loader_output.txt', mime='text/plain',
+						key='ipynb_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='ipynb_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='ipynb_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -1431,13 +1302,9 @@ with tabs[ 0 ]:
 							f.write( notebook_file.read( ) )
 						
 						loader = JupyterNotebookLoader( )
-						documents = loader.load(
-							path=path,
-							include_outputs=include_outputs,
+						documents = loader.load( path=path, include_outputs=include_outputs,
 							max_output_length=int( max_output_length ),
-							remove_newline=remove_newline,
-							traceback=include_traceback,
-						) or [ ]
+							remove_newline=remove_newline, traceback=include_traceback, ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -1453,19 +1320,16 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'JupyterNotebookLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} notebook document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} notebook document(s).'
 			
 			# --------------------------- Excel Loader
 			with st.expander( label='Excel Loader', icon='📊', expanded=False ):
@@ -1473,8 +1337,8 @@ with tabs[ 0 ]:
 					key='excel_upload', )
 				
 				load_mode = st.selectbox( 'Load Mode',
-					[ 'Tabular + SQLite', 'Unstructured Document' ],
-					index=0, key='excel_load_mode',
+					[ 'Tabular + SQLite', 'Unstructured Document' ], index=0,
+					key='excel_load_mode',
 					help=(
 						'Use "Tabular + SQLite" to preserve the current sheet-to-SQLite workflow. '
 						'Use "Unstructured Document" to route through ExcelLoader.'), )
@@ -1487,8 +1351,8 @@ with tabs[ 0 ]:
 					key='excel_table_prefix' )
 				
 				unstructured_mode = st.selectbox( 'Document Mode', [ 'single', 'elements' ],
-					index=0,
-					key='excel_unstructured_mode', help='Used only with "Unstructured Documents".' )
+					index=0, key='excel_unstructured_mode',
+					help='Used only with "Unstructured Documents".' )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -1497,9 +1361,10 @@ with tabs[ 0 ]:
 				load_excel = col_load.button( 'Load', key='excel_load' )
 				clear_excel = col_clear.button( 'Clear', key='excel_clear' )
 				
-				can_save = (st.session_state.get( 'active_loader' ) == 'ExcelLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'ExcelLoader' and
+				            isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -1511,19 +1376,18 @@ with tabs[ 0 ]:
 				# Clear (remove only ExcelLoader documents)
 				# --------------------------------------------------
 				if clear_excel and st.session_state.get( 'documents' ):
-					st.session_state.documents = [ d for d in st.session_state.documents
-					                               if d.metadata.get( 'loader' ) != 'ExcelLoader' ]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( 'loader' ) != 'ExcelLoader' ]
 					
-					st.session_state.raw_documents = [ d for d in st.session_state.documents
-					                                   if
-					                                   isinstance( getattr( d, 'metadata', None ),
-						                                   dict ) ] if st.session_state.documents else [ ]
+					st.session_state.raw_documents = [ d for d in st.session_state.documents if
+						isinstance( getattr( d, 'metadata', None ),
+							dict ) ] if st.session_state.documents else [ ]
 					
-					st.session_state.raw_text = (
-							'\n\n'.join( d.page_content for d in st.session_state.documents
-							             if isinstance( d.page_content, str )
-							             and d.page_content.strip( ) )
-							if st.session_state.documents else None)
+					st.session_state.raw_text = ('\n\n'.join(
+						d.page_content for d in st.session_state.documents if
+						isinstance( d.page_content,
+							str ) and d.page_content.strip( ) ) if st.session_state.documents else
+					                             None)
 					
 					st.session_state.processed_text = None
 					st.session_state.active_loader = None
@@ -1545,9 +1409,8 @@ with tabs[ 0 ]:
 							os.makedirs( os.path.dirname( sqlite_path ), exist_ok=True )
 							
 							if sheet_name.strip( ):
-								dfs = {
-										sheet_name: pd.read_excel( excel_path,
-											sheet_name=sheet_name, ) }
+								dfs = { sheet_name: pd.read_excel( excel_path,
+									sheet_name=sheet_name, ) }
 							else:
 								dfs = pd.read_excel( excel_path, sheet_name=None, )
 							
@@ -1558,16 +1421,14 @@ with tabs[ 0 ]:
 										continue
 									table_name = f"{table_prefix}_{sheet}".replace( " ",
 										"_" ).lower( )
-									df.to_sql( table_name, conn, if_exists="replace", index=False, )
+									df.to_sql( table_name, conn, if_exists="replace",
+										index=False, )
 									text = df.to_csv( index=False )
-									documents.append(
-										Document( page_content=text,
-											metadata={ 'loader': 'ExcelLoader',
-											           'source': excel_file.name,
-											           'sheet': sheet,
-											           'table': table_name,
-											           'sqlite_db': sqlite_path,
-											           'load_mode': 'Tabular + SQLite', }, ) )
+									documents.append( Document( page_content=text,
+										metadata={ 'loader': 'ExcelLoader',
+											'source': excel_file.name, 'sheet': sheet,
+											'table': table_name, 'sqlite_db': sqlite_path,
+											'load_mode': 'Tabular + SQLite', }, ) )
 							finally:
 								conn.close( )
 						
@@ -1594,9 +1455,8 @@ with tabs[ 0 ]:
 						
 						st.session_state.raw_documents = list( st.session_state.documents )
 						st.session_state.raw_text = "\n\n".join(
-							d.page_content for d in st.session_state.documents
-							if isinstance( d.page_content, str )
-							and d.page_content.strip( ) )
+							d.page_content for d in st.session_state.documents if
+							isinstance( d.page_content, str ) and d.page_content.strip( ) )
 						
 						st.session_state.processed_text = None
 						st.session_state.active_loader = 'ExcelLoader'
@@ -1619,43 +1479,28 @@ with tabs[ 0 ]:
 					key='md_upload', )
 				
 				mode = st.selectbox( 'Mode', [ 'single', 'elements' ], index=0, key='md_mode',
-					help='Use "single" for one combined document or "elements" for element parsing.' )
+					help='Use "single" for one combined document or "elements" for element '
+					     'parsing.' )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save (same row, same style)
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_md = col_load.button(
-					'Load',
-					key='md_load',
-				)
+				load_md = col_load.button( 'Load', key='md_load', )
 				
-				clear_md = col_clear.button(
-					'Clear',
-					key='md_clear',
-				)
+				clear_md = col_clear.button( 'Clear', key='md_clear', )
 				
 				# Save enabled only when MarkdownLoader is active and raw_text exists
 				can_save = (
-						st.session_state.get( 'active_loader' ) == 'MarkdownLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+						st.session_state.get( 'active_loader' ) == 'MarkdownLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='markdown_loader_output.txt',
-						mime='text/plain',
-						key='md_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='markdown_loader_output.txt', mime='text/plain', key='md_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='md_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='md_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear (UNCHANGED behavior)
@@ -1678,12 +1523,9 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.active_loader = "MarkdownLoader"
 					
 					st.success( f"Loaded {len( documents )} Markdown document(s)." )
@@ -1700,26 +1542,15 @@ with tabs[ 0 ]:
 				clear_html = col_clear.button( 'Clear', key='html_clear' )
 				
 				# Save enabled only when HtmlLoader is active and raw_text exists
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'HtmlLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'HtmlLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='html_loader_output.txt',
-						mime='text/plain',
-						key='html_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='html_loader_output.txt', mime='text/plain', key='html_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='html_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='html_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear (UNCHANGED behavior)
@@ -1748,38 +1579,23 @@ with tabs[ 0 ]:
 			
 			# --------------------------- JSON Loader
 			with st.expander( label='JSON Loader', icon='🧩', expanded=False ):
-				js = st.file_uploader(
-					'Upload JSON',
-					type=[ 'json', 'jsonl' ],
-					key='json_upload',
-				)
+				js = st.file_uploader( 'Upload JSON', type=[ 'json', 'jsonl' ],
+					key='json_upload', )
 				
-				jq_schema = st.text_input(
-					'jq Schema',
-					value='.',
-					key='json_jq_schema',
-					help='Examples: ., .[], .messages[], .content'
-				)
+				jq_schema = st.text_input( 'jq Schema', value='.', key='json_jq_schema',
+					help='Examples: ., .[], .messages[], .content' )
 				
-				content_key = st.text_input(
-					'Content Key (optional)',
-					value='',
+				content_key = st.text_input( 'Content Key (optional)', value='',
 					key='json_content_key',
-					help='Use when jq_schema returns objects and you want one field as page_content.'
-				)
+					help='Use when jq_schema returns objects and you want one field as '
+					     'page_content.' )
 				
-				is_lines = st.checkbox(
-					'JSON Lines',
-					value=False,
-					key='json_lines',
-				)
+				is_lines = st.checkbox( 'JSON Lines', value=False, key='json_lines', )
 				
-				is_text = st.checkbox(
-					'Extracted content is already text',
-					value=True,
+				is_text = st.checkbox( 'Extracted content is already text', value=True,
 					key='json_text_content',
-					help='Turn this off when jq_schema/content_key selects structured values instead of plain text.'
-				)
+					help='Turn this off when jq_schema/content_key selects structured values '
+					     'instead of plain text.' )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -1788,26 +1604,15 @@ with tabs[ 0 ]:
 				load_json = col_load.button( 'Load', key='json_load' )
 				clear_json = col_clear.button( 'Clear', key='json_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'JsonLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'JsonLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='json_loader_output.txt',
-						mime='text/plain',
-						key='json_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='json_loader_output.txt', mime='text/plain', key='json_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='json_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='json_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -1826,79 +1631,54 @@ with tabs[ 0 ]:
 							f.write( js.read( ) )
 						
 						loader = JsonLoader( )
-						documents = loader.load(
-							path,
-							jq_schema=jq_schema,
+						documents = loader.load( path, jq_schema=jq_schema,
 							content_key=content_key,
-							is_text=is_text,
-							is_lines=is_lines,
-						) or [ ]
+							is_text=is_text, is_lines=is_lines, ) or [ ]
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = "\n\n".join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = "\n\n".join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.active_loader = "JsonLoader"
 					st.success( f"Loaded {len( documents )} JSON document(s)." )
 		
 		with st.expander( label='Web Documents', expanded=False ):
+			
 			# --------------------------- ArXiv Loader
 			with st.expander( label='ArXiv Loader', icon='🧠', expanded=False ):
-				arxiv_query = st.text_input(
-					'Query',
-					placeholder='e.g., transformer OR llm',
-					key='arxiv_query',
-				)
+				arxiv_query = st.text_input( 'Query', placeholder='e.g., transformer OR llm',
+					key='arxiv_query', )
 				
-				arxiv_max_chars = st.number_input(
-					'Max characters per document',
-					min_value=250,
-					max_value=100000,
-					value=1000,
-					step=250,
-					key='arxiv_max_chars',
-					help='Maximum characters read',
-				)
+				arxiv_max_chars = st.number_input( 'Max characters per document', min_value=250,
+					max_value=100000, value=1000, step=250, key='arxiv_max_chars',
+					help='Maximum characters read', )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
 				arxiv_fetch = col_fetch.button( 'Load',
 					key='arxiv_fetch' )  # label kept as Load button row convention
 				arxiv_clear = col_clear.button( 'Clear', key='arxiv_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'ArXivLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'ArXivLoader' and
+				            isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='arxiv_loader_output.txt',
-						mime='text/plain',
-						key='arxiv_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='arxiv_loader_output.txt', mime='text/plain', key='arxiv_save', )
 				else:
 					col_save.button( 'Save', key='arxiv_save_disabled', disabled=True )
 				
 				if arxiv_clear and st.session_state.get( 'documents' ):
-					st.session_state.documents = [
-							d for d in st.session_state.documents
-							if d.metadata.get( 'loader' ) != 'ArXivLoader'
-					]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( 'loader' ) != 'ArXivLoader' ]
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state[ '_loader_status' ] = 'ArXivLoader documents removed.'
 				
 				if arxiv_fetch and arxiv_query:
 					loader = ArXivLoader( )
-					documents = loader.load(
-						arxiv_query,
-						max_chars=int( arxiv_max_chars ),
+					documents = loader.load( arxiv_query, max_chars=int( arxiv_max_chars ),
 					) or [ ]
 					
 					for d in documents:
@@ -1920,68 +1700,41 @@ with tabs[ 0 ]:
 			
 			# --------------------------- Wikipedia Loader
 			with st.expander( label='Wikipedia Loader', icon='📚', expanded=False ):
-				wiki_query = st.text_input(
-					'Query',
-					placeholder='e.g., Natural language processing',
-					key='wiki_query',
-				)
+				wiki_query = st.text_input( 'Query',
+					placeholder='e.g., Natural language processing', key='wiki_query', )
 				
-				wiki_max_docs = st.number_input(
-					'Max documents',
-					min_value=1,
-					max_value=250,
-					value=25,
-					step=1,
-					key='wiki_max_docs',
-					help='Maximum number of documents loaded',
-				)
+				wiki_max_docs = st.number_input( 'Max documents', min_value=1, max_value=250,
+					value=25, step=1, key='wiki_max_docs',
+					help='Maximum number of documents loaded', )
 				
-				wiki_max_chars = st.number_input(
-					'Max characters per document',
-					min_value=250,
-					max_value=100000,
-					value=4000,
-					step=250,
-					key='wiki_max_chars',
-					help='Upper limit on the number of characters',
-				)
+				wiki_max_chars = st.number_input( 'Max characters per document', min_value=250,
+					max_value=100000, value=4000, step=250, key='wiki_max_chars',
+					help='Upper limit on the number of characters', )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
 				wiki_fetch = col_fetch.button( 'Load', key='wiki_fetch' )
 				wiki_clear = col_clear.button( 'Clear', key='wiki_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'WikiLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'WikiLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='wiki_loader_output.txt',
-						mime='text/plain',
-						key='wiki_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='wiki_loader_output.txt', mime='text/plain', key='wiki_save', )
 				else:
 					col_save.button( 'Save', key='wiki_save_disabled', disabled=True )
 				
 				if wiki_clear and st.session_state.get( 'documents' ):
-					st.session_state.documents = [
-							d for d in st.session_state.documents
-							if d.metadata.get( 'loader' ) != 'WikiLoader'
-					]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( 'loader' ) != 'WikiLoader' ]
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state[ '_loader_status' ] = 'WikiLoader documents removed.'
 				
 				if wiki_fetch and wiki_query:
 					loader = WikiLoader( )
-					documents = loader.load(
-						wiki_query,
-						max_docs=int( wiki_max_docs ),
-						max_chars=int( wiki_max_chars ),
-					) or [ ]
+					documents = loader.load( wiki_query, max_docs=int( wiki_max_docs ),
+						max_chars=int( wiki_max_chars ), ) or [ ]
 					
 					for d in documents:
 						d.metadata[ 'loader' ] = 'WikiLoader'
@@ -1998,86 +1751,54 @@ with tabs[ 0 ]:
 						st.session_state.active_loader = 'WikiLoader'
 						
 						st.session_state[
-							'_loader_status' ] = f'Fetched {len( documents )} Wikipedia document(s).'
+							'_loader_status' ] = (f'Fetched {len( documents )} Wikipedia document('
+						                          f's).')
 			
 			# --------------------------- GitHub Loader
 			with st.expander( label='GitHub Loader', icon='🐙', expanded=False ):
-				gh_url = st.text_input(
-					"GitHub API URL",
-					placeholder="https://api.github.com",
-					value="https://api.github.com",
-					key="gh_url",
-					help="GitHub REST API base URL.",
-				)
+				gh_url = st.text_input( "GitHub API URL", placeholder="https://api.github.com",
+					value="https://api.github.com", key="gh_url",
+					help="GitHub REST API base URL.", )
 				
-				gh_repo = st.text_input(
-					"Repo (owner/name)",
-					placeholder="openai/openai-python",
-					key="gh_repo",
-					help="Name of the repository.",
-				)
+				gh_repo = st.text_input( "Repo (owner/name)", placeholder="openai/openai-python",
+					key="gh_repo", help="Name of the repository.", )
 				
-				gh_branch = st.text_input(
-					"Branch",
-					placeholder="main",
-					value="main",
-					key="gh_branch",
-					help="The branch of the repository.",
-				)
+				gh_branch = st.text_input( "Branch", placeholder="main", value="main",
+					key="gh_branch", help="The branch of the repository.", )
 				
-				gh_filetype = st.text_input(
-					"File type filter",
-					value=".md",
-					key="gh_filetype",
-					help="Filtering by file type. Example: .py, .md, .txt",
-				)
+				gh_filetype = st.text_input( "File type filter", value=".md", key="gh_filetype",
+					help="Filtering by file type. Example: .py, .md, .txt", )
 				
-				gh_access_token = st.text_input(
-					"GitHub Access Token (optional)",
-					value="",
-					type="password",
-					key="gh_access_token",
-					help="Optional personal access token. Useful for private repos or higher rate limits.",
-				)
+				gh_access_token = st.text_input( "GitHub Access Token (optional)", value="",
+					type="password", key="gh_access_token",
+					help="Optional personal access token. Useful for private repos or higher rate "
+					     "limits.", )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
 				gh_fetch = col_fetch.button( "Load", key="gh_fetch" )
 				gh_clear = col_clear.button( "Clear", key="gh_clear" )
 				
 				can_save = (
-						st.session_state.get( "active_loader" ) == "GithubLoader"
-						and isinstance( st.session_state.get( "raw_text" ), str )
-						and st.session_state.get( "raw_text" ).strip( )
-				)
+						st.session_state.get( "active_loader" ) == "GithubLoader" and isinstance(
+					st.session_state.get( "raw_text" ), str ) and st.session_state.get(
+					"raw_text" ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						"Save",
-						data=st.session_state.get( "raw_text" ),
-						file_name="github_loader_output.txt",
-						mime="text/plain",
-						key="gh_save",
-					)
+					col_save.download_button( "Save", data=st.session_state.get( "raw_text" ),
+						file_name="github_loader_output.txt", mime="text/plain", key="gh_save", )
 				else:
 					col_save.button( "Save", key="gh_save_disabled", disabled=True )
 				
 				if gh_clear and st.session_state.get( "documents" ):
-					st.session_state.documents = [
-							d for d in st.session_state.documents
-							if d.metadata.get( "loader" ) != "GithubLoader"
-					]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( "loader" ) != "GithubLoader" ]
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state[ "_loader_status" ] = "GithubLoader documents removed."
 				
 				if gh_fetch and gh_repo and gh_branch:
 					loader = GithubLoader( )
-					documents = loader.load(
-						gh_url,
-						gh_repo,
-						gh_branch,
-						gh_filetype,
-						gh_access_token,
-					) or [ ]
+					documents = loader.load( gh_url, gh_repo, gh_branch, gh_filetype,
+						gh_access_token, ) or [ ]
 					
 					for d in documents:
 						if not isinstance( getattr( d, "metadata", None ), dict ):
@@ -2096,16 +1817,12 @@ with tabs[ 0 ]:
 						st.session_state.active_loader = "GithubLoader"
 						
 						st.session_state[
-							"_loader_status"
-						] = f"Fetched {len( documents )} GitHub document(s)."
+							"_loader_status" ] = f"Fetched {len( documents )} GitHub document(s)."
 			
 			# --------------------------- Outlook Loader
 			with st.expander( label='Outlook Loader', icon='📨', expanded=False ):
-				outlook_file = st.file_uploader(
-					'Upload Outlook Message',
-					type=[ 'msg' ],
-					key='outlook_upload',
-				)
+				outlook_file = st.file_uploader( 'Upload Outlook Message', type=[ 'msg' ],
+					key='outlook_upload', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -2115,25 +1832,16 @@ with tabs[ 0 ]:
 				clear_outlook = col_clear.button( 'Clear', key='outlook_clear' )
 				
 				can_save = (
-						st.session_state.get( 'active_loader' ) == 'OutlookLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+						st.session_state.get( 'active_loader' ) == 'OutlookLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='outlook_loader_output.txt',
-						mime='text/plain',
-						key='outlook_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='outlook_loader_output.txt', mime='text/plain',
+						key='outlook_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='outlook_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='outlook_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2164,70 +1872,46 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'OutlookLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} Outlook message document(s).'
+					st.session_state[
+						'_loader_status' ] = (f'Loaded {len( documents )} Outlook message document('
+					                          f's).')
 			
 			# --------------------------- Web Loader
 			with st.expander( label="Web Loader", icon='🌐', expanded=False ):
-				urls = st.text_area(
-					"Enter one URL per line",
-					placeholder="https://example.com\nhttps://another.com",
-					key="web_urls",
-				)
+				urls = st.text_area( "Enter one URL per line",
+					placeholder="https://example.com\nhttps://another.com", key="web_urls", )
 				
-				web_timeout = st.number_input(
-					"Timeout (seconds)",
-					min_value=1,
-					max_value=120,
-					value=10,
-					step=1,
-					key="web_timeout",
-				)
+				web_timeout = st.number_input( "Timeout (seconds)", min_value=1, max_value=120,
+					value=10, step=1, key="web_timeout", )
 				
-				web_ignore = st.checkbox(
-					"Continue On Failure",
-					value=True,
-					key="web_ignore",
-					help="Keep loading remaining URLs if one page fails."
-				)
+				web_ignore = st.checkbox( "Continue On Failure", value=True, key="web_ignore",
+					help="Keep loading remaining URLs if one page fails." )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
 				load_web = col_fetch.button( "Load", key="web_fetch" )
 				clear_web = col_clear.button( "Clear", key="web_clear" )
 				
-				can_save = (
-						st.session_state.get( "active_loader" ) == "WebLoader"
-						and isinstance( st.session_state.get( "raw_text" ), str )
-						and st.session_state.get( "raw_text" ).strip( )
-				)
+				can_save = (st.session_state.get( "active_loader" ) == "WebLoader" and isinstance(
+					st.session_state.get( "raw_text" ), str ) and st.session_state.get(
+					"raw_text" ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						"Save",
-						data=st.session_state.get( "raw_text" ),
-						file_name="web_loader_output.txt",
-						mime="text/plain",
-						key="web_save",
-					)
+					col_save.download_button( "Save", data=st.session_state.get( "raw_text" ),
+						file_name="web_loader_output.txt", mime="text/plain", key="web_save", )
 				else:
 					col_save.button( "Save", key="web_save_disabled", disabled=True )
 				
 				if clear_web and st.session_state.get( "documents" ):
-					st.session_state.documents = [
-							d for d in st.session_state.documents
-							if d.metadata.get( "loader" ) != "WebLoader"
-					]
+					st.session_state.documents = [ d for d in st.session_state.documents if
+						d.metadata.get( "loader" ) != "WebLoader" ]
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
 					st.session_state[ "_loader_status" ] = "WebLoader documents removed."
 				
@@ -2236,12 +1920,8 @@ with tabs[ 0 ]:
 					new_docs = [ ]
 					
 					for url in [ u.strip( ) for u in urls.splitlines( ) if u.strip( ) ]:
-						documents = loader.load(
-							urls=url,
-							timeout=int( web_timeout ),
-							ignore=bool( web_ignore ),
-							progress=True
-						) or [ ]
+						documents = loader.load( urls=url, timeout=int( web_timeout ),
+							ignore=bool( web_ignore ), progress=True ) or [ ]
 						
 						for d in documents:
 							if not isinstance( getattr( d, "metadata", None ), dict ):
@@ -2262,19 +1942,18 @@ with tabs[ 0 ]:
 						st.session_state.active_loader = "WebLoader"
 						
 						st.session_state[
-							"_loader_status"
-						] = f"Fetched {len( new_docs )} web document(s)."
+							"_loader_status" ] = f"Fetched {len( new_docs )} web document(s)."
 			
 			# --------------------------- Web Crawler
 			with st.expander( label='Web Crawler', icon='🕷️', expanded=False ):
 				start_url = st.text_input( 'Start URL', placeholder='https://example.com',
 					key='crawl_start_url', )
 				
-				max_depth = st.number_input( 'Max crawl depth', min_value=1, max_value=5,
-					value=2, step=1, key='crawl_depth', )
+				max_depth = st.number_input( 'Max crawl depth', min_value=1, max_value=5, value=2,
+					step=1, key='crawl_depth', )
 				
-				crawl_timeout = st.number_input( 'Timeout (seconds)', min_value=1,
-					max_value=120, value=10, step=1, key='crawl_timeout', )
+				crawl_timeout = st.number_input( 'Timeout (seconds)', min_value=1, max_value=120,
+					value=10, step=1, key='crawl_timeout', )
 				
 				stay_on_domain = st.checkbox( 'Stay on starting domain', value=True,
 					key='crawl_domain_lock', )
@@ -2283,9 +1962,9 @@ with tabs[ 0 ]:
 				run_crawl = col_run.button( 'Load', key='crawl_run' )
 				clear_crawl = col_clear.button( 'Clear', key='crawl_clear' )
 				
-				can_save = (st.session_state.get( 'active_loader' ) == 'WebCrawler'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'WebCrawler' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -2319,27 +1998,24 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'WebCrawler'
-					st.session_state[ '_loader_status' ] = \
-						f'Crawled {len( documents )} document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Crawled {len( documents )} document(s).'
 			
 			# --------------------------- Email Loader
 			with st.expander( label='E-mail Loader', icon='📧', expanded=False ):
 				email_file = st.file_uploader( 'Upload Email File', type=[ 'eml' ],
 					key='email_upload', )
 				
-				email_mode = st.selectbox( 'Mode', options=[ 'elements', 'single' ],
-					index=0, key='email_mode', )
+				email_mode = st.selectbox( 'Mode', options=[ 'elements', 'single' ], index=0,
+					key='email_mode', )
 				
 				email_attachments = st.checkbox( 'Process Attachments', value=False,
 					key='email_attachments', )
@@ -2351,15 +2027,14 @@ with tabs[ 0 ]:
 				load_email = col_load.button( 'Load', key='email_load' )
 				clear_email = col_clear.button( 'Clear', key='email_clear' )
 				
-				can_save = (st.session_state.get( 'active_loader' ) == 'EmailLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( ))
+				can_save = (st.session_state.get( 'active_loader' ) == 'EmailLoader' and
+				            isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button( 'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='email_loader_output.txt',
-						mime='text/plain', key='email_save', )
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='email_loader_output.txt', mime='text/plain', key='email_save', )
 				else:
 					col_save.button( 'Save', key='email_save_disabled', disabled=True, )
 				
@@ -2381,11 +2056,8 @@ with tabs[ 0 ]:
 							f.write( email_file.read( ) )
 						
 						loader = EmailLoader( )
-						documents = loader.load(
-							path=path,
-							mode=email_mode,
-							attachments=email_attachments,
-						) or [ ]
+						documents = loader.load( path=path, mode=email_mode,
+							attachments=email_attachments, ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2398,36 +2070,24 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'EmailLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} email document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} email document(s).'
 			
 			# --------------------------- PubMed Loader
 			with st.expander( label='Pub Med Loader', icon='🧬', expanded=False ):
-				pubmed_query = st.text_input(
-					'PubMed Query',
-					value='',
-					key='pubmed_query',
-					placeholder='e.g. transformer models biomedical NLP',
-				)
+				pubmed_query = st.text_input( 'PubMed Query', value='', key='pubmed_query',
+					placeholder='e.g. transformer models biomedical NLP', )
 				
-				pubmed_max_docs = st.number_input(
-					'Maximum Documents',
-					min_value=1,
-					value=5,
-					step=1,
-					key='pubmed_max_docs',
-				)
+				pubmed_max_docs = st.number_input( 'Maximum Documents', min_value=1, value=5,
+					step=1, key='pubmed_max_docs', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -2436,26 +2096,17 @@ with tabs[ 0 ]:
 				load_pubmed = col_load.button( 'Load', key='pubmed_load' )
 				clear_pubmed = col_clear.button( 'Clear', key='pubmed_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'PubMedSearchLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'PubMedSearchLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='pubmed_loader_output.txt',
-						mime='text/plain',
-						key='pubmed_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='pubmed_loader_output.txt', mime='text/plain',
+						key='pubmed_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='pubmed_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='pubmed_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2470,10 +2121,8 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				if load_pubmed and isinstance( pubmed_query, str ) and pubmed_query.strip( ):
 					loader = PubMedSearchLoader( )
-					documents = loader.load(
-						query=pubmed_query.strip( ),
-						max_docs=int( pubmed_max_docs ),
-					) or [ ]
+					documents = loader.load( query=pubmed_query.strip( ),
+						max_docs=int( pubmed_max_docs ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2485,24 +2134,21 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'PubMedSearchLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} PubMed document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} PubMed document(s).'
 			
 			# --------------------------- Open City Loader
 			with st.expander( label='Open City Loader', icon='🏙️', expanded=False ):
-				open_city_id = st.text_input( 'City Domain', value='',
-					key='open_city_id', placeholder='e.g. data.sfgov.org',
+				open_city_id = st.text_input( 'City Domain', value='', key='open_city_id',
+					placeholder='e.g. data.sfgov.org',
 					help='City domain identifier for the Socrata-backed portal.', )
 				
 				open_city_dataset_id = st.text_input( 'Dataset ID', value='',
@@ -2520,25 +2166,16 @@ with tabs[ 0 ]:
 				clear_open_city = col_clear.button( 'Clear', key='open_city_clear' )
 				
 				can_save = (
-						st.session_state.get( 'active_loader' ) == 'OpenCityLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+						st.session_state.get( 'active_loader' ) == 'OpenCityLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='open_city_loader_output.txt',
-						mime='text/plain',
-						key='open_city_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='open_city_loader_output.txt', mime='text/plain',
+						key='open_city_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='open_city_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='open_city_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2551,19 +2188,13 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_open_city
-						and isinstance( open_city_id, str )
-						and open_city_id.strip( )
-						and isinstance( open_city_dataset_id, str )
-						and open_city_dataset_id.strip( )
-				):
+				if (load_open_city and isinstance( open_city_id,
+					str ) and open_city_id.strip( ) and isinstance( open_city_dataset_id,
+					str ) and open_city_dataset_id.strip( )):
 					loader = OpenCityLoader( )
-					documents = loader.load(
-						city_id=open_city_id.strip( ),
+					documents = loader.load( city_id=open_city_id.strip( ),
 						dataset_id=open_city_dataset_id.strip( ),
-						limit=int( open_city_limit ),
-					) or [ ]
+						limit=int( open_city_limit ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2576,37 +2207,28 @@ with tabs[ 0 ]:
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'OpenCityLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} Open City document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} Open City document(s).'
 		
 		with st.expander( label='Cloud Documents', expanded=False ):
+			
 			# --------------------------- OneDrive Loader
 			with st.expander( label='OneDrive Loader', icon='🟦', expanded=False ):
-				onedrive_drive_id = st.text_input(
-					'Drive ID',
-					value='',
-					key='onedrive_drive_id',
-					placeholder='OneDrive drive identifier',
-				)
+				onedrive_drive_id = st.text_input( 'Drive ID', value='', key='onedrive_drive_id',
+					placeholder='OneDrive drive identifier', )
 				
-				onedrive_folder_path = st.text_input(
-					'Folder Path',
-					value='',
-					key='onedrive_folder_path',
-					placeholder='Optional folder path within the drive',
-					help='Leave blank to load the drive target directly.',
-				)
+				onedrive_folder_path = st.text_input( 'Folder Path', value='',
+					key='onedrive_folder_path', placeholder='Optional folder path within the '
+					                                        'drive',
+					help='Leave blank to load the drive target directly.', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -2615,26 +2237,17 @@ with tabs[ 0 ]:
 				load_onedrive = col_load.button( 'Load', key='onedrive_load' )
 				clear_onedrive = col_clear.button( 'Clear', key='onedrive_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'OneDriveDocLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'OneDriveDocLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='onedrive_loader_output.txt',
-						mime='text/plain',
-						key='onedrive_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='onedrive_loader_output.txt', mime='text/plain',
+						key='onedrive_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='onedrive_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='onedrive_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2647,22 +2260,15 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_onedrive
-						and isinstance( onedrive_drive_id, str )
-						and onedrive_drive_id.strip( )
-				):
+				if (load_onedrive and isinstance( onedrive_drive_id,
+					str ) and onedrive_drive_id.strip( )):
 					loader = OneDriveDocLoader( )
 					
 					if isinstance( onedrive_folder_path, str ) and onedrive_folder_path.strip( ):
-						documents = loader.load_folder(
-							id=onedrive_drive_id.strip( ),
-							path=onedrive_folder_path.strip( ),
-						) or [ ]
+						documents = loader.load_folder( id=onedrive_drive_id.strip( ),
+							path=onedrive_folder_path.strip( ), ) or [ ]
 					else:
-						documents = loader.load(
-							id=onedrive_drive_id.strip( ),
-						) or [ ]
+						documents = loader.load( id=onedrive_drive_id.strip( ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2670,60 +2276,38 @@ with tabs[ 0 ]:
 						
 						document.metadata[ 'loader' ] = 'OneDriveDocLoader'
 						document.metadata.setdefault( 'drive_id', onedrive_drive_id.strip( ) )
-						document.metadata.setdefault(
-							'folder_path',
-							onedrive_folder_path.strip( ) or None,
-						)
+						document.metadata.setdefault( 'folder_path',
+							onedrive_folder_path.strip( ) or None, )
 						
 						if onedrive_folder_path.strip( ):
-							document.metadata.setdefault(
-								'source',
-								f"{onedrive_drive_id.strip( )}:{onedrive_folder_path.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"{onedrive_drive_id.strip( )}:{onedrive_folder_path.strip( )}" )
 						else:
-							document.metadata.setdefault(
-								'source',
-								onedrive_drive_id.strip( ),
-							)
+							document.metadata.setdefault( 'source', onedrive_drive_id.strip( ), )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'OneDriveDocLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} OneDrive document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} OneDrive document(s).'
 			
 			# --------------------------- Google Cloud File Loader
 			with st.expander( label='Google Cloud File Loader', icon='☁️', expanded=False ):
-				gcs_project_name = st.text_input(
-					'Project Name',
-					value='',
-					key='gcs_file_project_name',
-					placeholder='e.g. my-gcp-project',
-				)
+				gcs_project_name = st.text_input( 'Project Name', value='',
+					key='gcs_file_project_name', placeholder='e.g. my-gcp-project', )
 				
-				gcs_bucket = st.text_input(
-					'Bucket',
-					value='',
-					key='gcs_file_bucket',
-					placeholder='e.g. my-bucket',
-				)
+				gcs_bucket = st.text_input( 'Bucket', value='', key='gcs_file_bucket',
+					placeholder='e.g. my-bucket', )
 				
-				gcs_blob = st.text_input(
-					'Blob',
-					value='',
-					key='gcs_file_blob',
-					placeholder='e.g. documents/report.pdf',
-				)
+				gcs_blob = st.text_input( 'Blob', value='', key='gcs_file_blob',
+					placeholder='e.g. documents/report.pdf', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -2732,26 +2316,17 @@ with tabs[ 0 ]:
 				load_gcs_file = col_load.button( 'Load', key='gcs_file_load' )
 				clear_gcs_file = col_clear.button( 'Clear', key='gcs_file_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'GoogleCloudFileLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'GoogleCloudFileLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='google_cloud_file_loader_output.txt',
-						mime='text/plain',
-						key='gcs_file_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='google_cloud_file_loader_output.txt', mime='text/plain',
+						key='gcs_file_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='gcs_file_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='gcs_file_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2759,27 +2334,19 @@ with tabs[ 0 ]:
 				if clear_gcs_file:
 					clear_if_active( 'GoogleCloudFileLoader' )
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
-					st.session_state[ '_loader_status' ] = \
-						'Google Cloud File Loader state cleared.'
+					st.session_state[ '_loader_status' ] = ('Google Cloud File Loader state '
+					                                        'cleared.')
 				
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_gcs_file
-						and isinstance( gcs_project_name, str )
-						and gcs_project_name.strip( )
-						and isinstance( gcs_bucket, str )
-						and gcs_bucket.strip( )
-						and isinstance( gcs_blob, str )
-						and gcs_blob.strip( )
-				):
+				if (load_gcs_file and isinstance( gcs_project_name,
+					str ) and gcs_project_name.strip( ) and isinstance( gcs_bucket,
+					str ) and gcs_bucket.strip( ) and isinstance( gcs_blob,
+					str ) and gcs_blob.strip( )):
 					loader = GoogleCloudFileLoader( )
-					documents = loader.load(
-						project_name=gcs_project_name.strip( ),
-						bucket=gcs_bucket.strip( ),
-						blob=gcs_blob.strip( ),
-					) or [ ]
+					documents = loader.load( project_name=gcs_project_name.strip( ),
+						bucket=gcs_bucket.strip( ), blob=gcs_blob.strip( ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2789,26 +2356,22 @@ with tabs[ 0 ]:
 						document.metadata.setdefault( 'project_name', gcs_project_name.strip( ) )
 						document.metadata.setdefault( 'bucket', gcs_bucket.strip( ) )
 						document.metadata.setdefault( 'blob', gcs_blob.strip( ) )
-						document.metadata.setdefault(
-							'source',
-							f"gs://{gcs_bucket.strip( )}/{gcs_blob.strip( )}"
-						)
+						document.metadata.setdefault( 'source',
+							f"gs://{gcs_bucket.strip( )}/{gcs_blob.strip( )}" )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'GoogleCloudFileLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} Google Cloud file document(s).'
+					st.session_state[
+						'_loader_status' ] = (f'Loaded {len( documents )} Google Cloud file '
+					                          f'document(s).')
 			
 			# --------------------------- AWS File Loader
 			with st.expander( label='AWS File Loader', icon='🪣', expanded=False ):
@@ -2826,8 +2389,8 @@ with tabs[ 0 ]:
 				
 				aws_file_use_ssl = st.checkbox( 'Use SSL', value=True, key='aws_file_use_ssl', )
 				
-				aws_file_verify = st.text_input( 'Verify', value='',
-					key='aws_file_verify', placeholder='Optional path or True / False',
+				aws_file_verify = st.text_input( 'Verify', value='', key='aws_file_verify',
+					placeholder='Optional path or True / False',
 					help='Leave blank for default behavior, or provide a CA bundle path.', )
 				
 				aws_file_endpoint_url = st.text_input( 'Endpoint URL', value='',
@@ -2840,10 +2403,10 @@ with tabs[ 0 ]:
 				load_aws_file = col_load.button( 'Load', key='aws_file_load' )
 				clear_aws_file = col_clear.button( 'Clear', key='aws_file_clear' )
 				
-				can_save = (st.session_state.get( 'active_loader' ) == 'AwsFileLoader'
-				            and isinstance( st.session_state.get( 'raw_text' ), str )
-				            and st.session_state.get( 'raw_text' ).strip( )
-				            )
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'AwsFileLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
@@ -2864,8 +2427,8 @@ with tabs[ 0 ]:
 				# Load
 				# --------------------------------------------------
 				if (load_aws_file and isinstance( aws_file_bucket,
-						str ) and aws_file_bucket.strip( )
-						and isinstance( aws_file_key, str ) and aws_file_key.strip( )):
+						str ) and aws_file_bucket.strip( ) and isinstance( aws_file_key,
+					str ) and aws_file_key.strip( )):
 					verify_value: str | bool | None = None
 					
 					if isinstance( aws_file_verify, str ) and aws_file_verify.strip( ):
@@ -2879,15 +2442,11 @@ with tabs[ 0 ]:
 							verify_value = verify_text
 					
 					loader = AwsFileLoader( )
-					documents = loader.load(
-						bucket=aws_file_bucket.strip( ),
-						key=aws_file_key.strip( ),
-						region_name=aws_file_region.strip( ) or None,
+					documents = loader.load( bucket=aws_file_bucket.strip( ),
+						key=aws_file_key.strip( ), region_name=aws_file_region.strip( ) or None,
 						api_version=aws_file_api_version.strip( ) or None,
-						use_ssl=bool( aws_file_use_ssl ),
-						verify=verify_value,
-						endpoint_url=aws_file_endpoint_url.strip( ) or None,
-					) or [ ]
+						use_ssl=bool( aws_file_use_ssl ), verify=verify_value,
+						endpoint_url=aws_file_endpoint_url.strip( ) or None, ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -2904,55 +2463,35 @@ with tabs[ 0 ]:
 						document.metadata.setdefault( 'verify', verify_value )
 						document.metadata.setdefault( 'endpoint_url',
 							aws_file_endpoint_url.strip( ) or None )
-						document.metadata.setdefault(
-							'source',
-							f"s3://{aws_file_bucket.strip( )}/{aws_file_key.strip( )}"
-						)
+						document.metadata.setdefault( 'source',
+							f"s3://{aws_file_bucket.strip( )}/{aws_file_key.strip( )}" )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'AwsFileLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} AWS file document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} AWS file document(s).'
 			
 			# --------------------------- Google Bucket Loader
 			with st.expander( label='Google Bucket Loader', icon='🗂️', expanded=False ):
-				gcs_bucket_project_name = st.text_input(
-					'Project Name',
-					value='',
-					key='gcs_bucket_project_name',
-					placeholder='e.g. my-gcp-project',
-				)
+				gcs_bucket_project_name = st.text_input( 'Project Name', value='',
+					key='gcs_bucket_project_name', placeholder='e.g. my-gcp-project', )
 				
-				gcs_bucket_name = st.text_input(
-					'Bucket',
-					value='',
-					key='gcs_bucket_name',
-					placeholder='e.g. my-bucket',
-				)
+				gcs_bucket_name = st.text_input( 'Bucket', value='', key='gcs_bucket_name',
+					placeholder='e.g. my-bucket', )
 				
-				gcs_bucket_prefix = st.text_input(
-					'Prefix',
-					value='',
-					key='gcs_bucket_prefix',
-					placeholder='Optional folder / object prefix',
-				)
+				gcs_bucket_prefix = st.text_input( 'Prefix', value='', key='gcs_bucket_prefix',
+					placeholder='Optional folder / object prefix', )
 				
-				gcs_bucket_continue_on_failure = st.checkbox(
-					'Continue On Failure',
-					value=False,
-					key='gcs_bucket_continue_on_failure',
-				)
+				gcs_bucket_continue_on_failure = st.checkbox( 'Continue On Failure', value=False,
+					key='gcs_bucket_continue_on_failure', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -2961,26 +2500,17 @@ with tabs[ 0 ]:
 				load_gcs_bucket = col_load.button( 'Load', key='gcs_bucket_load' )
 				clear_gcs_bucket = col_clear.button( 'Clear', key='gcs_bucket_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'GoogleBucketLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get(
+					'active_loader' ) == 'GoogleBucketLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='google_bucket_loader_output.txt',
-						mime='text/plain',
-						key='gcs_bucket_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='google_bucket_loader_output.txt', mime='text/plain',
+						key='gcs_bucket_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='gcs_bucket_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='gcs_bucket_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -2988,126 +2518,77 @@ with tabs[ 0 ]:
 				if clear_gcs_bucket:
 					clear_if_active( 'GoogleBucketLoader' )
 					st.session_state.raw_text = rebuild_raw_text_from_documents( )
-					st.session_state[ '_loader_status' ] = \
-						'Google Bucket Loader state cleared.'
+					st.session_state[ '_loader_status' ] = 'Google Bucket Loader state cleared.'
 				
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_gcs_bucket
-						and isinstance( gcs_bucket_project_name, str )
-						and gcs_bucket_project_name.strip( )
-						and isinstance( gcs_bucket_name, str )
-						and gcs_bucket_name.strip( )
-				):
+				if (load_gcs_bucket and isinstance( gcs_bucket_project_name,
+					str ) and gcs_bucket_project_name.strip( ) and isinstance( gcs_bucket_name,
+					str ) and gcs_bucket_name.strip( )):
 					loader = GoogleBucketLoader( )
-					documents = loader.load(
-						project_name=gcs_bucket_project_name.strip( ),
-						bucket=gcs_bucket_name.strip( ),
-						prefix=gcs_bucket_prefix.strip( ) or None,
-						continue_on_failure=bool( gcs_bucket_continue_on_failure ),
-					) or [ ]
+					documents = loader.load( project_name=gcs_bucket_project_name.strip( ),
+						bucket=gcs_bucket_name.strip( ), prefix=gcs_bucket_prefix.strip( ) or None,
+						continue_on_failure=bool( gcs_bucket_continue_on_failure ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
 							document.metadata = { }
 						
 						document.metadata[ 'loader' ] = 'GoogleBucketLoader'
-						document.metadata.setdefault(
-							'project_name',
-							gcs_bucket_project_name.strip( ),
-						)
-						document.metadata.setdefault(
-							'bucket',
-							gcs_bucket_name.strip( ),
-						)
-						document.metadata.setdefault(
-							'prefix',
-							gcs_bucket_prefix.strip( ) or None,
-						)
-						document.metadata.setdefault(
-							'continue_on_failure',
-							bool( gcs_bucket_continue_on_failure ),
-						)
+						document.metadata.setdefault( 'project_name',
+							gcs_bucket_project_name.strip( ), )
+						document.metadata.setdefault( 'bucket', gcs_bucket_name.strip( ), )
+						document.metadata.setdefault( 'prefix',
+							gcs_bucket_prefix.strip( ) or None, )
+						document.metadata.setdefault( 'continue_on_failure',
+							bool( gcs_bucket_continue_on_failure ), )
 						
 						if gcs_bucket_prefix.strip( ):
-							document.metadata.setdefault(
-								'source',
-								f"gs://{gcs_bucket_name.strip( )}/{gcs_bucket_prefix.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"gs://{gcs_bucket_name.strip( )}/{gcs_bucket_prefix.strip( )}" )
 						else:
-							document.metadata.setdefault(
-								'source',
-								f"gs://{gcs_bucket_name.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"gs://{gcs_bucket_name.strip( )}" )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'GoogleBucketLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} Google bucket document(s).'
+					st.session_state[
+						'_loader_status' ] = (f'Loaded {len( documents )} Google bucket document('
+					                          f's).')
 			
 			# --------------------------- AWS Bucket Loader
 			with st.expander( label='AWS Bucket Loader', icon='🗃️', expanded=False ):
-				aws_bucket_name = st.text_input(
-					'Bucket',
-					value='',
-					key='aws_bucket_name',
-					placeholder='e.g. my-s3-bucket',
-				)
+				aws_bucket_name = st.text_input( 'Bucket', value='', key='aws_bucket_name',
+					placeholder='e.g. my-s3-bucket', )
 				
-				aws_bucket_prefix = st.text_input(
-					'Prefix',
-					value='',
-					key='aws_bucket_prefix',
-					placeholder='Optional folder / object prefix',
-				)
+				aws_bucket_prefix = st.text_input( 'Prefix', value='', key='aws_bucket_prefix',
+					placeholder='Optional folder / object prefix', )
 				
-				aws_bucket_region = st.text_input(
-					'Region Name',
-					value='',
+				aws_bucket_region = st.text_input( 'Region Name', value='',
 					key='aws_bucket_region',
-					placeholder='e.g. us-east-1',
-				)
+					placeholder='e.g. us-east-1', )
 				
-				aws_bucket_api_version = st.text_input(
-					'API Version',
-					value='',
-					key='aws_bucket_api_version',
-					placeholder='Optional',
-				)
+				aws_bucket_api_version = st.text_input( 'API Version', value='',
+					key='aws_bucket_api_version', placeholder='Optional', )
 				
-				aws_bucket_use_ssl = st.checkbox(
-					'Use SSL',
-					value=True,
-					key='aws_bucket_use_ssl',
-				)
+				aws_bucket_use_ssl = st.checkbox( 'Use SSL', value=True,
+					key='aws_bucket_use_ssl', )
 				
-				aws_bucket_verify = st.text_input(
-					'Verify',
-					value='',
-					key='aws_bucket_verify',
+				aws_bucket_verify = st.text_input( 'Verify', value='', key='aws_bucket_verify',
 					placeholder='Optional path or True / False',
-					help='Leave blank for default behavior, or provide a CA bundle path.',
-				)
+					help='Leave blank for default behavior, or provide a CA bundle path.', )
 				
-				aws_bucket_endpoint_url = st.text_input(
-					'Endpoint URL',
-					value='',
-					key='aws_bucket_endpoint_url',
-					placeholder='Optional custom endpoint',
-				)
+				aws_bucket_endpoint_url = st.text_input( 'Endpoint URL', value='',
+					key='aws_bucket_endpoint_url', placeholder='Optional custom endpoint', )
 				
 				# --------------------------------------------------
 				# Buttons: Load / Clear / Save
@@ -3117,25 +2598,17 @@ with tabs[ 0 ]:
 				clear_aws_bucket = col_clear.button( 'Clear', key='aws_bucket_clear' )
 				
 				can_save = (
-						st.session_state.get( 'active_loader' ) == 'AwsBucketLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+						st.session_state.get( 'active_loader' ) == 'AwsBucketLoader' and
+						isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='aws_bucket_loader_output.txt',
-						mime='text/plain',
-						key='aws_bucket_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='aws_bucket_loader_output.txt', mime='text/plain',
+						key='aws_bucket_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='aws_bucket_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='aws_bucket_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -3148,11 +2621,8 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_aws_bucket
-						and isinstance( aws_bucket_name, str )
-						and aws_bucket_name.strip( )
-				):
+				if (load_aws_bucket and isinstance( aws_bucket_name,
+					str ) and aws_bucket_name.strip( )):
 					verify_value: str | bool | None = None
 					
 					if isinstance( aws_bucket_verify, str ) and aws_bucket_verify.strip( ):
@@ -3166,15 +2636,12 @@ with tabs[ 0 ]:
 							verify_value = verify_text
 					
 					loader = AwsBucketLoader( )
-					documents = loader.load(
-						bucket=aws_bucket_name.strip( ),
+					documents = loader.load( bucket=aws_bucket_name.strip( ),
 						prefix=aws_bucket_prefix.strip( ),
 						region_name=aws_bucket_region.strip( ) or None,
 						api_version=aws_bucket_api_version.strip( ) or None,
-						use_ssl=bool( aws_bucket_use_ssl ),
-						verify=verify_value,
-						endpoint_url=aws_bucket_endpoint_url.strip( ) or None,
-					) or [ ]
+						use_ssl=bool( aws_bucket_use_ssl ), verify=verify_value,
+						endpoint_url=aws_bucket_endpoint_url.strip( ) or None, ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -3193,31 +2660,24 @@ with tabs[ 0 ]:
 							aws_bucket_endpoint_url.strip( ) or None )
 						
 						if aws_bucket_prefix.strip( ):
-							document.metadata.setdefault(
-								'source',
-								f"s3://{aws_bucket_name.strip( )}/{aws_bucket_prefix.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"s3://{aws_bucket_name.strip( )}/{aws_bucket_prefix.strip( )}" )
 						else:
-							document.metadata.setdefault(
-								'source',
-								f"s3://{aws_bucket_name.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"s3://{aws_bucket_name.strip( )}" )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'AwsBucketLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} AWS bucket document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} AWS bucket document(s).'
 			
 			# --------------------------- SharePoint Loader
 			with st.expander( label='SharePoint Loader', icon='🟩', expanded=False ):
@@ -3235,26 +2695,16 @@ with tabs[ 0 ]:
 				load_spfx = col_load.button( 'Load', key='spfx_load' )
 				clear_spfx = col_clear.button( 'Clear', key='spfx_clear' )
 				
-				can_save = (
-						st.session_state.get( 'active_loader' ) == 'SpfxLoader'
-						and isinstance( st.session_state.get( 'raw_text' ), str )
-						and st.session_state.get( 'raw_text' ).strip( )
-				)
+				can_save = (st.session_state.get( 'active_loader' ) == 'SpfxLoader' and isinstance(
+					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
+					'raw_text' ).strip( ))
 				
 				if can_save:
-					col_save.download_button(
-						'Save',
-						data=st.session_state.get( 'raw_text' ),
-						file_name='sharepoint_loader_output.txt',
-						mime='text/plain',
-						key='spfx_save',
-					)
+					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
+						file_name='sharepoint_loader_output.txt', mime='text/plain',
+						key='spfx_save', )
 				else:
-					col_save.button(
-						'Save',
-						key='spfx_save_disabled',
-						disabled=True,
-					)
+					col_save.button( 'Save', key='spfx_save_disabled', disabled=True, )
 				
 				# --------------------------------------------------
 				# Clear
@@ -3267,22 +2717,14 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				# Load
 				# --------------------------------------------------
-				if (
-						load_spfx
-						and isinstance( spfx_library_id, str )
-						and spfx_library_id.strip( )
-				):
+				if (load_spfx and isinstance( spfx_library_id, str ) and spfx_library_id.strip( )):
 					loader = SpfxLoader( )
 					
 					if isinstance( spfx_folder_id, str ) and spfx_folder_id.strip( ):
-						documents = loader.load_folder(
-							library_id=spfx_library_id.strip( ),
-							folder_id=spfx_folder_id.strip( ),
-						) or [ ]
+						documents = loader.load_folder( library_id=spfx_library_id.strip( ),
+							folder_id=spfx_folder_id.strip( ), ) or [ ]
 					else:
-						documents = loader.load(
-							library_id=spfx_library_id.strip( ),
-						) or [ ]
+						documents = loader.load( library_id=spfx_library_id.strip( ), ) or [ ]
 					
 					for document in documents:
 						if not isinstance( getattr( document, 'metadata', None ), dict ):
@@ -3290,37 +2732,27 @@ with tabs[ 0 ]:
 						
 						document.metadata[ 'loader' ] = 'SpfxLoader'
 						document.metadata.setdefault( 'library_id', spfx_library_id.strip( ) )
-						document.metadata.setdefault(
-							'folder_id',
-							spfx_folder_id.strip( ) or None,
-						)
+						document.metadata.setdefault( 'folder_id',
+							spfx_folder_id.strip( ) or None, )
 						
 						if spfx_folder_id.strip( ):
-							document.metadata.setdefault(
-								'source',
-								f"{spfx_library_id.strip( )}:{spfx_folder_id.strip( )}"
-							)
+							document.metadata.setdefault( 'source',
+								f"{spfx_library_id.strip( )}:{spfx_folder_id.strip( )}" )
 						else:
-							document.metadata.setdefault(
-								'source',
-								spfx_library_id.strip( ),
-							)
+							document.metadata.setdefault( 'source', spfx_library_id.strip( ), )
 					
 					st.session_state.documents = documents
 					st.session_state.raw_documents = list( documents )
-					st.session_state.raw_text = '\n\n'.join(
-						d.page_content for d in documents
-						if hasattr( d, 'page_content' )
-						and isinstance( d.page_content, str )
-						and d.page_content.strip( )
-					)
+					st.session_state.raw_text = '\n\n'.join( d.page_content for d in documents if
+					hasattr( d, 'page_content' ) and isinstance( d.page_content,
+						str ) and d.page_content.strip( ) )
 					st.session_state.processed_text = None
 					st.session_state.lines = None
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'SpfxLoader'
-					st.session_state[ '_loader_status' ] = \
-						f'Loaded {len( documents )} SharePoint document(s).'
+					st.session_state[
+						'_loader_status' ] = f'Loaded {len( documents )} SharePoint document(s).'
 	
 	# ------------------------------------------------------------------
 	# RIGHT COLUMN — DOCUMENT RENDERING
@@ -3335,8 +2767,8 @@ with tabs[ 0 ]:
 			for i, d in enumerate( documents[ :5 ] ):
 				with st.expander( f'Document {i + 1}', expanded=True ):
 					st.json( d.metadata )
-					st.text_area( 'Content', d.page_content[ : ],
-						height=450, key=f'preview_doc_{i}' )
+					st.text_area( 'Content', d.page_content[ : ], height=450,
+						key=f'preview_doc_{i}' )
 	
 	st.divider( )
 	
@@ -3392,7 +2824,6 @@ with tabs[ 0 ]:
 				st.bar_chart( df_top, color='#01438A' )
 			
 			st.divider( )
-			
 			st.subheader( 'Corpus Metrics' )
 			
 			# ------------ Corpus Metrics
@@ -3428,13 +2859,10 @@ with tabs[ 0 ]:
 						'Percentage of stopwords in the text.' )
 				
 				with col8:
-					metric_with_tooltip(
-						'Lexical Density',
-						f'{lexical_density:.2%}',
+					metric_with_tooltip( 'Lexical Density', f'{lexical_density:.2%}',
 						'Proportion of content-bearing words.' )
 			
 			st.divider( )
-			
 			st.subheader( 'Comprehension Metrics' )
 			
 			# ------------ Readability
@@ -3535,8 +2963,7 @@ with tabs[ 1 ]:
 		
 		if isinstance( value, list ):
 			return '\n'.join(
-				str( item ) for item in value
-				if item is not None and str( item ).strip( ) )
+				str( item ) for item in value if item is not None and str( item ).strip( ) )
 		
 		return str( value )
 	
@@ -3552,7 +2979,6 @@ with tabs[ 1 ]:
 		# Layout
 		# ------------------------------------------------------------------
 		left, right = st.columns( [ 1, 1.5 ], border=True )
-		
 		with left:
 			active = st.session_state.get( 'active_loader' )
 			
@@ -3564,8 +2990,7 @@ with tabs[ 1 ]:
 					help='Removes Hypertext Markup Tags, eg. <, \\>, etc', value=False )
 				
 				remove_markdown = st.checkbox( 'Remove Markdown',
-					help=r'Removes symbols used in .md files #, ##, ###, -, etc',
-					value=False )
+					help=r'Removes symbols used in .md files #, ##, ###, -, etc', value=False )
 				
 				remove_symbols = st.checkbox( 'Remove Symbols',
 					help=r'Removes @, #, $, ^, *, =, |, \\, <, >, ~', value=False )
@@ -3577,30 +3002,25 @@ with tabs[ 1 ]:
 					help=r'Removes xml tags ( ex. <xml> & <\xml> )', value=False )
 				
 				remove_punctuation = st.checkbox( 'Remove Punctuation',
-					help=r'Removes punctuation while preserving sentence delimiters',
-					value=False )
+					help=r'Removes punctuation while preserving sentence delimiters', value=False )
 				
 				reduce_repeats = st.checkbox( 'Remove Repeats',
 					help='Reduces consecutive punctuation sequences to the left-most mark '
 					     'and inserts a following space when needed. Examples: ".." -> ". ", '
-					     '"??" -> "? ", "?;" -> "? ".',
-					value=False )
+					     '"??" -> "? ", "?;" -> "? ".', value=False )
 				
 				remove_images = st.checkbox( 'Remove Images',
 					help=r'Remove images from text, including Markdown, HTML <img> tags, '
-					     r'and image URLs',
-					value=True )
+					     r'and image URLs', value=True )
 				
 				remove_stopwords = st.checkbox( 'Remove Stopwords',
-					help=r'Removes common words (e.g., "the", "is", "and", etc.)',
-					value=False )
+					help=r'Removes common words (e.g., "the", "is", "and", etc.)', value=False )
 				
 				remove_numerals = st.checkbox( 'Remove Numerals',
 					help='Removes roman numerals I, II, IV, XI, etc', value=False )
 				
 				remove_encodings = st.checkbox( 'Remove Encoding',
-					help=r'Removes encoding artifacts and over-encoded byte strings',
-					value=True )
+					help=r'Removes encoding artifacts and over-encoded byte strings', value=True )
 				
 				normalize_text = st.checkbox( 'Normalize (lowercase)', value=False )
 				
@@ -3621,8 +3041,7 @@ with tabs[ 1 ]:
 					help='Splits text into word tokens.' )
 				nltk_sentence_tokenize = st.checkbox( 'Sentence Tokenize',
 					help='Splits text into sentence tokens.' )
-				nltk_stem = st.checkbox( 'Stem Words',
-					help='Applies stemming to word tokens.' )
+				nltk_stem = st.checkbox( 'Stem Words', help='Applies stemming to word tokens.' )
 				nltk_lemmatize = st.checkbox( 'Lemmatize Words',
 					help='Applies lemmatization to word tokens.' )
 				nltk_pos_tag = st.checkbox( 'Part-of-Speech Tagging',
@@ -3654,35 +3073,26 @@ with tabs[ 1 ]:
 			
 			with st.expander( 'PDF Processing', icon='📕', expanded=False ):
 				if active == 'PdfLoader':
-					remove_pdf_repeats = st.checkbox(
-						'Remove Repeated Marginalia',
-						value=True,
+					remove_pdf_repeats = st.checkbox( 'Remove Repeated Marginalia', value=True,
 						key='pdf_remove_repeats',
-						help='Removes repeated header/footer-band blocks using geometry metadata.' )
+						help='Removes repeated header/footer-band blocks using geometry '
+						     'metadata.' )
 					
-					clean_pdf_artifacts = st.checkbox(
-						'Clean Artifacts',
-						value=True,
+					clean_pdf_artifacts = st.checkbox( 'Clean Artifacts', value=True,
 						key='pdf_clean_artifacts',
 						help='Removes generic parser artifacts, file paths, image tags, control '
 						     'characters, and leader-dot runs.' )
 					
-					repair_pdf_spacing = st.checkbox(
-						'Repair Spacing',
-						value=True,
+					repair_pdf_spacing = st.checkbox( 'Repair Spacing', value=True,
 						key='pdf_repair_spacing',
 						help='Repairs generic spacing defects without document-specific rules.' )
 					
-					rejoin_pdf_hyphenation = st.checkbox(
-						'Rejoin Hyphenation',
-						value=True,
+					rejoin_pdf_hyphenation = st.checkbox( 'Rejoin Hyphenation', value=True,
 						key='pdf_rejoin_hyphenation',
 						help='Repairs line-break hyphenation and soft-hyphen artifacts.' )
 					
-					repair_embedded_hyphenation = st.checkbox(
-						'Repair Embedded Hyphen Splits',
-						value=True,
-						key='pdf_repair_embedded_hyphenation',
+					repair_embedded_hyphenation = st.checkbox( 'Repair Embedded Hyphen Splits',
+						value=True, key='pdf_repair_embedded_hyphenation',
 						help='Conservatively repairs embedded alphabetic extraction splits.' )
 				else:
 					st.caption( 'Available when PDF documents are loaded.' )
@@ -3783,19 +3193,18 @@ with tabs[ 1 ]:
 					if remove_pdf_repeats and isinstance( pdf_pages, list ) and pdf_pages:
 						clean_pages = pdf_parser.remove_repeats( pdf_pages )
 						processed_text = coerce_text( pdf_parser.rebuild_pages( pages=clean_pages,
-							preserve_page_breaks=st.session_state.get(
-								'pdf_preserve_page_breaks', False ) ) )
+							preserve_page_breaks=st.session_state.get( 'pdf_preserve_page_breaks',
+								False ) ) )
 					
 					if clean_pdf_artifacts:
-						processed_text = coerce_text(
-							pdf_parser.clean_artifacts( processed_text ) )
+						processed_text = coerce_text( pdf_parser.clean_artifacts( processed_text ) )
 					
 					if repair_pdf_spacing:
 						processed_text = coerce_text( pdf_parser.repair_spacing( processed_text ) )
 					
 					if rejoin_pdf_hyphenation:
-						processed_text = coerce_text( pdf_parser.rejoin_hyphenation(
-							processed_text, repair_embedded=repair_embedded_hyphenation ) )
+						processed_text = coerce_text( pdf_parser.rejoin_hyphenation( processed_text,
+							repair_embedded=repair_embedded_hyphenation ) )
 				
 				# ----------------------------------------------------------
 				# Noise / non-lexical cleanup
@@ -3844,7 +3253,6 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				if active == 'WordLoader':
 					word_parser = WordParser( )
-					
 					if extract_tables and hasattr( word_parser, 'extract_tables' ):
 						processed_text = coerce_text( word_parser.extract_tables( processed_text ) )
 					
@@ -3863,14 +3271,12 @@ with tabs[ 1 ]:
 				# Token processing
 				# ----------------------------------------------------------
 				display_text = processed_text
-				
 				st.session_state.nltk_word_tokens = [ ]
 				st.session_state.nltk_sentence_tokens = [ ]
 				st.session_state.nltk_stemmed_tokens = [ ]
 				st.session_state.nltk_lemmatized_tokens = [ ]
 				st.session_state.nltk_pos_tags = [ ]
 				st.session_state.nltk_named_entities = [ ]
-				
 				if nltk_word_tokenize:
 					st.session_state.nltk_word_tokens = nlp.word_tokenizer( processed_text ) or [ ]
 					display_text = rebuild_token_text( st.session_state.nltk_word_tokens )
@@ -3879,14 +3285,11 @@ with tabs[ 1 ]:
 					st.session_state.nltk_sentence_tokens = (
 							nlp.sentence_tokenizer( processed_text ) or [ ])
 					
-					display_text = '\n'.join(
-						s for s in st.session_state.nltk_sentence_tokens
-						if isinstance( s, str ) and s.strip( ) )
+					display_text = '\n'.join( s for s in st.session_state.nltk_sentence_tokens if
+					isinstance( s, str ) and s.strip( ) )
 				
 				if nltk_stem:
-					st.session_state.nltk_stemmed_tokens = (
-							nlp.word_stemmer( processed_text ) or [ ])
-					
+					st.session_state.nltk_stemmed_tokens = ( nlp.word_stemmer( processed_text ) or [ ])
 					processed_text = rebuild_token_text( st.session_state.nltk_stemmed_tokens )
 					display_text = processed_text
 				
@@ -3898,22 +3301,19 @@ with tabs[ 1 ]:
 					display_text = processed_text
 				
 				if nltk_pos_tag:
-					st.session_state.nltk_pos_tags = (
-							nlp.pos_tagger( processed_text ) or [ ])
+					st.session_state.nltk_pos_tags = (nlp.pos_tagger( processed_text ) or [ ])
 					
 					display_text = '\n'.join(
-						f'{token}\t{tag}'
-						for token, tag in st.session_state.nltk_pos_tags
-						if isinstance( token, str ) and token.strip( ) )
+						f'{token}\t{tag}' for token, tag in st.session_state.nltk_pos_tags if
+						isinstance( token, str ) and token.strip( ) )
 				
 				if nltk_named_entities:
 					st.session_state.nltk_named_entities = (
 							nlp.named_entity_recognition( processed_text ) or [ ])
 					
-					display_text = '\n'.join(
-						f'{entity}\t{label}'
-						for entity, label in st.session_state.nltk_named_entities
-						if isinstance( entity, str ) and entity.strip( ) )
+					display_text = '\n'.join( f'{entity}\t{label}' for entity, label in
+					st.session_state.nltk_named_entities if
+					isinstance( entity, str ) and entity.strip( ) )
 				
 				# ----------------------------------------------------------
 				# Final punctuation / delimiter cleanup
@@ -3935,13 +3335,11 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				st.session_state.processed_text = coerce_text( processed_text )
 				st.session_state.displayed_text = coerce_text( display_text )
-				
 				if not st.session_state.displayed_text.strip( ):
 					st.session_state.displayed_text = st.session_state.processed_text
 				
 				st.session_state.processed_text_display = st.session_state.displayed_text
 				refresh_processing_display( )
-				
 				if st.session_state.processed_text.strip( ):
 					st.success( f'Text processing applied ({st.session_state.total_time:.1f} s)' )
 				else:
@@ -3952,19 +3350,15 @@ with tabs[ 1 ]:
 			# Save Processed Text
 			# ==============================================================
 			can_save_processed = (
-					isinstance( st.session_state.get( 'processed_text' ), str )
-					and bool( st.session_state.get( 'processed_text' ).strip( ) )
-			)
+					isinstance( st.session_state.get( 'processed_text' ), str ) and bool(
+				st.session_state.get( 'processed_text' ).strip( ) ))
 			
 			if can_save_processed:
 				save_processed_slot.download_button( 'Save',
-					data=st.session_state.get( 'processed_text' ),
-					file_name='processed_text.txt',
-					mime='text/plain',
-					key='processed_text_save' )
+					data=st.session_state.get( 'processed_text' ), file_name='processed_text.txt',
+					mime='text/plain', key='processed_text_save' )
 			else:
-				save_processed_slot.button( 'Save',
-					key='processed_text_save_disabled',
+				save_processed_slot.button( 'Save', key='processed_text_save_disabled',
 					disabled=True )
 		
 		# ------------------------------------------------------------------
@@ -3976,21 +3370,20 @@ with tabs[ 1 ]:
 			processed_current = st.session_state.get( 'processed_text' )
 			displayed_current = st.session_state.get( 'displayed_text' )
 			display_version = int( st.session_state.get( 'processing_display_version', 0 ) )
-			
 			st.text_area( label='Raw Text',
-				value=raw_text_view if isinstance( raw_text_view, str ) else '',
-				height=200, disabled=True, key=f'raw_text_view_display_{display_version}' )
+				value=raw_text_view if isinstance( raw_text_view, str ) else '', height=200,
+				disabled=True, key=f'raw_text_view_display_{display_version}' )
 			
 			with st.expander( '📊 Processing Statistics:', expanded=False ):
-				if (isinstance( raw_text_current, str ) and raw_text_current.strip( )
-						and isinstance( processed_current, str ) and processed_current.strip( )):
+				if (isinstance( raw_text_current,
+						str ) and raw_text_current.strip( ) and isinstance(
+					processed_current, str ) and processed_current.strip( )):
 					raw_tokens = raw_text_current.split( )
 					proc_tokens = processed_current.split( )
 					raw_chars = len( raw_text_current )
 					proc_chars = len( processed_current )
 					raw_vocab = len( set( raw_tokens ) )
 					proc_vocab = len( set( proc_tokens ) )
-					
 					st.text( 'Measures:' )
 					ttr = (proc_vocab / len( proc_tokens ) if proc_tokens else 0.0)
 					a1, a2, a3, a4 = st.columns( 4, border=True )
@@ -4015,8 +3408,8 @@ with tabs[ 1 ]:
 					st.caption( 'Load and process text to view absolute and delta statistics.' )
 			
 			st.text_area( 'Processed Text',
-				value=displayed_current if isinstance( displayed_current, str ) else '', height=800,
-				key=f'processed_text_display_area_{display_version}' )
+				value=displayed_current if isinstance( displayed_current, str ) else '',
+				height=800, key=f'processed_text_display_area_{display_version}' )
 
 # ======================================================================================
 # Tab - Semantic Analysis
@@ -4039,7 +3432,6 @@ with tabs[ 2 ]:
 	# Chunking Modes
 	# ------------------------------------------------------------------
 	chunk_modes = st.session_state.get( 'chunk_modes' )
-	
 	if not isinstance( chunk_modes, (list, tuple) ) or not chunk_modes:
 		chunk_modes = [ 'chars', 'tokens' ]
 		st.session_state.chunk_modes = list( chunk_modes )
@@ -4048,47 +3440,21 @@ with tabs[ 2 ]:
 	# Controls
 	# ------------------------------------------------------------------
 	st.subheader( 'Semantic Analysis' )
-	
-	mode = st.selectbox(
-		'Chunking Mode',
-		options=list( chunk_modes ),
-		key='chunk_mode',
-		help='Select whether chunk size and overlap are measured in characters or model tokens.',
-	)
+	mode = st.selectbox( 'Chunking Mode', options=list( chunk_modes ), key='chunk_mode',
+		help='Select whether chunk size and overlap are measured in characters or model tokens.', )
 	
 	col_a, col_b = st.columns( 2 )
-	
 	with col_a:
-		chunk_size = st.number_input(
-			'Chunk Size',
-			min_value=10,
-			max_value=5000,
-			value=1000,
-			step=10,
-			key='chunk_count',
-		)
+		chunk_size = st.number_input( 'Chunk Size', min_value=10, max_value=5000, value=1000,
+			step=10, key='chunk_count', )
 	
 	with col_b:
-		overlap = st.number_input(
-			'Overlap',
-			min_value=0,
-			max_value=2000,
-			value=200,
-			step=50,
-			key='overlap_input',
-		)
+		overlap = st.number_input( 'Overlap', min_value=0, max_value=2000, value=200, step=50,
+			key='overlap_input', )
 	
 	col_run, col_reset = st.columns( 2 )
-	
-	run_chunking = col_run.button(
-		'Chunk',
-		key='run_button',
-	)
-	
-	reset_chunking = col_reset.button(
-		'Reset',
-		key='reset_control',
-	)
+	run_chunking = col_run.button( 'Chunk', key='run_button', )
+	reset_chunking = col_reset.button( 'Reset', key='reset_control', )
 	
 	# ------------------------------------------------------------------
 	# Reset
@@ -4100,7 +3466,6 @@ with tabs[ 2 ]:
 		st.session_state.chunk_overlap = None
 		st.session_state.chunk_mode_value = None
 		st.session_state.embeddings = None
-		
 		st.info( 'Chunking controls reset.' )
 	
 	# ------------------------------------------------------------------
@@ -4111,18 +3476,11 @@ with tabs[ 2 ]:
 			st.error( 'Overlap must be smaller than chunk size.' )
 		else:
 			if mode == 'chars':
-				chunked_documents = chunk_characters(
-					text=processed_text,
-					size=int( chunk_size ),
-					overlap=int( overlap ),
-				)
+				chunked_documents = chunk_characters( text=processed_text, size=int( chunk_size ),
+					overlap=int( overlap ), )
 			elif mode == 'tokens':
-				chunked_documents = chunk_tokens(
-					text=processed_text,
-					size=int( chunk_size ),
-					overlap=int( overlap ),
-					encoding_name='cl100k_base',
-				)
+				chunked_documents = chunk_tokens( text=processed_text, size=int( chunk_size ),
+					overlap=int( overlap ), encoding_name='cl100k_base', )
 			else:
 				chunked_documents = [ ]
 				st.error( f'Unsupported chunking mode: {mode}' )
@@ -4143,10 +3501,9 @@ with tabs[ 2 ]:
 				# Existing embeddings no longer correspond to the active chunks.
 				st.session_state.embeddings = None
 				st.session_state.embedding_texts = None
-				
 				st.success( f'Chunking complete: {len( chunked_documents ):,} chunks generated '
-					f'(mode={mode}, size={int( chunk_size )}, '
-					f'overlap={int( overlap )}).' )
+				            f'(mode={mode}, size={int( chunk_size )}, '
+				            f'overlap={int( overlap )}).' )
 			else:
 				st.session_state.chunked_documents = None
 				st.session_state.df_chunk_records = None
@@ -4157,16 +3514,14 @@ with tabs[ 2 ]:
 				
 				# Existing embeddings no longer correspond to current chunks.
 				st.session_state.embeddings = None
-				
 				st.success( f'Chunking complete: {len( chunked_documents ):,} chunks generated '
-					f'(mode={mode}, size={int( chunk_size )}, '
-					f'overlap={int( overlap )}).' )
+				            f'(mode={mode}, size={int( chunk_size )}, '
+				            f'overlap={int( overlap )}).' )
 	
 	# ------------------------------------------------------------------
 	# Chunk Validation
 	# ------------------------------------------------------------------
 	df_chunk_records = st.session_state.get( 'df_chunk_records' )
-	
 	if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
 		token_counts = df_chunk_records[ 'Token Count' ]
 		
@@ -4188,7 +3543,6 @@ with tabs[ 2 ]:
 	processor = TextParser( )
 	tokens = word_tokenize( processed_text )
 	vocabulary = processor.create_vocabulary( tokens )
-	
 	st.session_state.tokens = tokens
 	st.session_state.vocabulary = vocabulary
 	
@@ -4197,85 +3551,44 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	df_frequency = processor.create_frequency_distribution( tokens )
 	st.session_state.df_frequency = df_frequency
-	
 	if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
 		st.session_state.df_token_frequency = df_frequency.rename(
-			columns={ 'Word': 'Token' }
-		).copy( )
+			columns={ 'Word': 'Token' } ).copy( )
 	else:
 		st.session_state.df_token_frequency = None
 	
 	# ------------------------------------------------------------------
 	# Three-Column Layout
 	# ------------------------------------------------------------------
-	col_tokens, col_vocab, col_freq = st.columns(
-		[ 1, 1, 2 ],
-		border=True,
-		vertical_alignment='top',
-	)
+	col_tokens, col_vocab, col_freq = st.columns( [ 1, 1, 2 ], border=True,
+		vertical_alignment='top', )
 	
 	with col_tokens:
 		st.write( f'Tokens: {len( tokens ):,}' )
 		
-		st.data_editor(
-			pd.DataFrame(
-				tokens,
-				columns=[ 'Token' ],
-			),
-			num_rows='dynamic',
-			use_container_width=True,
-			height='stretch',
-			disabled=True,
-		)
+		st.data_editor( pd.DataFrame( tokens, columns=[ 'Token' ], ), num_rows='dynamic',
+			use_container_width=True, height='stretch', disabled=True, )
 	
 	with col_vocab:
 		st.write( f'Vocabulary: {len( vocabulary ):,}' )
-		
-		st.data_editor(
-			pd.DataFrame(
-				vocabulary,
-				columns=[ 'Word' ],
-			),
-			num_rows='dynamic',
-			use_container_width=True,
-			height='stretch',
-			disabled=True,
-		)
+		st.data_editor( pd.DataFrame( vocabulary, columns=[ 'Word' ], ), num_rows='dynamic',
+			use_container_width=True, height='stretch', disabled=True, )
 	
 	with col_freq:
 		st.markdown( '#### Frequency Distribution' )
 		st.caption( 'Top 100 most frequent tokens' )
-		
 		if isinstance( df_frequency, pd.DataFrame ) and not df_frequency.empty:
-			numeric_cols = df_frequency.select_dtypes(
-				include='number',
-			)
+			numeric_cols = df_frequency.select_dtypes( include='number', )
 			
 			if not numeric_cols.empty:
 				freq_col = numeric_cols.columns[ 0 ]
-				
-				label_cols = [
-						column
-						for column in df_frequency.columns
-						if column != freq_col
-				]
+				label_cols = [ column for column in df_frequency.columns if column != freq_col ]
 				
 				if label_cols:
 					label_col = label_cols[ 0 ]
-					
-					df_top = (
-							df_frequency
-							.sort_values(
-								freq_col,
-								ascending=False,
-							)
-							.head( 100 )
-					)
-					
-					st.bar_chart(
-						df_top.set_index( label_col )[ freq_col ],
-						use_container_width=True,
-					)
+					df_top = (df_frequency.sort_values( freq_col, ascending=False, ).head( 100 ))
+					st.bar_chart( df_top.set_index( label_col )[ freq_col ],
+						use_container_width=True, )
 				else:
 					st.info( 'No token label column available for charting.' )
 			else:
@@ -4288,7 +3601,7 @@ with tabs[ 2 ]:
 # ======================================================================================
 # Tab - Data Tokenization
 # ======================================================================================
-with ( tabs[ 3 ] ):
+with tabs[ 3 ]:
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='top' )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	df_tables = st.session_state.get( 'df_tables' )
@@ -4390,8 +3703,8 @@ with ( tabs[ 3 ] ):
 	# ------------------------------------------------------------------
 	# Fixed vector-space schema
 	# ------------------------------------------------------------------
-	dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7',
-	               'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14' ]
+	dimensions = [ 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12',
+		'D13', 'D14' ]
 	
 	# ------------------------------------------------------------------
 	# Canonical diagnostics state
@@ -4407,7 +3720,6 @@ with ( tabs[ 3 ] ):
 	
 	# Sentence diagnostics must come from a boundary-preserving source.
 	diagnostic_text = None
-	
 	if isinstance( raw_text, str ) and raw_text.strip( ):
 		diagnostic_text = raw_text
 	elif isinstance( processed_text, str ) and processed_text.strip( ):
@@ -4438,33 +3750,12 @@ with ( tabs[ 3 ] ):
 	
 	# Rebuild canonical records only when chunk text exists but its dataframe
 	# is unavailable, such as after session-state migration or code reload.
-	if (
-			isinstance( chunked_documents, list )
-			and chunked_documents
-			and (
-			not isinstance( df_chunk_records, pd.DataFrame )
-			or df_chunk_records.empty
-	)
-	):
-		df_chunk_records = build_chunk_records(
-			chunks=chunked_documents,
-			mode=st.session_state.get(
-				'chunk_mode_value',
-				'tokens',
-			),
-			configured_size=int(
-				st.session_state.get(
-					'chunk_size',
-					0,
-				) or 0
-			),
-			configured_overlap=int(
-				st.session_state.get(
-					'chunk_overlap',
-					0,
-				) or 0
-			),
-		)
+	if (isinstance( chunked_documents, list ) and chunked_documents and (
+			not isinstance( df_chunk_records, pd.DataFrame ) or df_chunk_records.empty)):
+		df_chunk_records = build_chunk_records( chunks=chunked_documents,
+			mode=st.session_state.get( 'chunk_mode_value', 'tokens', ),
+			configured_size=int( st.session_state.get( 'chunk_size', 0, ) or 0 ),
+			configured_overlap=int( st.session_state.get( 'chunk_overlap', 0, ) or 0 ), )
 		
 		st.session_state.df_chunk_records = df_chunk_records
 	
@@ -4473,25 +3764,17 @@ with ( tabs[ 3 ] ):
 	# ------------------------------------------------------------------
 	with line_col:
 		st.text( 'Chunked Data' )
-		
 		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
-			chunk_columns = [
-					'Chunk ID',
-					'Chunk Text',
-					'Token Count',
-					'Character Count',
-			]
-			
-			st.data_editor( df_chunk_records[ chunk_columns ], num_rows='fixed',
-				width='stretch', height='stretch', disabled=True, key='chunk_records_editor',
-				column_config={
-						'Chunk ID': st.column_config.NumberColumn( 'Chunk ID', format='%d',
-							width='small', ),
-						'Chunk Text': st.column_config.TextColumn( 'Chunk Text', width='large', ),
-						'Token Count': st.column_config.NumberColumn( 'Tokens', format='%d',
-							width='small', ),
-						'Character Count': st.column_config.NumberColumn( 'Characters', format='%d',
-							width='small',  ), }, )
+			chunk_columns = [ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', ]
+			st.data_editor( df_chunk_records[ chunk_columns ], num_rows='fixed', width='stretch',
+				height='stretch', disabled=True, key='chunk_records_editor', column_config={
+					'Chunk ID': st.column_config.NumberColumn( 'Chunk ID', format='%d',
+						width='small', ),
+					'Chunk Text': st.column_config.TextColumn( 'Chunk Text', width='large', ),
+					'Token Count': st.column_config.NumberColumn( 'Tokens', format='%d',
+						width='small', ),
+					'Character Count': st.column_config.NumberColumn( 'Characters', format='%d',
+						width='small', ), }, )
 			
 			st.download_button( label='Save Chunks',
 				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
@@ -4507,58 +3790,28 @@ with ( tabs[ 3 ] ):
 		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
 			st.text( f'Chunk Summary: {len( df_chunk_records ):,} chunks' )
 			
-			summary_columns = [
-					'Chunk ID',
-					'Token Count',
-					'Character Count',
-					'Word Count',
-					'Sentence Count',
-					'Chunk Preview',
-					'Configured Size',
-					'Configured Overlap', ]
+			summary_columns = [ 'Chunk ID', 'Token Count', 'Character Count', 'Word Count',
+				'Sentence Count', 'Chunk Preview', 'Configured Size', 'Configured Overlap', ]
 			
 			df_chunk_summary = df_chunk_records[ summary_columns ].copy( )
 			
-			st.data_editor( df_chunk_summary, num_rows='fixed', width='stretch',
-				height='stretch', disabled=True, key='chunk_summary_editor',
-				column_config={ 'Chunk ID': st.column_config.NumberColumn( 'Chunk ID',
-							format='%d', width='small', ),
-						'Token Count': st.column_config.NumberColumn(
-							'Tokens',
-							format='%d',
-							width='small',
-						),
-						'Character Count': st.column_config.NumberColumn(
-							'Characters',
-							format='%d',
-							width='small',
-						),
-						'Word Count': st.column_config.NumberColumn(
-							'Words',
-							format='%d',
-							width='small',
-						),
-						'Sentence Count': st.column_config.NumberColumn(
-							'Sentences',
-							format='%d',
-							width='small',
-						),
-						'Chunk Preview': st.column_config.TextColumn(
-							'Preview',
-							width='large',
-						),
-						'Configured Size': st.column_config.NumberColumn(
-							'Size',
-							format='%d',
-							width='small',
-						),
-						'Configured Overlap': st.column_config.NumberColumn(
-							'Overlap',
-							format='%d',
-							width='small',
-						),
-				},
-			)
+			st.data_editor( df_chunk_summary, num_rows='fixed', width='stretch', height='stretch',
+				disabled=True, key='chunk_summary_editor', column_config={
+					'Chunk ID': st.column_config.NumberColumn( 'Chunk ID', format='%d',
+						width='small', ),
+					'Token Count': st.column_config.NumberColumn( 'Tokens', format='%d',
+						width='small', ),
+					'Character Count': st.column_config.NumberColumn( 'Characters', format='%d',
+						width='small', ),
+					'Word Count': st.column_config.NumberColumn( 'Words', format='%d',
+						width='small', ),
+					'Sentence Count': st.column_config.NumberColumn( 'Sentences', format='%d',
+						width='small', ),
+					'Chunk Preview': st.column_config.TextColumn( 'Preview', width='large', ),
+					'Configured Size': st.column_config.NumberColumn( 'Size', format='%d',
+						width='small', ),
+					'Configured Overlap': st.column_config.NumberColumn( 'Overlap', format='%d',
+						width='small', ), }, )
 		else:
 			st.caption( 'Chunk summary not available yet.' )
 	
@@ -4569,14 +3822,15 @@ with ( tabs[ 3 ] ):
 		st.caption( 'Top-N Token Frequency Distribution' )
 		df_token_frequency = st.session_state.get( 'df_token_frequency' )
 		if isinstance( df_token_frequency, pd.DataFrame ) and not df_token_frequency.empty:
-			top_n = st.slider( 'Top-N Tokens', min_value=10, max_value=100, value=30,
-				step=10, key='token_freq_top_n' )
+			top_n = st.slider( 'Top-N Tokens', min_value=10, max_value=100, value=30, step=10,
+				key='token_freq_top_n' )
 			
-			df_top = df_token_frequency.sort_values( by='Frequency', ascending=False ).head( top_n )
+			df_top = df_token_frequency.sort_values( by='Frequency', ascending=False ).head(
+				top_n )
 			st.bar_chart( df_top.set_index( 'Token' )[ 'Frequency' ], use_container_width=True )
 		else:
 			st.info( 'Token frequency data not available.' )
-
+	
 	with row1_col2:
 		st.caption( 'Sentence Length Distribution (Tokens per Sentence)' )
 		
@@ -4625,11 +3879,12 @@ with ( tabs[ 3 ] ):
 			unique_tokens = len( token_counts )
 			hapax_count = sum( 1 for c in token_counts.values( ) if c == 1 )
 			hapax_ratio = hapax_count / unique_tokens if unique_tokens > 0 else 0.0
-			sentence_lengths = ( [ len( _safe_word_tokenize( s ) ) for s in sentences ]
-			                    if isinstance( sentences, list ) and sentences else [ ] )
+			sentence_lengths = (
+				[ len( _safe_word_tokenize( s ) ) for s in sentences ] if isinstance( sentences,
+					list ) and sentences else [ ])
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
-			avg_sentence_len = (sum( sentence_lengths ) / len( sentence_lengths )
-			                    if sentence_lengths else 0.0)
+			avg_sentence_len = (
+				sum( sentence_lengths ) / len( sentence_lengths ) if sentence_lengths else 0.0)
 			
 			r1, r2 = st.columns( 2 )
 			r1.metric( 'Total Tokens', f'{total_tokens:,}' )
@@ -4723,8 +3978,8 @@ with tabs[ 4 ]:
 	with left:
 		st.markdown( '##### Embedding Providers' )
 		embedding_source = st.radio( 'Text Source',
-			options=[ 'Processed Text', 'Chunked Documents' ],
-			horizontal=True, key=k( 'text_source' ), )
+			options=[ 'Processed Text', 'Chunked Documents' ], horizontal=True,
+			key=k( 'text_source' ), )
 		
 		st.session_state.embedding_source = embedding_source
 		texts = resolve_texts( embedding_source )
@@ -4735,8 +3990,8 @@ with tabs[ 4 ]:
 		# --------------------------------------------------
 		# Derived embedding input dataframe (for right column display)
 		# --------------------------------------------------
-		df_embedding_input = (pd.DataFrame( { 'text': texts } )
-		                      if has_texts else pd.DataFrame( columns=[ 'text' ] ))
+		df_embedding_input = (
+			pd.DataFrame( { 'text': texts } ) if has_texts else pd.DataFrame( columns=[ 'text' ] ))
 		
 		if not has_texts:
 			st.info( 'No text available. Run processing or chunking first.' )
@@ -4745,8 +4000,8 @@ with tabs[ 4 ]:
 		# Shared save helpers
 		# --------------------------------------------------
 		def can_save_output( ) -> bool:
-			return (isinstance( st.session_state.get( 'df_embedding_output' ), pd.DataFrame )
-			        and not st.session_state.df_embedding_output.empty)
+			return (isinstance( st.session_state.get( 'df_embedding_output' ),
+				pd.DataFrame ) and not st.session_state.df_embedding_output.empty)
 		
 		# ==================================================
 		# OpenAI
@@ -4754,20 +4009,20 @@ with tabs[ 4 ]:
 		with st.expander( label='OpenAI Embeddings', icon='🧠', expanded=False ):
 			model = st.selectbox( 'Model', options=cfg.GPT_MODELS, key=k( 'openai_model' ), )
 			col_run, col_clear, col_save = st.columns( 3 )
-			run = col_run.button( 'Embed', key=k( 'openai_embed' ),
-				use_container_width=True, disabled=not has_texts, )
+			run = col_run.button( 'Embed', key=k( 'openai_embed' ), use_container_width=True,
+				disabled=not has_texts, )
 			
-			clear = col_clear.button( 'Clear', key=k( 'openai_clear' ),
-				use_container_width=True, disabled=st.session_state.df_embedding_output.empty, )
+			clear = col_clear.button( 'Clear', key=k( 'openai_clear' ), use_container_width=True,
+				disabled=st.session_state.df_embedding_output.empty, )
 			
 			if can_save_output( ):
 				col_save.download_button( 'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name='openai_embeddings.csv', mime='text/csv',
-					use_container_width=True, key=k( 'openai_save' ), )
+					file_name='openai_embeddings.csv', mime='text/csv', use_container_width=True,
+					key=k( 'openai_save' ), )
 			else:
-				col_save.button( 'Save CSV', disabled=True,
-					use_container_width=True, key=k( 'openai_save_disabled' ), )
+				col_save.button( 'Save CSV', disabled=True, use_container_width=True,
+					key=k( 'openai_save_disabled' ), )
 			
 			if clear:
 				st.session_state.embeddings = None
@@ -4784,14 +4039,8 @@ with tabs[ 4 ]:
 					
 					# Store output separately (do NOT overwrite chunked_documents)
 					df_out = pd.DataFrame(
-						{
-								'provider': 'OpenAI',
-								'model': model,
-								'row_index': range( len( texts ) ),
-								'text': texts,
-								'embedding': vectors,
-						}
-					)
+						{ 'provider': 'OpenAI', 'model': model, 'row_index': range( len( texts ) ),
+							'text': texts, 'embedding': vectors, } )
 					
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( 'records' )
@@ -4809,8 +4058,8 @@ with tabs[ 4 ]:
 				disabled=not has_texts, )
 			
 			task = st.selectbox( 'Task Type', options=Gemini( ).task_options,
-				key=k( 'gemini_task' ),
-				disabled=not has_texts, help='Required to determine embedding intent.', )
+				key=k( 'gemini_task' ), disabled=not has_texts,
+				help='Required to determine embedding intent.', )
 			
 			dimensions = st.number_input( 'Dimensions', min_value=128, max_value=2048, step=128,
 				value=768, key=k( 'gemini_dimensions' ), disabled=not has_texts,
@@ -4828,8 +4077,8 @@ with tabs[ 4 ]:
 			if can_save_output( ):
 				col_save.download_button( 'Save CSV',
 					data=st.session_state.df_embedding_output.to_csv( index=False ),
-					file_name='gemini_embeddings.csv', mime='text/csv',
-					use_container_width=True, key=k( 'gemini_save' ), )
+					file_name='gemini_embeddings.csv', mime='text/csv', use_container_width=True,
+					key=k( 'gemini_save' ), )
 			else:
 				col_save.button( 'Save CSV', disabled=True, use_container_width=True,
 					key=k( 'gemini_save_disabled' ), )
@@ -4845,19 +4094,13 @@ with tabs[ 4 ]:
 			if run and can_embed:
 				with st.spinner( 'Embedding with Gemini...' ):
 					embedder = Gemini( )
-					vectors = embedder.embed( texts, task=task, model=model, dimensions=dimensions )
+					vectors = embedder.embed( texts, task=task, model=model,
+						dimensions=dimensions )
 					
-					df_out = pd.DataFrame(
-						{
-								'provider': 'Gemini',
-								'model': model,
-								'task': task,
-								'dimensions': dimensions,
-								'row_index': range( len( texts ) ),
-								'text': texts,
-								'embedding': vectors,
-						}
-					)
+					df_out = pd.DataFrame( { 'provider': 'Gemini', 'model': model, 'task': task,
+						'dimensions': dimensions, 'row_index': range( len( texts ) ), 'text':
+							texts,
+						'embedding': vectors, } )
 					
 					st.session_state.df_embedding_output = df_out
 					st.session_state.embedding_documents = df_out.to_dict( 'records' )
@@ -4875,11 +4118,7 @@ with tabs[ 4 ]:
 		
 		# texts already resolved above; do not recompute
 		df_embedding_input = (
-				pd.DataFrame( {
-						"text": texts } )
-				if texts
-				else pd.DataFrame( columns=[ 'text' ] )
-		)
+			pd.DataFrame( { "text": texts } ) if texts else pd.DataFrame( columns=[ 'text' ] ))
 		
 		st.data_editor( df_embedding_input, use_container_width=True, hide_index=True,
 			disabled=True, key=k( 'embedding_input_view' ), )
@@ -4967,10 +4206,9 @@ with tabs[ 4 ]:
 				df_reduced = pd.DataFrame( reduced, columns=[ 'X', 'Y' ] )
 				df_reduced[ 'Chunk Index' ] = range( len( df_reduced ) )
 				if isinstance( embedding_texts, list ):
-					df_reduced[ 'Preview' ] = [ (d[ :120 ] + '…')
-					                            if isinstance( d, str ) and len( d ) > 120 else str(
-						d )
-					                            for d in embedding_texts ]
+					df_reduced[ 'Preview' ] = [
+						(d[ :120 ] + '…') if isinstance( d, str ) and len( d ) > 120 else str( d )
+						for d in embedding_texts ]
 				else:
 					df_reduced[ 'Preview' ] = ''
 				
@@ -5006,8 +4244,8 @@ with tabs[ 5 ]:
 	# ------------------------------------------------------------------
 	# Guard: embeddings must exist before continuing
 	# ------------------------------------------------------------------
-	if not (isinstance( embeddings, list ) and isinstance( embedding_texts, list ) and
-	        embedding_texts and embedding_model and embedding_provider):
+	if not (isinstance( embeddings, list ) and isinstance( embedding_texts,
+			list ) and embedding_texts and embedding_model and embedding_provider):
 		st.info( 'Generate embeddings before persisting to the vector database.' )
 		st.stop( )
 	
@@ -5024,9 +4262,7 @@ with tabs[ 5 ]:
 		st.stop( )
 	
 	dim = emb_array.shape[ 1 ]
-	
 	document_name = st.text_input( 'Document / Collection Name', value='default_document' )
-	
 	table_name = (f'{document_name}__'
 	              f'{embedding_provider}__'
 	              f'{embedding_model}__'
@@ -5038,22 +4274,18 @@ with tabs[ 5 ]:
 	# Database connection
 	# ------------------------------------------------------------------
 	db_path = st.text_input( 'SQLite Database Path', value='vectors.db' )
-	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
 	
 	# ------------------------------------------------------------------
 	# Actions
 	# ------------------------------------------------------------------
 	col_create, col_insert, col_delete = st.columns( 3 )
-	
 	with col_create:
 		if st.button( 'Create Vector Table' ):
 			conn = sqlite3.connect( db_path )
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
-			
 			SQLiteVec.create_table( conn, table_name=table_name, dimension=dim )
-			
 			conn.close( )
 			st.success( f'Created vector table `{table_name}`.' )
 	
@@ -5062,24 +4294,13 @@ with tabs[ 5 ]:
 			conn = sqlite3.connect( db_path )
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
+			vector_store = SQLiteVec( connection=conn, table_name=table_name,
+				embedding=SentenceTransformerEmbeddings( model_name=embedding_model ) )
 			
-			vector_store = SQLiteVec(
-				connection=conn,
-				table_name=table_name,
-				embedding=SentenceTransformerEmbeddings(
-					model_name=embedding_model
-				)
-			)
-			
-			vector_store.add_texts(
-				texts=embedding_texts,
-				embeddings=embeddings
-			)
+			vector_store.add_texts( texts=embedding_texts, embeddings=embeddings )
 			
 			conn.close( )
-			st.success(
-				f'Inserted {len( embeddings )} embeddings into `{table_name}`.'
-			)
+			st.success( f'Inserted {len( embeddings )} embeddings into `{table_name}`.' )
 	
 	with col_delete:
 		if st.button( 'Drop Vector Table', type='secondary' ):
@@ -5097,45 +4318,23 @@ with tabs[ 5 ]:
 	# ------------------------------------------------------------------
 	if st.checkbox( 'Inspect Vector Table' ):
 		conn = sqlite3.connect( db_path )
-		df_preview = pd.read_sql_query(
-			f'SELECT * FROM {table_name} LIMIT 5',
-			conn
-		)
+		df_preview = pd.read_sql_query( f'SELECT * FROM {table_name} LIMIT 5', conn )
 		conn.close( )
 		
-		st.data_editor(
-			df_preview,
-			use_container_width=True,
-			num_rows='dynamic'
-		)
+		st.data_editor( df_preview, use_container_width=True, num_rows='dynamic' )
 	
 	# ======================================================================================
 	# Similarity Search (sqlite-vec)
 	# ======================================================================================
 	st.subheader( 'Similarity Search' )
 	
-	query_text = st.text_area(
-		'Query Text',
-		placeholder='Enter text to search for semantically similar chunks…',
-		height=100
-	)
+	query_text = st.text_area( 'Query Text',
+		placeholder='Enter text to search for semantically similar chunks…', height=100 )
 	
-	top_k = st.slider(
-		'Top-K Results',
-		min_value=1,
-		max_value=20,
-		value=5,
-		step=1
-	)
+	top_k = st.slider( 'Top-K Results', min_value=1, max_value=20, value=5, step=1 )
 	
-	similarity_threshold = st.slider(
-		'Minimum Similarity Threshold',
-		min_value=0.0,
-		max_value=1.0,
-		value=0.0,
-		step=0.01,
-		help='Only results with similarity ≥ threshold will be shown.'
-	)
+	similarity_threshold = st.slider( 'Minimum Similarity Threshold', min_value=0.0, max_value=1.0,
+		value=0.0, step=0.01, help='Only results with similarity ≥ threshold will be shown.' )
 	
 	if not query_text.strip( ):
 		st.info( 'Enter a query to run similarity search.' )
@@ -5146,20 +4345,12 @@ with tabs[ 5 ]:
 			conn.enable_load_extension( True )
 			sqlite_vec.load( conn )
 			
-			embedding_fn = SentenceTransformerEmbeddings(
-				model_name=embedding_model
-			)
+			embedding_fn = SentenceTransformerEmbeddings( model_name=embedding_model )
 			
-			vector_store = SQLiteVec(
-				connection=conn,
-				table_name=table_name,
-				embedding=embedding_fn
-			)
+			vector_store = SQLiteVec( connection=conn, table_name=table_name,
+				embedding=embedding_fn )
 			
-			results = vector_store.similarity_search_with_score(
-				query=query_text,
-				k=top_k
-			)
+			results = vector_store.similarity_search_with_score( query=query_text, k=top_k )
 			
 			conn.close( )
 		
@@ -5171,37 +4362,20 @@ with tabs[ 5 ]:
 	# Results Rendering (with similarity threshold)
 	# ------------------------------------------------------------------
 	if results:
-		filtered_results = [
-				(doc, score)
-				for (doc, score) in results
-				if score >= similarity_threshold
-		]
+		filtered_results = [ (doc, score) for (doc, score) in results if
+			score >= similarity_threshold ]
 		
-		st.caption(
-			f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
-			f'{len( filtered_results )} of {len( results )} results retained.'
-		)
+		st.caption( f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
+		            f'{len( filtered_results )} of {len( results )} results retained.' )
 		
 		if not filtered_results:
-			st.warning(
-				'No results met the selected similarity threshold. '
-				'Try lowering the threshold or increasing Top-K.'
-			)
+			st.warning( 'No results met the selected similarity threshold. '
+			            'Try lowering the threshold or increasing Top-K.' )
 		
 		for rank, (doc, score) in enumerate( filtered_results, start=1 ):
-			with st.expander(
-					f'#{rank} — Similarity Score: {score:.4f}',
-					expanded=(rank == 1)
-			):
-				st.text_area(
-					'Chunk Text',
-					doc.page_content,
-					height=200,
-					disabled=True
-				)
+			with st.expander( f'#{rank} — Similarity Score: {score:.4f}', expanded=(rank == 1) ):
+				st.text_area( 'Chunk Text', doc.page_content, height=200, disabled=True )
 	else:
 		st.info( 'No results to display.' )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-
-	
