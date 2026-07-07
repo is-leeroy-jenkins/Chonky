@@ -3838,7 +3838,6 @@ with tabs[ 3 ]:
 		if isinstance( sentences, list ) and sentences:
 			sentence_lengths = [ len( _safe_word_tokenize( s ) ) for s in sentences ]
 			sentence_lengths = [ n for n in sentence_lengths if isinstance( n, int ) and n > 0 ]
-			
 			if sentence_lengths:
 				df_sentence_lengths = pd.Series( sentence_lengths ).value_counts( ).sort_index( )
 				df_sentence_lengths = df_sentence_lengths.rename_axis(
@@ -3873,7 +3872,6 @@ with tabs[ 3 ]:
 		tokens = st.session_state.get( 'tokens' )
 		sentences = st.session_state.get( 'sentences' )
 		token_counts = (Counter( tokens ) if isinstance( tokens, list ) and tokens else None)
-		
 		if token_counts:
 			total_tokens = len( tokens )
 			unique_tokens = len( token_counts )
@@ -3889,11 +3887,9 @@ with tabs[ 3 ]:
 			r1, r2 = st.columns( 2 )
 			r1.metric( 'Total Tokens', f'{total_tokens:,}' )
 			r2.metric( 'Unique Tokens', f'{unique_tokens:,}' )
-			
 			r3, r4 = st.columns( 2 )
 			r3.metric( 'Avg Tokens / Sentence', f'{avg_sentence_len:.1f}' )
 			r4.metric( 'Hapax Ratio', f'{hapax_ratio:.1%}' )
-			
 			st.caption( 'Lower padding and moderate hapax ratios yield more stable embeddings.' )
 		else:
 			st.info( 'Token readiness metrics unavailable.' )
