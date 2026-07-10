@@ -693,14 +693,16 @@ with tabs[ 0 ]:
 				# Load / Clear / Save controls
 				# ------------------------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_nltk = col_load.button( label='Load', key='nltk_load', icon='📤', width='stretch' )
-				clear_nltk = col_clear.button( label='Clear', key='nltk_clear', icon='🧹', width='stretch' )
+				load_nltk = col_load.button( label='Load', key='nltk_load',
+					icon='📤', width='stretch' )
+				
+				clear_nltk = col_clear.button( label='Clear', key='nltk_clear',
+					icon='🧹', width='stretch' )
 				
 				_docs = st.session_state.get( 'documents' ) or [ ]
 				_nltk_docs = [ d for d in _docs if d.metadata.get( 'loader' ) == 'NLTKLoader' ]
 				_nltk_text = "\n\n".join( d.page_content for d in _nltk_docs )
 				_export_name = f"nltk_{corpus_name.lower( ).replace( ' ', '_' )}.txt"
-				
 				col_save.download_button( 'Save', data=_nltk_text, file_name=_export_name,
 					mime='text/plain', disabled=not bool( _nltk_text.strip( ) ),
 					icon='💾', width='stretch' )
@@ -723,8 +725,6 @@ with tabs[ 0 ]:
 				# ------------------------------------------------------------------
 				if load_nltk:
 					documents = [ ]
-					
-					# Built-in corpora
 					if file_ids:
 						files_to_load = selected_files or file_ids
 						for fid in files_to_load:
