@@ -650,7 +650,7 @@ with tabs[ 0 ]:
 		if isinstance( _loader_msg, str ) and _loader_msg.strip( ):
 			st.success( _loader_msg )
 		
-		with st.expander( label='Local Documents', expanded=False ):
+		with st.expander( label='Local Documents', expanded=True ):
 			# --------------------------- NLTK Loader Expander
 			with st.expander( label='Corpora Loader', icon='📚', expanded=False ):
 				import nltk
