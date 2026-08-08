@@ -132,36 +132,33 @@ class Processor( ):
 		Initializes shared state used by Chonky text, Word, NLTK, and PDF parser subclasses,
 		including token caches, line/page buffers, vocabulary stores, NLP helpers,
 		and cleaned-text fields used across the processing workflow.
-	
 	Attributes:
-		lemmatizer: Runtime state used by ``Processor`` during Chonky processing operations.
-		stemmer: Runtime state used by ``Processor`` during Chonky processing operations.
-		file_path: Runtime state used by ``Processor`` during Chonky processing operations.
-		normalized: Runtime state used by ``Processor`` during Chonky processing operations.
-		lemmatized: Runtime state used by ``Processor`` during Chonky processing operations.
-		tokenized: Runtime state used by ``Processor`` during Chonky processing operations.
-		encoding: Runtime state used by ``Processor`` during Chonky processing operations.
-		nlp: Runtime state used by ``Processor`` during Chonky processing operations.
-		parts_of_speech: Runtime state used by ``Processor`` during Chonky processing operations.
-		embedddings: Runtime state used by ``Processor`` during Chonky processing operations.
-		chunk_size: Runtime state used by ``Processor`` during Chonky processing operations.
-		corrected: Runtime state used by ``Processor`` during Chonky processing operations.
-		raw_input: Runtime state used by ``Processor`` during Chonky processing operations.
-		raw_html: Runtime state used by ``Processor`` during Chonky processing operations.
-		raw_pages: Runtime state used by ``Processor`` during Chonky processing operations.
-		lines: Runtime state used by ``Processor`` during Chonky processing operations.
-		tokens: Runtime state used by ``Processor`` during Chonky processing operations.
-		lines: Runtime state used by ``Processor`` during Chonky processing operations.
-		files: Runtime state used by ``Processor`` during Chonky processing operations.
-		pages: Runtime state used by ``Processor`` during Chonky processing operations.
-		paragraphs: Runtime state used by ``Processor`` during Chonky processing operations.
-		ids: Runtime state used by ``Processor`` during Chonky processing operations.
-		stop_words: Runtime state used by ``Processor`` during Chonky processing operations.
-		vocabulary: Runtime state used by ``Processor`` during Chonky processing operations.
-		corpus: Runtime state used by ``Processor`` during Chonky processing operations.
-		removed: Runtime state used by ``Processor`` during Chonky processing operations.
-		frequency_distribution: Runtime state used by ``Processor`` during Chonky processing
-		operations.
+		lemmatizer: WordNet lemmatizer used to reduce tokens to their canonical lexical forms.
+		stemmer: Porter stemmer used to reduce tokens to word stems.
+		file_path: Path of the file currently being loaded, parsed, cleaned, or exported.
+		normalized: Text produced by the active normalization operation.
+		lemmatized: Text produced after lemmatization.
+		tokenized: Text or serialized token content produced by tokenization.
+		encoding: TikToken encoding used to convert text into model-compatible token identifiers.
+		nlp: Optional spaCy language pipeline used for linguistic processing.
+		parts_of_speech: Token and part-of-speech tag pairs produced by linguistic analysis.
+		embedddings: Numeric embedding vectors generated for tokens, sentences, or document content.
+		chunk_size: Number of tokens, words, sentences, or records assigned to each generated chunk.
+		corrected: Text produced after spelling, extraction, or formatting corrections.
+		raw_input: Unmodified text supplied to the current processing operation.
+		raw_html: Original HTML content retained before markup removal.
+		raw_pages: Unprocessed page text extracted from a source document.
+		lines: Ordered text lines loaded from or extracted from the active source.
+		tokens: Ordered tokens produced from the active text.
+		files: File names or paths associated with a batch-processing operation.
+		pages: Logical pages or page structures extracted from the active document.
+		paragraphs: Paragraphs extracted from the active text or document.
+		ids: Numeric token, record, page, or chunk identifiers created during processing.
+		stop_words: Stopword vocabulary used to exclude common terms from lexical processing.
+		vocabulary: Unique terms produced from the active token collection or corpus.
+		corpus: Tabular corpus containing text, tokens, frequencies, or other processed records.
+		removed: Text fragments, symbols, tokens, or artifacts removed during cleanup.
+		frequency_distribution: Mapping or tabular representation of token frequencies.
 	"""
 	lemmatizer: Optional[ WordNetLemmatizer ]
 	stemmer: Optional[ PorterStemmer ]

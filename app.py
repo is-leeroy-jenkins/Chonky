@@ -658,7 +658,6 @@ with tabs[ 0 ]:
 				                         state_union)
 				
 				st.markdown( '###### NLTK Corpora' )
-				
 				corpus_name = st.selectbox( 'Select corpus',
 					[ 'Brown', 'Gutenberg', 'Reuters', 'WebText', 'Inaugural',
 						'State of the Union', ], key='nltk_corpus_name', )
@@ -791,7 +790,7 @@ with tabs[ 0 ]:
 				clear_txt = col_clear.button( label='Clear', key='txt_clear', icon='🧹', width='stretch' )
 				can_save = (st.session_state.get( 'active_loader' ) == 'TextLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
-					'raw_text' ).strip( ))
+					'raw_text' ).strip( ) )
 				
 				if can_save:
 					col_save.download_button( label='Save', data=st.session_state.get( 'raw_text' ),
@@ -842,7 +841,7 @@ with tabs[ 0 ]:
 					st.success( f'Loaded {len( documents )} text document(s).' )
 			
 			# --------------------------- CSV Loader Expander
-			with st.expander( label="CSV Loader", icon='📑', expanded=False ):
+			with st.expander( label='CSV Loader', icon='📑', expanded=False ):
 				csv_file = st.file_uploader( label="Upload CSV", type=[ "csv" ], key="csv_upload" )
 				delimiter = st.text_input( "Delimiter", value=",", key="csv_delim", )
 				quotechar = st.text_input( "Quote Character", value='"', key="csv_quote", )
