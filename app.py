@@ -3663,6 +3663,7 @@ with tabs[ 2 ]:
 # Tab - Data Tokenization
 # ======================================================================================
 with tabs[ 3 ]:
+	st.subheader( 'Chunk Diagnostics' )
 	line_col, chunk_col = st.columns( [ 0.5, 0.5 ], border=True, vertical_alignment='top' )
 	df_frequency = st.session_state.get( 'df_frequency' )
 	df_tables = st.session_state.get( 'df_tables' )
@@ -3837,11 +3838,6 @@ with tabs[ 3 ]:
 						width='small', ),
 					'Character Count': st.column_config.NumberColumn( 'Characters', format='%d',
 						width='small', ), }, )
-			
-			st.download_button( label='Save Chunks',
-				data=df_chunk_records.to_csv( index=False, ).encode( 'utf-8' ),
-				file_name='document_chunks.csv', mime='text/csv', key='download_chunk_records',
-				use_container_width=True, icon='💾' )
 		else:
 			st.info( 'Run chunking in Semantic Analysis first.' )
 	
@@ -3878,7 +3874,7 @@ with tabs[ 3 ]:
 			st.caption( 'Chunk summary not available yet.' )
 	
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	st.subheader( 'Tokenization Diagnostics' )
+	st.subheader( 'Token Diagnostics' )
 	row1_col1, row1_col2 = st.columns( [ 0.5, 0.5 ], border=True )
 	with row1_col1:
 		st.caption( 'Top-N Token Frequency Distribution' )
