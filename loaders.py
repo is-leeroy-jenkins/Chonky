@@ -1820,7 +1820,6 @@ class MarkdownLoader( Loader ):
 			str: Result produced by the operation.
 		"""
 		value = mode.strip( ).lower( ) if isinstance( mode, str ) else 'single'
-		
 		if value in [ 'page', 'paged' ]:
 			return 'elements'
 		
