@@ -3076,16 +3076,16 @@ with tabs[ 1 ]:
 				remove_fragments = st.checkbox( 'Remove Fragments',
 					help='Removes isolated malformed extraction debris while preserving valid '
 					     'short words, acronyms, identifiers, punctuation, and numbers.',
-					value=False )
+					value=True )
 				
 				remove_errors = st.checkbox( 'Remove Errors',
 					help='Removes replacement characters, null bytes, unsafe control characters, '
 					     'and recognized text-encoding artifacts without dictionary filtering.',
-					value=False )
+					value=True )
 				
 				collapse_whitespace = st.checkbox( 'Collapse Whitespace',
 					help='Converts every consecutive sequence of whitespace characters into one '
-					     'ordinary space.', value=False )
+					     'ordinary space.', value=True )
 			
 			# ==============================================================
 			# NLTK Processing
@@ -3504,7 +3504,7 @@ with tabs[ 2 ]:
 	# ------------------------------------------------------------------
 	chunk_modes = st.session_state.get( 'chunk_modes' )
 	if not isinstance( chunk_modes, (list, tuple) ) or not chunk_modes:
-		chunk_modes = [ 'chars', 'tokens' ]
+		chunk_modes = [ 'tokens', 'chars' ]
 		st.session_state.chunk_modes = list( chunk_modes )
 	
 	# ------------------------------------------------------------------
