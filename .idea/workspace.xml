@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4caaaf0f-a86b-4586-8159-753de1ab8fff" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/.idea/Chonky.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Chonky.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,7 +75,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "shared-indexes",
+    "settings.editor.selected.configurable": "advanced.settings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -143,15 +141,9 @@
       <workItem from="1786387502976" duration="749000" />
       <workItem from="1786393646056" duration="1494000" />
       <workItem from="1786399214346" duration="2192000" />
-      <workItem from="1786429467461" duration="5091000" />
-    </task>
-    <task id="LOCAL-00011" summary="update">
-      <option name="closed" value="true" />
-      <created>1776241129183</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1776241129183</updated>
+      <workItem from="1786429467461" duration="5505000" />
+      <workItem from="1786450638494" duration="2109000" />
+      <workItem from="1786833530394" duration="536000" />
     </task>
     <task id="LOCAL-00012" summary="update">
       <option name="closed" value="true" />
@@ -537,13 +529,22 @@
       <option name="project" value="LOCAL" />
       <updated>1786412304206</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="update">
+      <option name="closed" value="true" />
+      <created>1786448637125</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1786448637126</updated>
+    </task>
+    <option name="localTasksCounter" value="61" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="MARK_IGNORED_AS_EXCLUDED" value="true" />
     <MESSAGE value="update" />
     <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
