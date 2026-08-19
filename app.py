@@ -1106,8 +1106,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_csv = col_load.button( 'Load', key='csv_load' )
-				clear_csv = col_clear.button( 'Clear', key='csv_clear' )
+				load_csv = col_load.button( 'Load', key='csv_load', icon='📤' )
+				clear_csv = col_clear.button( 'Clear', key='csv_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'CsvLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
@@ -1315,8 +1315,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_word = col_load.button( 'Load', key='word_load' )
-				clear_word = col_clear.button( 'Clear', key='word_clear' )
+				load_word = col_load.button( 'Load', key='word_load', icon='📤' )
+				clear_word = col_clear.button( 'Clear', key='word_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'WordLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
@@ -1416,8 +1416,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_pdf = col_load.button( 'Load', key='pdf_load' )
-				clear_pdf = col_clear.button( 'Clear', key='pdf_clear' )
+				load_pdf = col_load.button( 'Load', key='pdf_load', icon='📤' )
+				clear_pdf = col_clear.button( 'Clear', key='pdf_clear', icon='🧹' )
 				save_pdf = col_save.empty( )
 				
 				# --------------------------------------------------
@@ -1510,9 +1510,9 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save (same row, same style)
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_pptx = col_load.button( 'Load', key='pptx_load', )
+				load_pptx = col_load.button( 'Load', key='pptx_load', icon='📤' )
 				
-				clear_pptx = col_clear.button( 'Clear', key='pptx_clear', )
+				clear_pptx = col_clear.button( 'Clear', key='pptx_clear', icon='🧹' )
 				
 				# ---------- Save
 				can_save = (st.session_state.get(
@@ -1551,7 +1551,7 @@ with tabs[ 0 ]:
 					st.success( f"Loaded {len( documents )} PowerPoint document(s)." )
 			
 			# --------------------------- Jupyter Notebook Loader
-			with st.expander( label='Jupyter Notebook Loader', icon='📓', expanded=False ):
+			with st.expander( label='Jupyter Notebook Loader', icon='🪐', expanded=False ):
 				notebook_file = st.file_uploader( 'Upload Notebook', type=[ 'ipynb' ],
 					key='ipynb_upload', )
 				
@@ -1571,8 +1571,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_ipynb = col_load.button( 'Load', key='ipynb_load' )
-				clear_ipynb = col_clear.button( 'Clear', key='ipynb_clear' )
+				load_ipynb = col_load.button( 'Load', key='ipynb_load', icon='📤' )
+				clear_ipynb = col_clear.button( 'Clear', key='ipynb_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get(
 					'active_loader' ) == 'JupyterNotebookLoader' and isinstance(
@@ -1659,8 +1659,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_excel = col_load.button( 'Load', key='excel_load' )
-				clear_excel = col_clear.button( 'Clear', key='excel_clear' )
+				load_excel = col_load.button( 'Load', key='excel_load', icon='📤' )
+				clear_excel = col_clear.button( 'Clear', key='excel_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'ExcelLoader' and
 				            isinstance(
@@ -1788,9 +1788,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save (same row, same style)
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_md = col_load.button( 'Load', key='md_load', )
-				
-				clear_md = col_clear.button( 'Clear', key='md_clear', )
+				load_md = col_load.button( 'Load', key='md_load', icon='📤' )
+				clear_md = col_clear.button( 'Clear', key='md_clear', icon='🧹' )
 				
 				# Save enabled only when MarkdownLoader is active and raw_text exists
 				can_save = (
@@ -1841,8 +1840,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save (same row, same style)
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_html = col_load.button( 'Load', key='html_load' )
-				clear_html = col_clear.button( 'Clear', key='html_clear' )
+				load_html = col_load.button( 'Load', key='html_load', icon='📤' )
+				clear_html = col_clear.button( 'Clear', key='html_clear', icon='🧹' )
 				
 				# Save enabled only when HtmlLoader is active and raw_text exists
 				can_save = (st.session_state.get( 'active_loader' ) == 'HtmlLoader' and isinstance(
@@ -1905,8 +1904,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_json = col_load.button( 'Load', key='json_load' )
-				clear_json = col_clear.button( 'Clear', key='json_clear' )
+				load_json = col_load.button( 'Load', key='json_load', icon='📤' )
+				clear_json = col_clear.button( 'Clear', key='json_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'JsonLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
