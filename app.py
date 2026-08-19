@@ -122,6 +122,15 @@ if 'google_api_key' not in st.session_state:
 if 'pinecone_api_key' not in st.session_state:
 	st.session_state[ 'pinecone_api_key' ] = ''
 
+if 'chroma_api_key' not in st.session_state:
+	st.session_state[ 'chroma_api_key' ] = ''
+
+if 'chroma_tenant' not in st.session_state:
+	st.session_state[ 'chroma_tenant' ] = ''
+
+if 'chroma_database' not in st.session_state:
+	st.session_state[ 'chroma_database' ] = ''
+
 if 'google_application_credentials' not in st.session_state:
 	st.session_state[ 'google_application_credentials' ] = ''
 
@@ -195,11 +204,12 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.displayed_text = ''
 		st.session_state.processed_text_display = ''
 		st.session_state.active_loader = None
-		
+		st.session_state.source_file_name = ''
+		st.session_state.document_name = ''
+		st.session_state.collection_name = ''
 		st.session_state.tokens = None
 		st.session_state.vocabulary = None
 		st.session_state.token_counts = None
-		
 		st.session_state.chunks = None
 		st.session_state.chunk_modes = None
 		st.session_state.chunked_documents = None
@@ -207,14 +217,11 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.chunk_size = None
 		st.session_state.chunk_overlap = None
 		st.session_state.chunk_mode_value = None
-		
 		st.session_state.sentences = None
 		st.session_state.lines = None
 		st.session_state.df_sentence_tokens = None
-		
 		st.session_state.embeddings = None
 		st.session_state.embedding_model = None
-		
 		st.session_state.active_table = None
 		st.session_state.df_frequency = None
 		st.session_state.df_token_frequency = None
@@ -225,6 +232,219 @@ def clear_if_active( loader_name: str ) -> None:
 		st.session_state.df_chunks = None
 		
 		st.session_state.pdf_pages = None
+
+def derive_document_identity( source_file_name: str ) -> tuple[ str, str ]:
+	"""Derive canonical document and vector collection names.
+
+	Purpose:
+		Preserves the uploaded document stem exactly for local TXT and CSV downloads while
+		deriving one lowercase snake-case identifier for Chroma collections and Pinecone
+		namespaces. The normalized identifier is generated once and then retained in session state.
+
+	Args:
+		source_file_name: Original uploaded filename or filesystem basename.
+
+	Returns:
+		tuple[str, str]: Original-case document stem and lowercase snake-case collection name.
+	"""
+	cfg.throw_if( 'source_file_name', source_file_name )
+
+	file_name = Path( str( source_file_name ).strip( ) ).name
+	document_name = Path( file_name ).stem.strip( )
+
+	if not document_name:
+		return '', ''
+
+	collection_name = re.sub( r'[^A-Za-z0-9]+', '_', document_name ).strip( '_' ).lower( )
+
+	if not collection_name:
+		collection_name = 'document'
+	elif len( collection_name ) < 3:
+		collection_name = f'doc_{collection_name}'
+
+	return document_name, collection_name
+
+def sync_document_identity( ) -> None:
+	"""Synchronize uploaded document identity with the active loader.
+
+	Purpose:
+		Captures the original uploaded filename after a local document loader succeeds. The
+		identity becomes the single downstream source for processed-text filenames, chunk CSV
+		filenames, Chroma collection names, and Pinecone namespaces.
+
+	Returns:
+		None: This function updates Streamlit session state.
+	"""
+	loader_upload_keys = {
+		'TextLoader': 'txt_upload',
+		'CsvLoader': 'csv_upload',
+		'XmlLoader': 'xml_file_uploader',
+		'WordLoader': 'word_upload',
+		'PdfLoader': 'pdf_upload',
+		'PowerPointLoader': 'pptx_upload',
+		'JupyterNotebookLoader': 'ipynb_upload',
+		'ExcelLoader': 'excel_upload',
+		'MarkdownLoader': 'md_upload',
+		'HtmlLoader': 'html_upload',
+		'JsonLoader': 'json_upload',
+		'OutlookLoader': 'outlook_upload',
+		'EmailLoader': 'email_upload',
+	}
+
+	active_loader = st.session_state.get( 'active_loader' )
+	upload_key = loader_upload_keys.get( active_loader )
+
+	if not upload_key:
+		st.session_state.source_file_name = ''
+		st.session_state.document_name = ''
+		st.session_state.collection_name = ''
+		return
+
+	source_file_name = ''
+	documents = st.session_state.get( 'documents' ) or [ ]
+
+	for document in documents:
+		metadata = getattr( document, 'metadata', None )
+
+		if not isinstance( metadata, dict ) or metadata.get( 'loader' ) != active_loader:
+			continue
+
+		source = metadata.get( 'source' )
+		if isinstance( source, str ) and source.strip( ):
+			source_file_name = Path( source ).name
+			break
+
+	if not source_file_name:
+		uploaded_value = st.session_state.get( upload_key )
+
+		if isinstance( uploaded_value, (list, tuple) ) and uploaded_value:
+			first_uploaded = uploaded_value[ 0 ]
+			source_file_name = getattr( first_uploaded, 'name', '' )
+		elif uploaded_value is not None:
+			source_file_name = getattr( uploaded_value, 'name', '' )
+
+	if not source_file_name:
+		return
+
+	document_name, collection_name = derive_document_identity( source_file_name )
+
+	if not document_name or not collection_name:
+		return
+
+	st.session_state.source_file_name = Path( source_file_name ).name
+	st.session_state.document_name = document_name
+	st.session_state.collection_name = collection_name
+
+def validate_remote_vector_state( ) -> tuple[ bool, str ]:
+	"""Validate canonical chunk and embedding alignment for cloud persistence.
+
+	Purpose:
+		Prevents Chroma or Pinecone writes unless the currently generated embeddings were created
+		from the canonical chunk list and remain positionally aligned with those chunks.
+
+	Returns:
+		tuple[bool, str]: Validation result and an explanatory message when validation fails.
+	"""
+	chunked_documents = st.session_state.get( 'chunked_documents' )
+	embedding_texts = st.session_state.get( 'embedding_texts' )
+	embeddings = st.session_state.get( 'embeddings' )
+	embedding_source = st.session_state.get( 'embedding_source' )
+
+	if embedding_source != 'Chunked Documents':
+		return False, 'Generate embeddings from Chunked Documents before cloud persistence.'
+
+	if st.session_state.get( 'embedding_is_stale', False ):
+		return False, 'The current embeddings are stale. Regenerate them before persistence.'
+
+	if not isinstance( chunked_documents, list ) or not chunked_documents:
+		return False, 'Canonical chunk data is unavailable.'
+
+	if not isinstance( embedding_texts, list ) or not embedding_texts:
+		return False, 'Embedding source text is unavailable.'
+
+	if not isinstance( embeddings, list ) or not embeddings:
+		return False, 'Embedding vectors are unavailable.'
+
+	if len( chunked_documents ) != len( embedding_texts ) or len( embedding_texts ) != len( embeddings ):
+		return False, 'Chunk text and embedding counts are not aligned.'
+
+	for chunk_text, embedding_text in zip( chunked_documents, embedding_texts ):
+		if chunk_text != embedding_text:
+			return False, 'Embedding source text no longer matches the canonical chunk order.'
+
+	vector_array = np.asarray( embeddings, dtype=float )
+	if vector_array.ndim != 2 or vector_array.shape[ 0 ] != len( embedding_texts ):
+		return False, 'Embedding vectors do not form a valid two-dimensional matrix.'
+
+	if vector_array.shape[ 1 ] < 1 or not np.isfinite( vector_array ).all( ):
+		return False, 'Embedding vectors contain an invalid dimension or non-finite values.'
+
+	return True, ''
+
+def build_vector_metadata( index: int, chunk_text: str ) -> dict:
+	"""Build shared metadata for a persisted chunk vector.
+
+	Purpose:
+		Creates provider-neutral metadata used by both Chroma and Pinecone so persisted vectors
+		retain document provenance, chunk configuration, and embedding-model details.
+
+	Args:
+		index: Zero-based chunk index associated with the vector.
+		chunk_text: Canonical chunk text associated with the vector.
+
+	Returns:
+		dict: Metadata values suitable for Chroma and Pinecone records.
+	"""
+	cfg.throw_if( 'chunk_text', chunk_text )
+	
+	return { 'document_name': str( st.session_state.get( 'document_name', '' ) ),
+			'source_file_name': str( st.session_state.get( 'source_file_name', '' ) ),
+			'collection_name': str( st.session_state.get( 'collection_name', '' ) ),
+			'chunk_id': int( index + 1 ), 'chunk_index': int( index ), 'chunk_text': chunk_text,
+			'embedding_provider': str( st.session_state.get( 'embedding_provider', '' ) ),
+			'embedding_model': str( st.session_state.get( 'embedding_model', '' ) ),
+			'vector_dimension': int( st.session_state.get( 'embedding_vector_dimension', 0 ) or 0 ),
+			'chunk_mode': str( st.session_state.get( 'chunk_mode_value', '' ) ),
+			'chunk_size': int( st.session_state.get( 'chunk_size', 0 ) or 0 ),
+			'chunk_overlap': int( st.session_state.get( 'chunk_overlap', 0 ) or 0 ),
+			'source_signature': str( st.session_state.get( 'embedding_source_signature', '' ) ), }
+
+def generate_query_embedding( query_text: str ) -> list[ float ]:
+	"""Generate one query embedding using the active embedding provider contract.
+
+	Purpose:
+		Creates a search vector using the same provider, model, task, and requested dimensions
+		that produced the persisted document embeddings.
+
+	Args:
+		query_text: Query text submitted for semantic retrieval.
+
+	Returns:
+		list[float]: One query vector aligned with the persisted vector dimension.
+	"""
+	cfg.throw_if( 'query_text', query_text )
+
+	provider = st.session_state.get( 'embedding_provider' )
+	model = st.session_state.get( 'embedding_model' )
+
+	if provider == 'OpenAI':
+		raw_vectors = GPT( ).embed( [ query_text ], model=model )
+	elif provider == 'Gemini':
+		task = st.session_state.get( 'embedding_task' )
+		dimensions = int( st.session_state.get( 'embedding_dimensions', 0 ) or 0 )
+		raw_vectors = Gemini( ).embed( [ query_text ], task=task, model=model,
+			dimensions=dimensions )
+	else:
+		raise ValueError( f'Unsupported embedding provider: {provider}' )
+
+	vector_array = np.asarray( raw_vectors, dtype=float )
+	if vector_array.ndim == 1:
+		vector_array = vector_array.reshape( 1, -1 )
+
+	if vector_array.ndim != 2 or vector_array.shape[ 0 ] != 1:
+		raise ValueError( 'The query embedding provider returned an invalid vector.' )
+
+	return vector_array[ 0 ].tolist( )
 
 def metric_with_tooltip( label: str, value: str, tooltip: str ):
 	"""Render a Streamlit metric with optional hover guidance.
@@ -367,8 +587,8 @@ def chunk_characters( text: str, size: int, overlap: int ) -> List[ str ]:
 	
 	return chunks
 
-def chunk_tokens( text: str, size: int, overlap: int, encoding_name: str = 'cl100k_base' ) -> List[
-	str ]:
+def chunk_tokens( text: str, size: int, overlap: int,
+		encoding_name: str = 'cl100k_base' ) -> List[ str ]:
 	"""
 	Purpose:
 		Splits source text into overlapping model-token windows using the selected
@@ -599,6 +819,34 @@ if not st.session_state.pinecone_api_key.strip( ):
 	if isinstance( configured_pinecone_key, str ) and configured_pinecone_key.strip( ):
 		st.session_state.pinecone_api_key = configured_pinecone_key.strip( )
 
+if not isinstance( st.session_state.get( 'chroma_api_key' ), str ):
+	st.session_state.chroma_api_key = ''
+
+if not st.session_state.chroma_api_key.strip( ):
+	configured_chroma_key = getattr( cfg, 'CHROMA_API_KEY', '' )
+
+	if isinstance( configured_chroma_key, str ) and configured_chroma_key.strip( ):
+		st.session_state.chroma_api_key = configured_chroma_key.strip( )
+
+if not isinstance( st.session_state.get( 'chroma_tenant' ), str ):
+	st.session_state.chroma_tenant = ''
+
+if not st.session_state.chroma_tenant.strip( ):
+	configured_chroma_tenant = getattr( cfg, 'CHROMA_TENANT', '' ) or getattr(
+		cfg, 'CHROMA_TENET_ID', '' )
+
+	if isinstance( configured_chroma_tenant, str ) and configured_chroma_tenant.strip( ):
+		st.session_state.chroma_tenant = configured_chroma_tenant.strip( )
+
+if not isinstance( st.session_state.get( 'chroma_database' ), str ):
+	st.session_state.chroma_database = ''
+
+if not st.session_state.chroma_database.strip( ):
+	configured_chroma_database = getattr( cfg, 'CHROMA_DATABASE', '' )
+
+	if isinstance( configured_chroma_database, str ) and configured_chroma_database.strip( ):
+		st.session_state.chroma_database = configured_chroma_database.strip( )
+
 if not isinstance( st.session_state.get( 'google_application_credentials' ), str ):
 	st.session_state.google_application_credentials = ''
 
@@ -626,7 +874,15 @@ with st.sidebar:
 		st.text_input( 'Google Application Credentials (JSON Path)', type='password',
 			key='google_application_credentials' )
 		
-		st.text_input( 'Pinecone API Key (future)', type='password', key='pinecone_api_key' )
+		st.text_input( 'Pinecone API Key', type='password', key='pinecone_api_key' )
+
+		st.text_input( 'Chroma API Key', type='password', key='chroma_api_key' )
+
+		st.text_input( 'Chroma Tenant ID', type='password', key='chroma_tenant',
+			help='Loaded from CHROMA_TENANT or the legacy CHROMA_TENET_ID environment variable.' )
+
+		st.text_input( 'Chroma Database', key='chroma_database',
+			help='Loaded from the CHROMA_DATABASE environment variable when available.' )
 
 # ======================================================================================
 # Tabs
@@ -1374,8 +1630,7 @@ with tabs[ 0 ]:
 					st.session_state.chunked_documents = None
 					st.session_state.df_chunks = None
 					st.session_state.active_loader = 'JupyterNotebookLoader'
-					st.session_state[
-						'_loader_status' ] = f'Loaded {len( documents )} notebook document(s).'
+					st.session_state[ '_loader_status' ] = f'Loaded {len( documents )} notebook document(s).'
 			
 			# --------------------------- Excel Loader
 			with st.expander( label='Excel Loader', icon='📊', expanded=False ):
@@ -1728,8 +1983,7 @@ with tabs[ 0 ]:
 				
 				if arxiv_fetch and arxiv_query:
 					loader = ArXivLoader( )
-					documents = loader.load( arxiv_query, max_chars=int( arxiv_max_chars ),
-					) or [ ]
+					documents = loader.load( arxiv_query, max_chars=int( arxiv_max_chars ), ) or [ ]
 					
 					for d in documents:
 						d.metadata[ 'loader' ] = 'ArXivLoader'
@@ -1745,8 +1999,7 @@ with tabs[ 0 ]:
 						st.session_state.raw_text = rebuild_raw_text_from_documents( )
 						st.session_state.active_loader = 'ArXivLoader'
 						
-						st.session_state[
-							'_loader_status' ] = f'Fetched {len( documents )} document(s).'
+						st.session_state[ '_loader_status' ] = f'Fetched {len( documents )} document(s).'
 			
 			# --------------------------- Wikipedia Loader
 			with st.expander( label='Wikipedia Loader', icon='📚', expanded=False ):
@@ -1868,8 +2121,7 @@ with tabs[ 0 ]:
 						st.session_state.raw_text = rebuild_raw_text_from_documents( )
 						st.session_state.active_loader = "GithubLoader"
 						
-						st.session_state[
-							"_loader_status" ] = f"Fetched {len( documents )} GitHub document(s)."
+						st.session_state[ "_loader_status" ] = f"Fetched {len( documents )} GitHub document(s)."
 			
 			# --------------------------- Outlook Loader
 			with st.expander( label='Outlook Loader', icon='📨', expanded=False ):
@@ -2941,6 +3193,11 @@ with tabs[ 0 ]:
 					st.caption( 'Install `textstat` to enable readability metrics.' )
 
 # ======================================================================================
+# Uploaded Document Identity
+# ======================================================================================
+sync_document_identity( )
+
+# ======================================================================================
 # Tab — Text Processing
 # ======================================================================================
 with tabs[ 1 ]:
@@ -3425,8 +3682,11 @@ with tabs[ 1 ]:
 				st.session_state.get( 'processed_text' ).strip( ) ))
 			
 			if can_save_processed:
+				processed_document_name = st.session_state.get( 'document_name' ) or 'processed_text'
+				processed_file_name = f'{processed_document_name}.txt'
+
 				save_processed_slot.download_button( 'Save',
-					data=st.session_state.get( 'processed_text' ), file_name='processed_text.txt',
+					data=st.session_state.get( 'processed_text' ), file_name=processed_file_name,
 					mime='text/plain', key='processed_text_save', icon='💾', width='stretch' )
 			else:
 				save_processed_slot.button( 'Save', key='processed_text_save_disabled',
@@ -3828,6 +4088,12 @@ with tabs[ 3 ]:
 	with line_col:
 		st.text( 'Chunked Data' )
 		if isinstance( df_chunk_records, pd.DataFrame ) and not df_chunk_records.empty:
+			chunk_document_name = st.session_state.get( 'document_name' ) or 'chunked_data'
+			chunk_file_name = f'{chunk_document_name}.csv'
+			st.download_button( 'Save CSV', data=df_chunk_records.to_csv( index=False ),
+				file_name=chunk_file_name, mime='text/csv', key='chunk_records_save', icon='💾',
+				width='stretch' )
+
 			chunk_columns = [ 'Chunk ID', 'Chunk Text', 'Token Count', 'Character Count', ]
 			st.data_editor( df_chunk_records[ chunk_columns ], num_rows='fixed', width='stretch',
 				height='stretch', disabled=True, key='chunk_records_editor', column_config={
@@ -4682,8 +4948,8 @@ with tabs[ 4 ]:
 # Tab - Vector Store
 # ======================================================================================
 with tabs[ 5 ]:
-	st.subheader( 'Vector Database (sqlite-vec)' )
-	
+	st.subheader( 'Vector Database' )
+
 	# ------------------------------------------------------------------
 	# Required upstream state
 	# ------------------------------------------------------------------
@@ -4691,7 +4957,9 @@ with tabs[ 5 ]:
 	embedding_texts = st.session_state.get( 'embedding_texts' )
 	embedding_model = st.session_state.get( 'embedding_model' )
 	embedding_provider = st.session_state.get( 'embedding_provider' )
-	
+	collection_name = st.session_state.get( 'collection_name' ) or 'default_document'
+	document_name = st.session_state.get( 'document_name' ) or 'default_document'
+
 	# ------------------------------------------------------------------
 	# Guard: embeddings must exist before continuing
 	# ------------------------------------------------------------------
@@ -4699,131 +4967,381 @@ with tabs[ 5 ]:
 			list ) and embedding_texts and embedding_model and embedding_provider):
 		st.info( 'Generate embeddings before persisting to the vector database.' )
 		st.stop( )
-	
+
 	# ------------------------------------------------------------------
 	# Derive vector metadata
 	# ------------------------------------------------------------------
-	emb_array = np.asarray( embeddings )
-	
+	emb_array = np.asarray( embeddings, dtype=float )
+
 	if emb_array.ndim == 1:
 		emb_array = emb_array.reshape( 1, -1 )
-	
+
 	if emb_array.ndim != 2 or emb_array.shape[ 0 ] < 1:
 		st.error( 'Invalid embeddings array.' )
 		st.stop( )
-	
-	dim = emb_array.shape[ 1 ]
-	document_name = st.text_input( 'Document / Collection Name', value='default_document' )
-	table_name = (f'{document_name}__'
-	              f'{embedding_provider}__'
-	              f'{embedding_model}__'
-	              f'{dim}')
-	
-	st.caption( f'Vector Table: `{table_name}`' )
-	
+
+	dim = int( emb_array.shape[ 1 ] )
+
 	# ------------------------------------------------------------------
-	# Database connection
+	# Vector Store Selection
 	# ------------------------------------------------------------------
-	db_path = st.text_input( 'SQLite Database Path', value='vectors.db' )
+	selector_col, cloud_col = st.columns( [ 0.65, 0.35 ], border=True )
+	with selector_col:
+		vector_store_provider = st.radio( 'Storage Mode', options=[ 'SQLiteVec', 'Cloud' ],
+			horizontal=True, key='vector_store_provider',
+			help='SQLiteVec preserves the existing local workflow. Cloud enables Chroma or Pinecone.' )
+
+	with cloud_col:
+		use_pinecone = st.toggle( 'Use Pinecone', key='vector_store_cloud_pinecone',
+			disabled=vector_store_provider != 'Cloud',
+			help='Off stores vectors in Chroma. On stores vectors in Pinecone.' )
+		cloud_provider = 'Pinecone' if use_pinecone else 'Chroma'
+		st.caption( f'Cloud Provider: {cloud_provider}' )
+
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	
-	col_create, col_insert, col_delete = st.columns( 3 )
-	with col_create:
-		if st.button( label='Create Vector Table', icon='➕' ):
-			conn = sqlite3.connect( db_path )
-			conn.enable_load_extension( True )
-			sqlite_vec.load( conn )
-			SQLiteVec.create_table( conn, table_name=table_name, dimension=dim )
-			conn.close( )
-			st.success( f'Created vector table `{table_name}`.' )
-	
-	# ------------------------------------------------------------------
-	# Insert Embeddings
-	# ------------------------------------------------------------------
-	with col_insert:
-		if st.button( 'Insert Embeddings', icon='🔣'  ):
-			conn = sqlite3.connect( db_path )
-			conn.enable_load_extension( True )
-			sqlite_vec.load( conn )
-			vector_store = SQLiteVec( connection=conn, table_name=table_name,
-				embedding=SentenceTransformerEmbeddings( model_name=embedding_model ) )
-			
-			vector_store.add_texts( texts=embedding_texts, embeddings=embeddings )
-			conn.close( )
-			st.success( f'Inserted {len( embeddings )} embeddings into `{table_name}`.' )
-	
-	# ------------------------------------------------------------------
-	# Drop Embeddings
-	# ------------------------------------------------------------------
-	with col_delete:
-		if st.button( label='Drop Vector Table', type='secondary', icon='❌' ):
-			conn = sqlite3.connect( db_path )
-			cur = conn.cursor( )
-			cur.execute( f'DROP TABLE IF EXISTS {table_name}' )
-			conn.commit( )
-			conn.close( )
-			st.warning( f'Dropped vector table `{table_name}`.' )
-	
-	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
-	
-	# ------------------------------------------------------------------
-	# Verify Embeddings
-	# ------------------------------------------------------------------
-	if st.checkbox( 'Inspect Vector Table' ):
-		conn = sqlite3.connect( db_path )
-		df_preview = pd.read_sql_query( f'SELECT * FROM {table_name} LIMIT 5', conn )
-		conn.close( )
-		
-		st.data_editor( df_preview, use_container_width=True, num_rows='dynamic' )
-	
+
 	# ======================================================================================
-	# Similarity Search (sqlite-vec)
+	# SQLiteVec
 	# ======================================================================================
-	st.subheader( 'Similarity Search' )
-	
-	query_text = st.text_area( 'Query Text',
-		placeholder='Enter text to search for semantically similar chunks…', height=100 )
-	
-	top_k = st.slider( 'Top-K Results', min_value=1, max_value=20, value=5, step=1 )
-	similarity_threshold = st.slider( 'Minimum Similarity Threshold', min_value=0.0, max_value=1.0,
-		value=0.0, step=0.01, help='Only results with similarity ≥ threshold will be shown.' )
-	
-	if not query_text.strip( ):
-		st.info( 'Enter a query to run similarity search.' )
-		results = None
-	else:
-		try:
-			conn = sqlite3.connect( db_path )
-			conn.enable_load_extension( True )
-			sqlite_vec.load( conn )
-			embedding_fn = SentenceTransformerEmbeddings( model_name=embedding_model )
-			vector_store = SQLiteVec( connection=conn, table_name=table_name,
-				embedding=embedding_fn )
-			
-			results = vector_store.similarity_search_with_score( query=query_text, k=top_k )
-			conn.close( )
-		except Exception as ex:
-			st.error( f'Similarity search failed: {ex}' )
+	if vector_store_provider == 'SQLiteVec':
+		st.markdown( '#### SQLiteVec' )
+		local_document_name = st.text_input( 'Document / Collection Name', value=document_name,
+			key='sqlite_document_name' )
+		table_name = (f'{local_document_name}__'
+		              f'{embedding_provider}__'
+		              f'{embedding_model}__'
+		              f'{dim}')
+
+		st.caption( f'Vector Table: `{table_name}`' )
+
+		# ------------------------------------------------------------------
+		# Database connection
+		# ------------------------------------------------------------------
+		db_path = st.text_input( 'SQLite Database Path', value='vectors.db',
+			key='sqlite_vector_db_path' )
+		st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+
+		col_create, col_insert, col_delete = st.columns( 3 )
+		with col_create:
+			if st.button( label='Create Vector Table', icon='➕', key='sqlite_create_vector_table' ):
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
+				SQLiteVec.create_table( conn, table_name=table_name, dimension=dim )
+				conn.close( )
+				st.success( f'Created vector table `{table_name}`.' )
+
+		# ------------------------------------------------------------------
+		# Insert Embeddings
+		# ------------------------------------------------------------------
+		with col_insert:
+			if st.button( 'Insert Embeddings', icon='🔣', key='sqlite_insert_embeddings' ):
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
+				vector_store = SQLiteVec( connection=conn, table_name=table_name,
+					embedding=SentenceTransformerEmbeddings( model_name=embedding_model ) )
+
+				vector_store.add_texts( texts=embedding_texts, embeddings=embeddings )
+				conn.close( )
+				st.success( f'Inserted {len( embeddings )} embeddings into `{table_name}`.' )
+
+		# ------------------------------------------------------------------
+		# Drop Embeddings
+		# ------------------------------------------------------------------
+		with col_delete:
+			if st.button( label='Drop Vector Table', type='secondary', icon='❌',
+					key='sqlite_drop_vector_table' ):
+				conn = sqlite3.connect( db_path )
+				cur = conn.cursor( )
+				cur.execute( f'DROP TABLE IF EXISTS {table_name}' )
+				conn.commit( )
+				conn.close( )
+				st.warning( f'Dropped vector table `{table_name}`.' )
+
+		st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+
+		# ------------------------------------------------------------------
+		# Verify Embeddings
+		# ------------------------------------------------------------------
+		if st.checkbox( 'Inspect Vector Table', key='sqlite_inspect_vector_table' ):
+			try:
+				conn = sqlite3.connect( db_path )
+				df_preview = pd.read_sql_query( f'SELECT * FROM {table_name} LIMIT 5', conn )
+				conn.close( )
+				st.data_editor( df_preview, use_container_width=True, num_rows='dynamic' )
+			except Exception as exception:
+				st.error( f'Vector-table inspection failed: {exception}' )
+
+		# ======================================================================================
+		# Similarity Search (sqlite-vec)
+		# ======================================================================================
+		st.subheader( 'Similarity Search' )
+
+		query_text = st.text_area( 'Query Text',
+			placeholder='Enter text to search for semantically similar chunks…', height=100,
+			key='sqlite_query_text' )
+
+		top_k = st.slider( 'Top-K Results', min_value=1, max_value=20, value=5, step=1,
+			key='sqlite_top_k' )
+		similarity_threshold = st.slider( 'Minimum Similarity Threshold', min_value=0.0,
+			max_value=1.0, value=0.0, step=0.01, key='sqlite_similarity_threshold',
+			help='Only results with similarity ≥ threshold will be shown.' )
+
+		if not query_text.strip( ):
+			st.info( 'Enter a query to run similarity search.' )
 			results = None
-	
-	# ------------------------------------------------------------------
-	# Results Rendering (with similarity threshold)
-	# ------------------------------------------------------------------
-	if results:
-		filtered_results = [ (doc, score) for (doc, score) in results if
-			score >= similarity_threshold ]
-		
-		st.caption( f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
-		            f'{len( filtered_results )} of {len( results )} results retained.' )
-		
-		if not filtered_results:
-			st.warning( 'No results met the selected similarity threshold. '
-			            'Try lowering the threshold or increasing Top-K.' )
-		
-		for rank, (doc, score) in enumerate( filtered_results, start=1 ):
-			with st.expander( f'#{rank} — Similarity Score: {score:.4f}', expanded=(rank == 1) ):
-				st.text_area( 'Chunk Text', doc.page_content, height=200, disabled=True )
+		else:
+			try:
+				conn = sqlite3.connect( db_path )
+				conn.enable_load_extension( True )
+				sqlite_vec.load( conn )
+				embedding_fn = SentenceTransformerEmbeddings( model_name=embedding_model )
+				vector_store = SQLiteVec( connection=conn, table_name=table_name,
+					embedding=embedding_fn )
+
+				results = vector_store.similarity_search_with_score( query=query_text, k=top_k )
+				conn.close( )
+			except Exception as ex:
+				st.error( f'Similarity search failed: {ex}' )
+				results = None
+
+		# ------------------------------------------------------------------
+		# Results Rendering (with similarity threshold)
+		# ------------------------------------------------------------------
+		if results:
+			filtered_results = [ (doc, score) for (doc, score) in results if
+				score >= similarity_threshold ]
+
+			st.caption( f'Results shown with similarity ≥ {similarity_threshold:.2f}. '
+			            f'{len( filtered_results )} of {len( results )} results retained.' )
+
+			if not filtered_results:
+				st.warning( 'No results met the selected similarity threshold. '
+				            'Try lowering the threshold or increasing Top-K.' )
+
+			for rank, (doc, score) in enumerate( filtered_results, start=1 ):
+				with st.expander( f'#{rank} — Similarity Score: {score:.4f}',
+						expanded=(rank == 1) ):
+					st.text_area( 'Chunk Text', doc.page_content, height=200, disabled=True,
+						key=f'sqlite_result_{rank}' )
+		else:
+			st.info( 'No results to display.' )
+
+	# ======================================================================================
+	# Cloud Vector Stores
+	# ======================================================================================
 	else:
-		st.info( 'No results to display.' )
-	
+		remote_valid, remote_message = validate_remote_vector_state( )
+		chroma_api_key = st.session_state.get( 'chroma_api_key', '' )
+		chroma_tenant = st.session_state.get( 'chroma_tenant', '' )
+		chroma_database = st.session_state.get( 'chroma_database', '' )
+		pinecone_api_key = st.session_state.get( 'pinecone_api_key', '' )
+		pinecone_index_name = chroma_database.lower( ) if isinstance( chroma_database, str ) else ''
+		pinecone_index_valid = bool( re.fullmatch( r'[a-z0-9](?:[a-z0-9-]{0,43}[a-z0-9])?',
+			pinecone_index_name ) )
+		st.session_state.pinecone_index_name = pinecone_index_name
+
+		st.markdown( f'#### {cloud_provider}' )
+		st.caption( f'Document: `{document_name}` | Collection / Namespace: `{collection_name}`' )
+
+		if cloud_provider == 'Chroma':
+			st.caption( f'Chroma Database: `{chroma_database or "not configured"}`' )
+		else:
+			st.caption( f'Pinecone Index: `{pinecone_index_name or "not configured"}`' )
+
+		if not remote_valid:
+			st.warning( remote_message )
+
+		if cloud_provider == 'Chroma':
+			credentials_valid = bool( isinstance( chroma_api_key, str ) and chroma_api_key.strip( ) and
+				isinstance( chroma_tenant, str ) and chroma_tenant.strip( ) and
+				isinstance( chroma_database, str ) and chroma_database.strip( ) )
+			if not credentials_valid:
+				st.warning( 'Chroma API Key, Tenant ID, and Database are required.' )
+		else:
+			credentials_valid = bool( isinstance( pinecone_api_key, str ) and pinecone_api_key.strip( ) and
+				isinstance( chroma_database, str ) and chroma_database.strip( ) and
+				pinecone_index_valid )
+			if not pinecone_index_valid and pinecone_index_name:
+				st.warning( 'The lowercased Chroma database name is not a valid Pinecone index name. '
+				            'Pinecone index names must use lowercase letters, digits, or hyphens.' )
+			elif not credentials_valid:
+				st.warning( 'Pinecone API Key and Chroma Database are required. The Pinecone index name '
+				            'is the Chroma database name lowercased.' )
+
+		can_persist_remote = bool( remote_valid and credentials_valid and collection_name )
+		col_persist, col_inspect, col_clear = st.columns( 3 )
+		persist_remote = col_persist.button( 'Persist Vectors', icon='🔣', width='stretch',
+			key='cloud_persist_vectors', disabled=not can_persist_remote )
+		inspect_remote = col_inspect.button( 'Inspect Store', icon='🔎', width='stretch',
+			key='cloud_inspect_store', disabled=not credentials_valid )
+		clear_remote = col_clear.button( 'Clear Collection', icon='❌', width='stretch',
+			key='cloud_clear_collection', disabled=not credentials_valid )
+
+		# ------------------------------------------------------------------
+		# Persist remote vectors
+		# ------------------------------------------------------------------
+		if persist_remote:
+			try:
+				ids = [ f'{collection_name}_{index + 1:06d}' for index in range( len( embedding_texts ) ) ]
+				metadatas = [ build_vector_metadata( index, embedding_texts[ index ] ) for index in
+					range( len( embedding_texts ) ) ]
+
+				if cloud_provider == 'Chroma':
+					import chromadb
+
+					client = chromadb.CloudClient( api_key=chroma_api_key.strip( ),
+						tenant=chroma_tenant.strip( ), database=chroma_database.strip( ) )
+					collection = client.get_or_create_collection( name=collection_name,
+						embedding_function=None )
+					batch_size = 100
+					for batch_start in range( 0, len( ids ), batch_size ):
+						batch_end = batch_start + batch_size
+						collection.upsert( ids=ids[ batch_start:batch_end ],
+							embeddings=embeddings[ batch_start:batch_end ],
+							documents=embedding_texts[ batch_start:batch_end ],
+							metadatas=metadatas[ batch_start:batch_end ] )
+					st.success( f'Persisted {len( embeddings )} vectors to Chroma collection '
+					            f'`{collection_name}`.' )
+				else:
+					from pinecone import Pinecone
+
+					pinecone_client = Pinecone( api_key=pinecone_api_key.strip( ) )
+					available_indexes = pinecone_client.list_indexes( ).names( )
+
+					if pinecone_index_name not in available_indexes:
+						raise ValueError( f'Pinecone index `{pinecone_index_name}` does not exist.' )
+
+					index_description = pinecone_client.describe_index( pinecone_index_name )
+					index_dimension = int( getattr( index_description, 'dimension', 0 ) or 0 )
+
+					if index_dimension != dim:
+						raise ValueError( f'Pinecone index dimension {index_dimension} does not match '
+						                  f'the embedding dimension {dim}.' )
+
+					pinecone_index = pinecone_client.Index( pinecone_index_name )
+					vectors = [ { 'id': vector_id, 'values': vector, 'metadata': metadata } for
+						vector_id, vector, metadata in zip( ids, embeddings, metadatas ) ]
+					batch_size = 100
+					for batch_start in range( 0, len( vectors ), batch_size ):
+						batch_end = batch_start + batch_size
+						pinecone_index.upsert( vectors=vectors[ batch_start:batch_end ],
+							namespace=collection_name )
+					st.success( f'Persisted {len( embeddings )} vectors to Pinecone index '
+					            f'`{pinecone_index_name}` namespace `{collection_name}`.' )
+			except Exception as exception:
+				st.error( f'{cloud_provider} persistence failed: {exception}' )
+
+		# ------------------------------------------------------------------
+		# Inspect remote vector store
+		# ------------------------------------------------------------------
+		if inspect_remote:
+			try:
+				if cloud_provider == 'Chroma':
+					import chromadb
+
+					client = chromadb.CloudClient( api_key=chroma_api_key.strip( ),
+						tenant=chroma_tenant.strip( ), database=chroma_database.strip( ) )
+					collection = client.get_collection( name=collection_name, embedding_function=None )
+					st.metric( 'Stored Vectors', f'{collection.count( ):,}' )
+					preview = collection.peek( limit=5 )
+					df_preview = pd.DataFrame( {
+						'ID': preview.get( 'ids', [ ] ),
+						'Document': preview.get( 'documents', [ ] ),
+						'Metadata': preview.get( 'metadatas', [ ] ),
+					} )
+					st.data_editor( df_preview, use_container_width=True, hide_index=True,
+						disabled=True, key='chroma_preview' )
+				else:
+					from pinecone import Pinecone
+
+					pinecone_client = Pinecone( api_key=pinecone_api_key.strip( ) )
+					pinecone_index = pinecone_client.Index( pinecone_index_name )
+					stats = pinecone_index.describe_index_stats( )
+					st.json( stats.to_dict( ) if hasattr( stats, 'to_dict' ) else stats )
+			except Exception as exception:
+				st.error( f'{cloud_provider} inspection failed: {exception}' )
+
+		# ------------------------------------------------------------------
+		# Clear remote collection / namespace
+		# ------------------------------------------------------------------
+		if clear_remote:
+			try:
+				if cloud_provider == 'Chroma':
+					import chromadb
+
+					client = chromadb.CloudClient( api_key=chroma_api_key.strip( ),
+						tenant=chroma_tenant.strip( ), database=chroma_database.strip( ) )
+					client.delete_collection( name=collection_name )
+					st.warning( f'Deleted Chroma collection `{collection_name}`.' )
+				else:
+					from pinecone import Pinecone
+
+					pinecone_client = Pinecone( api_key=pinecone_api_key.strip( ) )
+					pinecone_index = pinecone_client.Index( pinecone_index_name )
+					pinecone_index.delete( delete_all=True, namespace=collection_name )
+					st.warning( f'Cleared Pinecone namespace `{collection_name}`.' )
+			except Exception as exception:
+				st.error( f'{cloud_provider} clear operation failed: {exception}' )
+
+		st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+		st.subheader( 'Similarity Search' )
+		query_text = st.text_area( 'Query Text',
+			placeholder='Enter text to search for semantically similar chunks…', height=100,
+			key='cloud_query_text' )
+		top_k = st.slider( 'Top-K Results', min_value=1, max_value=20, value=5, step=1,
+			key='cloud_top_k' )
+		run_remote_search = st.button( 'Search', icon='🔎', key='cloud_search',
+			disabled=not bool( credentials_valid and remote_valid and query_text.strip( ) ) )
+
+		if run_remote_search:
+			try:
+				query_vector = generate_query_embedding( query_text )
+
+				if len( query_vector ) != dim:
+					raise ValueError( f'Query-vector dimension {len( query_vector )} does not match '
+					                  f'the stored dimension {dim}.' )
+
+				if cloud_provider == 'Chroma':
+					import chromadb
+
+					client = chromadb.CloudClient( api_key=chroma_api_key.strip( ),
+						tenant=chroma_tenant.strip( ), database=chroma_database.strip( ) )
+					collection = client.get_collection( name=collection_name, embedding_function=None )
+					response = collection.query( query_embeddings=[ query_vector ], n_results=int( top_k ),
+						include=[ 'documents', 'metadatas', 'distances' ] )
+					documents = response.get( 'documents', [ [ ] ] )[ 0 ]
+					metadatas = response.get( 'metadatas', [ [ ] ] )[ 0 ]
+					distances = response.get( 'distances', [ [ ] ] )[ 0 ]
+
+					for rank, (result_text, metadata, distance) in enumerate(
+							zip( documents, metadatas, distances ), start=1 ):
+						with st.expander( f'#{rank} — Distance: {float( distance ):.4f}',
+								expanded=(rank == 1) ):
+							st.json( metadata )
+							st.text_area( 'Chunk Text', result_text or '', height=200, disabled=True,
+								key=f'chroma_search_result_{rank}' )
+				else:
+					from pinecone import Pinecone
+
+					pinecone_client = Pinecone( api_key=pinecone_api_key.strip( ) )
+					pinecone_index = pinecone_client.Index( pinecone_index_name )
+					response = pinecone_index.query( vector=query_vector, top_k=int( top_k ),
+						include_metadata=True, namespace=collection_name )
+					matches = getattr( response, 'matches', [ ] )
+
+					for rank, match in enumerate( matches, start=1 ):
+						metadata = getattr( match, 'metadata', { } ) or { }
+						score = float( getattr( match, 'score', 0.0 ) or 0.0 )
+						with st.expander( f'#{rank} — Similarity Score: {score:.4f}',
+								expanded=(rank == 1) ):
+							st.json( metadata )
+							chunk_text = str( metadata.get( 'chunk_text', '' ) )
+							st.text_area( 'Chunk Text', chunk_text, height=200, disabled=True,
+								key=f'pinecone_search_result_{rank}' )
+			except Exception as exception:
+				st.error( f'{cloud_provider} similarity search failed: {exception}' )
+
 	st.markdown( cfg.BLUE_DIVIDER, unsafe_allow_html=True )
+

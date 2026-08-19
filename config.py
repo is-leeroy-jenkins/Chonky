@@ -215,6 +215,10 @@ GOOGLE_APPLICATION_CREDENTIALS = os.getenv( 'GOOGLE_APPLICATION_CREDENTIALS' )
 LANGSMITH_API_KEYS = os.getenv( 'LANGSMITH_API_KEYS' )
 PINECONE_API_KEY = os.getenv( 'PINECONE_API_KEY' )
 VERTEX_API_KEY = os.getenv( 'VERTEX_API_KEY' )
+CHROMA_API_KEY = os.getenv( 'CHROMA_API_KEY' )
+CHROMA_TENANT = os.getenv( 'CHROMA_TENANT' ) or os.getenv( 'CHROMA_TENET_ID' )
+CHROMA_TENET_ID = os.getenv( 'CHROMA_TENET_ID' ) or CHROMA_TENANT
+CHROMA_DATABASE = os.getenv( 'CHROMA_DATABASE' )
 
 # ------- CONSTANTS ------------------------------
 BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:30px 0 30px 0;'></div>"
@@ -222,16 +226,8 @@ BLUE_DIVIDER = "<div style='height:2px;align:left;background:#0078FC;margin:30px
 TABS = [ 'Loading', 'Processing', 'Analysis', 'Tokenization',
          'Embeddings', 'Database' ]
 
-REQUIRED_CORPORA = [
-		'brown',
-		'gutenberg',
-		'reuters',
-		'webtext',
-		'inaugural',
-		'state_union',
-		'punkt',
-		'stopwords',
-]
+REQUIRED_CORPORA = [ 'brown', 'gutenberg', 'reuters', 'webtext', 'inaugural', 'state_union',
+		'punkt', 'stopwords', ]
 
 PROVIDERS = [ 'OpenAI', 'Gemini', 'Groq' ]
 
@@ -249,6 +245,9 @@ SESSION_STATE_DEFAULTS = {
 		'documents': None,
 		'raw_documents': None,
 		'active_loader': None,
+		'source_file_name': '',
+		'document_name': '',
+		'collection_name': '',
 		# -----------------------------
 		# Input
 		# -----------------------------
@@ -321,8 +320,15 @@ SESSION_STATE_DEFAULTS = {
 				'groq': None,
 				'google': None,
 				'pinecone': None,
+				'chroma': None,
 				'google_credentials_path': None,
 		},
+		'chroma_api_key': '',
+		'chroma_tenant': '',
+		'chroma_database': '',
+		'pinecone_index_name': '',
+		'vector_store_provider': 'SQLiteVec',
+		'vector_store_cloud_pinecone': False,
 		# -----------------------------
 		# XML Loader (explicit contract)
 		# -----------------------------
