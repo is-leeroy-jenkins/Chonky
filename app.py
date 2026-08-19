@@ -3407,7 +3407,7 @@ with tabs[ 1 ]:
 					st.caption( 'Available when PDF documents are loaded.' )
 			
 			# ==============================================================
-			# HTML-Specific Processing
+			# HTML Processing
 			# ==============================================================
 			strip_scripts = False
 			keep_headings = False
