@@ -1958,9 +1958,8 @@ with tabs[ 0 ]:
 					help='Maximum characters read', )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
-				arxiv_fetch = col_fetch.button( 'Load',
-					key='arxiv_fetch' )  # label kept as Load button row convention
-				arxiv_clear = col_clear.button( 'Clear', key='arxiv_clear' )
+				arxiv_fetch = col_fetch.button( 'Load', key='arxiv_fetch', icon='📤' )
+				arxiv_clear = col_clear.button( 'Clear', key='arxiv_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'ArXivLoader' and
 				            isinstance(
@@ -2014,8 +2013,8 @@ with tabs[ 0 ]:
 					help='Upper limit on the number of characters', )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
-				wiki_fetch = col_fetch.button( 'Load', key='wiki_fetch' )
-				wiki_clear = col_clear.button( 'Clear', key='wiki_clear' )
+				wiki_fetch = col_fetch.button( 'Load', key='wiki_fetch', icon='📤' )
+				wiki_clear = col_clear.button( 'Clear', key='wiki_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'WikiLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
@@ -2078,8 +2077,8 @@ with tabs[ 0 ]:
 					     "limits.", )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
-				gh_fetch = col_fetch.button( "Load", key="gh_fetch" )
-				gh_clear = col_clear.button( "Clear", key="gh_clear" )
+				gh_fetch = col_fetch.button( "Load", key="gh_fetch", icon='📤' )
+				gh_clear = col_clear.button( "Clear", key="gh_clear", icon='🧹' )
 				
 				can_save = (
 						st.session_state.get( "active_loader" ) == "GithubLoader" and isinstance(
@@ -2131,8 +2130,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_outlook = col_load.button( 'Load', key='outlook_load' )
-				clear_outlook = col_clear.button( 'Clear', key='outlook_clear' )
+				load_outlook = col_load.button( 'Load', key='outlook_load', icon='📤' )
+				clear_outlook = col_clear.button( 'Clear', key='outlook_clear', icon='🧹' )
 				
 				can_save = (
 						st.session_state.get( 'active_loader' ) == 'OutlookLoader' and isinstance(
@@ -2142,7 +2141,7 @@ with tabs[ 0 ]:
 				if can_save:
 					col_save.download_button( 'Save', data=st.session_state.get( 'raw_text' ),
 						file_name='outlook_loader_output.txt', mime='text/plain',
-						key='outlook_save', icon='📥' )
+						key='outlook_save', icon='💾' )
 				else:
 					col_save.button( 'Save', key='outlook_save_disabled', disabled=True, icon='💾' )
 				
@@ -2199,8 +2198,8 @@ with tabs[ 0 ]:
 					help="Keep loading remaining URLs if one page fails." )
 				
 				col_fetch, col_clear, col_save = st.columns( 3 )
-				load_web = col_fetch.button( "Load", key="web_fetch" )
-				clear_web = col_clear.button( "Clear", key="web_clear" )
+				load_web = col_fetch.button( "Load", key="web_fetch", icon='📤' )
+				clear_web = col_clear.button( "Clear", key="web_clear", icon='🧹' )
 				
 				can_save = (st.session_state.get( "active_loader" ) == "WebLoader" and isinstance(
 					st.session_state.get( "raw_text" ), str ) and st.session_state.get(
@@ -2263,8 +2262,8 @@ with tabs[ 0 ]:
 					key='crawl_domain_lock', )
 				
 				col_run, col_clear, col_save = st.columns( 3 )
-				run_crawl = col_run.button( 'Load', key='crawl_run' )
-				clear_crawl = col_clear.button( 'Clear', key='crawl_clear' )
+				run_crawl = col_run.button( 'Load', key='crawl_run', icon='📤' )
+				clear_crawl = col_clear.button( 'Clear', key='crawl_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'WebCrawler' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
@@ -2328,8 +2327,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_email = col_load.button( 'Load', key='email_load' )
-				clear_email = col_clear.button( 'Clear', key='email_clear' )
+				load_email = col_load.button( 'Load', key='email_load', icon='📤' )
+				clear_email = col_clear.button( 'Clear', key='email_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'EmailLoader' and
 				            isinstance(
@@ -2398,7 +2397,7 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_pubmed = col_load.button( 'Load', key='pubmed_load', icon='📥' )
-				clear_pubmed = col_clear.button( 'Clear', key='pubmed_clear' )
+				clear_pubmed = col_clear.button( 'Clear', key='pubmed_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get(
 					'active_loader' ) == 'PubMedSearchLoader' and isinstance(
@@ -2466,7 +2465,7 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_open_city = col_load.button( 'Load', key='open_city_load', icon='📥' )
-				clear_open_city = col_clear.button( 'Clear', key='open_city_clear' )
+				clear_open_city = col_clear.button( 'Clear', key='open_city_clear', icon='🧹' )
 				
 				can_save = (
 						st.session_state.get( 'active_loader' ) == 'OpenCityLoader' and isinstance(
@@ -2536,8 +2535,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_onedrive = col_load.button( 'Load', key='onedrive_load' )
-				clear_onedrive = col_clear.button( 'Clear', key='onedrive_clear' )
+				load_onedrive = col_load.button( 'Load', key='onedrive_load', icon='📥' )
+				clear_onedrive = col_clear.button( 'Clear', key='onedrive_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get(
 					'active_loader' ) == 'OneDriveDocLoader' and isinstance(
@@ -2615,8 +2614,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_gcs_file = col_load.button( 'Load', key='gcs_file_load' )
-				clear_gcs_file = col_clear.button( 'Clear', key='gcs_file_clear' )
+				load_gcs_file = col_load.button( 'Load', key='gcs_file_load', icon='📥' )
+				clear_gcs_file = col_clear.button( 'Clear', key='gcs_file_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get(
 					'active_loader' ) == 'GoogleCloudFileLoader' and isinstance(
@@ -2798,7 +2797,7 @@ with tabs[ 0 ]:
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
 				load_gcs_bucket = col_load.button( 'Load', key='gcs_bucket_load', icon='📥' )
-				clear_gcs_bucket = col_clear.button( 'Clear', key='gcs_bucket_clear' )
+				clear_gcs_bucket = col_clear.button( 'Clear', key='gcs_bucket_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get(
 					'active_loader' ) == 'GoogleBucketLoader' and isinstance(
@@ -2894,8 +2893,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_aws_bucket = col_load.button( 'Load', key='aws_bucket_load' )
-				clear_aws_bucket = col_clear.button( 'Clear', key='aws_bucket_clear' )
+				load_aws_bucket = col_load.button( 'Load', key='aws_bucket_load', icon='📥' )
+				clear_aws_bucket = col_clear.button( 'Clear', key='aws_bucket_clear', icon='🧹' )
 				
 				can_save = (
 						st.session_state.get( 'active_loader' ) == 'AwsBucketLoader' and
@@ -2991,8 +2990,8 @@ with tabs[ 0 ]:
 				# Buttons: Load / Clear / Save
 				# --------------------------------------------------
 				col_load, col_clear, col_save = st.columns( 3 )
-				load_spfx = col_load.button( 'Load', key='spfx_load' )
-				clear_spfx = col_clear.button( 'Clear', key='spfx_clear' )
+				load_spfx = col_load.button( 'Load', key='spfx_load', icon='📥' )
+				clear_spfx = col_clear.button( 'Clear', key='spfx_clear', icon='🧹' )
 				
 				can_save = (st.session_state.get( 'active_loader' ) == 'SpfxLoader' and isinstance(
 					st.session_state.get( 'raw_text' ), str ) and st.session_state.get(
