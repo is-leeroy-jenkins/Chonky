@@ -3574,7 +3574,6 @@ with tabs[ 1 ]:
 				# ----------------------------------------------------------
 				if active == 'WordLoader':
 					word_parser = WordParser( )
-					
 					if extract_tables and hasattr( word_parser, 'extract_tables' ):
 						processed_text = coerce_text( word_parser.extract_tables( processed_text ) )
 					
@@ -3600,7 +3599,7 @@ with tabs[ 1 ]:
 				st.session_state.nltk_named_entities = [ ]
 				if nltk_word_tokenize:
 					st.session_state.nltk_word_tokens = (
-							nlp.word_tokenizer( processed_text ) or [ ])
+							nlp.word_tokenizer( processed_text ) or [ ] )
 					display_text = rebuild_token_text( st.session_state.nltk_word_tokens )
 				
 				if nltk_sentence_tokenize:
